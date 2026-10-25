@@ -49,6 +49,27 @@ module.exports=async function({page,rpc,evidence,errors,stage}){
   const protocol=await require('./browser_mvp_provider.cjs')({page,rpc});
   check(protocol.status==='PASS','API_PROTOCOL_AND_DRAFT_SECRET_SAVE');
  }
+ if(['D','E'].includes(stage)){
+  await wait(async()=>(await rpc('GET','/v0/documents')).documents.every(doc=>doc.metadata_extraction.status==='completed'));
+  const doc=(await rpc('GET','/v0/documents')).documents.find(doc=>doc.title.startsWith('BERT:'));
+  check(doc.authors.length===4&&doc.year===2019&&doc.abstract.includes('We introduce')&&!doc.doi,'REAL_PDF_AUTOMATIC_METADATA');
+  const nav=page.getByRole('navigation',{name:'主导航'});
+  await nav.getByRole('button',{name:'文献',exact:true}).click();await page.getByRole('button',{name:doc.title,exact:true}).click();
+  check(await page.locator('.paper-detail input').count()===0,'DETAIL_DEFAULT_READ_ONLY');
+  await page.getByRole('button',{name:'发表年份来源 · 第 1 页',exact:true}).click();
+  await page.getByRole('heading',{name:'PDF 阅读',exact:true}).waitFor();await page.getByRole('button',{name:'返回文献',exact:true}).click();
+  await page.getByRole('button',{name:'编辑与核对',exact:true}).click();
+  await page.getByLabel('题名',{exact:true}).fill('BERT 人工核对题名');
+  await page.getByRole('button',{name:'保留并确认发表年份',exact:true}).click();
+  await page.getByRole('button',{name:'保存元数据',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+  await page.getByRole('button',{name:'BERT 人工核对题名',exact:true}).waitFor();
+  await page.getByRole('button',{name:'重新解析',exact:true}).click();
+  await wait(async()=>!(await rpc('GET','/v0/jobs')).jobs.some(job=>['queued','running'].includes(job.status)));
+  const saved=(await rpc('GET','/v0/documents')).documents.find(item=>item.doc_version_id===doc.doc_version_id);
+  check(saved.title==='BERT 人工核对题名'&&saved.metadata_origins.title==='manual'&&saved.metadata_origins.year==='confirmed','MANUAL_METADATA_SURVIVES_REPARSE');
+  check(Object.keys(saved.metadata_candidates).length===5,'CANDIDATE_PROVENANCE_RETAINED');
+  await page.screenshot({path:path.join(evidence,'stage-'+stage+'-metadata.png'),fullPage:true});
+ }
  check(errors.length===0,'NO_BROWSER_ERRORS');
  fs.writeFileSync(path.join(evidence,'stage-'+stage+'-browser.json'),JSON.stringify({status:'PASS',checks,native_IME:'NOT_EXECUTED',transport:'simulated Tauri; real engine'},null,2));
 };

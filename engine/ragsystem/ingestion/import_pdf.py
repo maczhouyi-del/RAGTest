@@ -99,6 +99,9 @@ class PdfImporter:
                         updated_at=excluded.updated_at WHERE project_documents.linked=0""",
                         (project_id, document_id, utc_now()),
                     )
+                from ragsystem.library.metadata import MetadataExtraction
+
+                MetadataExtraction(self.db, self.root).ensure(version_id, connection=conn)
                 fault("before_commit")
                 self.jobs.complete(job_id, token, "document_version:" + version_id, connection=conn)
             fault("after_commit")

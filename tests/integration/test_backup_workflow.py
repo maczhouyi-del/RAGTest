@@ -41,12 +41,29 @@ def test_backup_restore_jobs_and_fresh_workspace_do_not_overwrite_original(tmp_p
     )
     library = Library(db)
     project = library.create_project("备份项目")
-    library.set_membership(project["id"], library.list_documents()[0]["document_id"], True)
+    library.set_membership(
+        project["id"], library.list_documents()[0]["document_id"], True
+    )
     parent = tmp_path / "备份 恢复位置"
     parent.mkdir()
     token = secrets.token_hex(32)
     headers = {"X-RAG-Session": token}
     with TestClient(create_app(token, root), base_url="http://127.0.0.1") as client:
+        import time
+
+        for _ in range(100):
+            if all(
+                row["metadata_extraction"]["status"] == "completed"
+                for row in client.get("/v0/documents", headers=headers).json()[
+                    "documents"
+                ]
+            ):
+                break
+            time.sleep(0.05)
+        assert all(
+            row["metadata_extraction"]["status"] == "completed"
+            for row in client.get("/v0/documents", headers=headers).json()["documents"]
+        )
 
         def grant(path, purpose):
             return client.post(
@@ -55,7 +72,10 @@ def test_backup_restore_jobs_and_fresh_workspace_do_not_overwrite_original(tmp_p
                 json={"path": str(path), "purpose": purpose},
             ).json()["directory_grant_id"]
 
-        body = {"parent_grant_id": grant(parent, "backup_parent"), "idempotency_key": "backup"}
+        body = {
+            "parent_grant_id": grant(parent, "backup_parent"),
+            "idempotency_key": "backup",
+        }
         first = client.post("/v0/backups", headers=headers, json=body)
         assert first.status_code == 202
         assert (
@@ -91,11 +111,15 @@ def test_backup_restore_jobs_and_fresh_workspace_do_not_overwrite_original(tmp_p
             == library.list_documents()
         )
         assert (
-            Library(Database(path / "data/research.db")).list_projects() == library.list_projects()
+            Library(Database(path / "data/research.db")).list_projects()
+            == library.list_projects()
         )
         with Database(path / "data/research.db").connection() as conn:
             assert (
-                conn.execute("SELECT COUNT(*) FROM jobs WHERE status='running'").fetchone()[0] == 0
+                conn.execute(
+                    "SELECT COUNT(*) FROM jobs WHERE status='running'"
+                ).fetchone()[0]
+                == 0
             )
         assert root.exists() and db.integrity()["integrity_check"] == ["ok"]
 
@@ -114,10 +138,16 @@ def test_cancelled_parse_retry_preserves_attempts_and_completed_cannot_repeat(tm
     token = secrets.token_hex(32)
     with TestClient(create_app(token, root), base_url="http://127.0.0.1") as client:
         headers = {"X-RAG-Session": token}
-        assert client.post("/v0/jobs/" + row["id"] + "/retry", headers=headers).status_code == 202
+        assert (
+            client.post("/v0/jobs/" + row["id"] + "/retry", headers=headers).status_code
+            == 202
+        )
         assert jobs.get(row["id"])["status"] == "completed"
         assert jobs.get(row["id"])["attempt_count"] == 1
-        assert client.post("/v0/jobs/" + row["id"] + "/retry", headers=headers).status_code == 409
+        assert (
+            client.post("/v0/jobs/" + row["id"] + "/retry", headers=headers).status_code
+            == 409
+        )
 
 
 def test_manual_retry_does_not_reset_attempt_limit(tmp_path):

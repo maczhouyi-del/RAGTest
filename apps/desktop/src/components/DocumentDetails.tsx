@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { errorMessage, parseDocument, inspectDocumentParse, type ParseDiagnostics, setProjectDocument, updateMetadata, type DocumentRow, type Project } from "../bridge";
 
+import MetadataSummary,{metadataLabels} from "./MetadataSummary";
 import TableCandidates from "./TableCandidates";
 
 export default function DocumentDetails({document, projects, onRefresh, onClose, onOpenPdf, minimal=false}: {
@@ -14,6 +15,7 @@ export default function DocumentDetails({document, projects, onRefresh, onClose,
   const [targetPage,setTargetPage]=useState(1);
   const selection=singlePage?[targetPage]:null;
   const validPage=!singlePage||(Number.isInteger(targetPage)&&targetPage>=1&&targetPage<=(diagnostics?.pages.length??0));
+  const [editing,setEditing]=useState(minimal),[actions,setActions]=useState<Record<string,string>>({}),[abstract,setAbstract]=useState(document.abstract??"");
   const [title, setTitle] = useState(document.title);
   const [authors, setAuthors] = useState(document.authors.join("\n"));
   const [year, setYear] = useState(document.year?.toString() ?? "");
@@ -31,7 +33,7 @@ export default function DocumentDetails({document, projects, onRefresh, onClose,
       await updateMetadata(document.document_id, {expected_revision: revision.current,
         title: title.trim(), authors: authors.split(/\n/).map(value => value.trim()).filter(Boolean),
         year: year ? Number(year) : null, doi: doi.trim() || null, venue: venue.trim(),
-        tags: tags.split(/[,，]/).map(value => value.trim()).filter(Boolean)});
+        tags: tags.split(/[,，]/).map(value => value.trim()).filter(Boolean),abstract,field_actions:actions,doc_version_id:document.doc_version_id});
       await onRefresh(); onClose();
     } catch (err) {setError(errorMessage(err));}
     finally {setBusy(false);}
@@ -43,19 +45,23 @@ export default function DocumentDetails({document, projects, onRefresh, onClose,
     finally {setMembershipPending({}); setBusy(false);}
   }
 
+  function adopt(field:string){const candidate=document.metadata_candidates[field];if(!candidate)return;setActions(previous=>({...previous,[field]:candidate.id}));const value=candidate.value;if(field==="title")setTitle(String(value));if(field==="authors")setAuthors(Array.isArray(value)?value.join("\n"):String(value));if(field==="year")setYear(String(value));if(field==="venue")setVenue(String(value));if(field==="doi")setDoi(String(value));if(field==="abstract")setAbstract(String(value));}
   return <section className="details-overlay" role="dialog" aria-modal="true" aria-labelledby="document-details-title"
     onKeyDown={event => {if (event.key === "Escape" && !busy) onClose();}}>
-    <header><div><h2 id="document-details-title">文献详情</h2><small>元数据由人工维护，修改不会改变 PDF 原件。</small></div><button disabled={busy} onClick={onClose}>关闭</button></header>
+    <header><div><h2 id="document-details-title">文献详情</h2><small>本地自动候选可核对和修改，不会改变 PDF 原件。</small></div><button disabled={busy} onClick={onClose}>关闭</button></header>
     {error && <p role="alert" className="job-error">{error}</p>}
     {document.duplicate_candidates.length > 0 && <p className="duplicate-notice">另有 {document.duplicate_candidates.length} 篇文献使用相同 DOI，请人工核对版本。系统未自动合并。</p>}
+    {!editing&&<><MetadataSummary document={document} onOpenPage={page=>void onOpenPdf(page)}/><button onClick={()=>setEditing(true)}>编辑与核对</button></>}
+    {editing&&<><div className="metadata-field-actions">{Object.entries(metadataLabels).map(([field,label])=><div key={field}><strong>{label}</strong><span>{actions[field]==="manual"?"人工修改":actions[field]==="confirm"?"将人工确认":actions[field]&&actions[field]!=="keep"?"将采用自动候选":"保留当前值"}</span><button type="button" onClick={()=>setActions(previous=>({...previous,[field]:"confirm"}))}>保留并确认{label}</button>{document.metadata_candidates?.[field]&&<button type="button" onClick={()=>adopt(field)}>采用自动{label}</button>}</div>)}</div>
     <form onSubmit={event => void save(event)} className="metadata-form">
-      <label>题名<input value={title} onChange={event => setTitle(event.target.value)} maxLength={1000} required autoFocus /></label>
-      <label>作者（每行一位）<textarea aria-label="作者（每行一位）" value={authors} onChange={event => setAuthors(event.target.value)} rows={3} maxLength={10000} /></label>
-      <div className="metadata-row"><label>年份<input type="number" min={1000} max={2999} value={year} onChange={event => setYear(event.target.value)} /></label><label>期刊或会议<input value={venue} onChange={event => setVenue(event.target.value)} maxLength={500} /></label></div>
-      <label>DOI<input value={doi} onChange={event => setDoi(event.target.value)} maxLength={300} placeholder="10.xxxx/… 或 https://doi.org/…" /></label>
+      <label>题名<input value={title} onChange={event => {setTitle(event.target.value);setActions(previous=>({...previous,title:"manual"}));}} maxLength={1000} required autoFocus /></label>
+      <label>作者（每行一位）<textarea aria-label="作者（每行一位）" value={authors} onChange={event => {setAuthors(event.target.value);setActions(previous=>({...previous,authors:"manual"}));}} rows={3} maxLength={10000} /></label>
+      <div className="metadata-row"><label>年份<input type="number" min={1000} max={2999} value={year} onChange={event => {setYear(event.target.value);setActions(previous=>({...previous,year:"manual"}));}} /></label><label>期刊或会议<input value={venue} onChange={event => {setVenue(event.target.value);setActions(previous=>({...previous,venue:"manual"}));}} maxLength={500} /></label></div>
+      <label>DOI<input value={doi} onChange={event => {setDoi(event.target.value);setActions(previous=>({...previous,doi:"manual"}));}} maxLength={300} placeholder="10.xxxx/… 或 https://doi.org/…" /></label>
+      <label>原文摘要<textarea aria-label="原文摘要" value={abstract} onChange={event=>{setAbstract(event.target.value);setActions(previous=>({...previous,abstract:"manual"}));}} maxLength={8000} rows={6}/></label>
       <label>标签（逗号分隔）<input value={tags} onChange={event => setTags(event.target.value)} maxLength={3000} /></label>
       <button className="primary" disabled={busy || !title.trim()}>{busy ? "保存中…" : "保存元数据"}</button>
-    </form>
+    </form></>}
     <details className="paper-advanced" open={minimal?undefined:true}><summary>高级解析与表格核对</summary>
     <fieldset className="project-memberships" disabled={busy}><legend>所属项目</legend>
       {projects.length ? projects.map(project => <label key={project.id}><input type="checkbox" checked={membershipPending[project.id] ?? document.project_ids.includes(project.id)} onChange={event => void membership(project, event.target.checked)} />{project.name}</label>) : <p>当前没有项目关联；MVP 默认使用整个资料库。</p>}

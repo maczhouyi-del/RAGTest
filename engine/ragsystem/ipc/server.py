@@ -1,5 +1,7 @@
+import asyncio
 import hmac
 import json
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import BoundedSemaphore
@@ -69,7 +71,9 @@ class LocalBoundary:
         if scope["method"] not in {"GET", "POST"}:
             return await reject(405, "METHOD_NOT_ALLOWED")
         request_limit = (
-            MAX_SCOPE_REQUEST_BYTES if scope["path"] in SCOPE_ENDPOINTS else MAX_REQUEST_BYTES
+            MAX_SCOPE_REQUEST_BYTES
+            if scope["path"] in SCOPE_ENDPOINTS or scope["path"].endswith("/metadata")
+            else MAX_REQUEST_BYTES
         )
         body = bytearray()
         while True:
@@ -236,7 +240,12 @@ class ObservationRequest(StrictModel):
 def public_job(row):
     return {
         "job_id": row["id"],
-        "label": json.loads(row["payload_json"]).get("display_name", row["type"]),
+        "label": json.loads(row["payload_json"]).get(
+            "display_name",
+            "metadata_extract"
+            if json.loads(row["payload_json"]).get("action") == "extract_metadata"
+            else row["type"],
+        ),
         **{
             key: row[key]
             for key in (
@@ -265,12 +274,28 @@ def create_app(token: str, data_root: Path):
     hybrid = HybridSearch(db, data_root)
     workbench = Workbench(db, data_root, hybrid)
     slot = BoundedSemaphore(1)
+    from ragsystem.library.metadata import MetadataExtraction
+
+    metadata = MetadataExtraction(db, data_root)
+    stopping = threading.Event()
+
+    async def metadata_pump():
+        while not stopping.is_set():
+            worked = await asyncio.to_thread(metadata.run_one, stopping.is_set)
+            if not worked:
+                await asyncio.sleep(0.1)
 
     @asynccontextmanager
     async def lifespan(app):
         # Published immutable objects may safely finish expired import intents.
         importer.recover_published_imports()
-        yield
+        metadata.ensure_missing()
+        pump = asyncio.create_task(metadata_pump())
+        try:
+            yield
+        finally:
+            stopping.set()
+            await pump
         grants.close()
         generator = workbench.generation.generator
         if generator is not None and hasattr(generator, "close"):
@@ -700,6 +725,9 @@ def create_app(token: str, data_root: Path):
         jobs.recover_expired()
         row = jobs.get(job_id)
         payload = json.loads(row["payload_json"])
+        if row["type"] == "verify" and payload.get("action") == "extract_metadata":
+            retried = jobs.retry(job_id)
+            return public_job(retried)
         if row["type"] == "import":
             digest = payload.get("sha256", "")
             if (

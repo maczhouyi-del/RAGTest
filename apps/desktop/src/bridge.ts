@@ -20,12 +20,18 @@ export interface DocumentRow {
   venue: string;
   tags: string[];
   metadata_revision: number;
-  metadata_origin: "manual" | null;
+  metadata_origin: "manual" | "automatic" | null;
+  abstract:string;
+  metadata_origins:Record<string,"automatic"|"manual"|"confirmed">;
+  metadata_candidates:Record<string,{id:string;value:string|string[]|number;source_page:number|null;source_excerpt:string|null;extraction_method:string;review_status:string}>;
+  metadata_pending:boolean;
+  metadata_extraction:{status:string;error_code:string|null};
   project_ids: string[];
   duplicate_candidates: string[];
 }
 export interface Project { id: string; name: string; document_count: number; created_at: string }
 export interface MetadataInput {
+  doc_version_id?:string;abstract?:string;field_actions?:Record<string,string>;
   expected_revision: number; title: string; authors: string[]; year: number | null;
   doi: string | null; venue: string; tags: string[];
 }
@@ -120,6 +126,8 @@ const errors: Record<string, string> = {
   PROVIDER_PARAMETER_UNSUPPORTED: "服务拒绝了生成参数。请检查模型是否支持 Chat Completions，并在接口兼容设置中调整 JSON 模式及输出预算参数。",
   PROVIDER_NOAUTH_LOCAL_ONLY: "无需认证模式仅支持本机自定义兼容服务，远程服务必须使用凭据。",
   PROVIDER_DRAFT_EXPIRED: "会话凭据草稿已过期或地址已变化，请重新输入密钥并检查连接。",
+  METADATA_CANDIDATE_CHANGED: "自动候选已变化，请重新打开文献详情核对。",
+  METADATA_EXTRACTION_FAILED: "元数据提取失败，原件与正文仍然可用，可重试该任务。",
   CONVERSATION_BUSY: "当前会话已有问答正在执行，请等待完成。",
   PROVIDER_KEY_INVALID: "密钥格式无效，请检查是否包含换行。",
   PROVIDER_AUTH_FAILED: "模型服务拒绝了认证，请核对当前会话密钥。",

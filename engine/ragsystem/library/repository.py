@@ -24,6 +24,9 @@ class MetadataUpdate(BaseModel):
     doi: str | None = Field(default=None, max_length=300)
     venue: str = Field(default="", max_length=500)
     tags: list[Name] = Field(default_factory=list, max_length=30)
+    abstract: str = Field(default="", max_length=8000)
+    field_actions: dict[str, str] | None = Field(default=None, max_length=6)
+    doc_version_id: str | None = Field(default=None, max_length=100)
 
     @field_validator("title", "venue")
     @classmethod
@@ -123,7 +126,7 @@ class Library:
             query = """SELECT d.id AS document_id,d.title,v.id AS doc_version_id,v.file_sha256,
                 v.parse_status,v.created_at,f.size_bytes,m.authors_json,m.publication_year AS year,
                 m.doi,m.venue,m.tags_json,COALESCE(m.revision,0) AS metadata_revision,
-                m.origin AS metadata_origin
+                m.origin AS metadata_origin,m.abstract,m.field_origins_json
                 FROM documents d JOIN document_versions v ON v.document_id=d.id
                 JOIN file_assets f ON f.sha256=v.file_sha256
                 LEFT JOIN document_metadata m ON m.document_id=d.id WHERE v.visibility='visible'"""
@@ -144,6 +147,44 @@ class Library:
                 row["authors"] = json.loads(row.pop("authors_json") or "[]")
                 row["tags"] = json.loads(row.pop("tags_json") or "[]")
                 row["venue"] = row["venue"] or ""
+                row["abstract"] = row["abstract"] or ""
+                origins = json.loads(row.pop("field_origins_json") or "{}")
+                from ragsystem.library.metadata import VERSION
+
+                candidates = {}
+                for candidate in conn.execute(
+                    "SELECT * FROM metadata_candidates WHERE document_id=? AND doc_version_id=? AND extractor_version=? ORDER BY created_at,id",
+                    (row["document_id"], row["doc_version_id"], VERSION),
+                ):
+                    value = dict(candidate)
+                    value["value"] = json.loads(value.pop("candidate_value"))
+                    candidates[value["field_name"]] = value
+                for field, candidate in candidates.items():
+                    if origins.get(field) not in {"manual", "confirmed"}:
+                        row[field] = candidate["value"]
+                        origins[field] = "automatic"
+                row["metadata_origins"] = origins
+                row["metadata_candidates"] = candidates
+                row["metadata_pending"] = any(
+                    origins.get(field) == "automatic" and value["review_status"] == "unreviewed"
+                    for field, value in candidates.items()
+                )
+                extraction = conn.execute(
+                    "SELECT status,error_code FROM jobs WHERE type='verify' AND idempotency_key=?",
+                    (VERSION + ":" + row["doc_version_id"],),
+                ).fetchone()
+                row["metadata_extraction"] = (
+                    dict(extraction)
+                    if extraction
+                    else {"status": "not_started", "error_code": None}
+                )
+                row["metadata_origin"] = (
+                    "manual"
+                    if any(v in {"manual", "confirmed"} for v in origins.values())
+                    else "automatic"
+                    if candidates
+                    else None
+                )
                 row["project_ids"] = memberships.get(row["document_id"], [])
                 row["duplicate_candidates"] = (
                     [
@@ -167,6 +208,41 @@ class Library:
             )
         except ValidationError as exc:
             raise EngineError("INVALID_METADATA") from exc
+        current_values = next(
+            (row for row in self.list_documents() if row["document_id"] == document_id), None
+        )
+        if current_values is None:
+            raise EngineError("NOT_FOUND", status=404)
+        from ragsystem.library.metadata import FIELDS
+
+        origins = dict(current_values["metadata_origins"])
+        requested = body.model_dump()
+        actions = (
+            body.field_actions
+            if body.field_actions is not None
+            else {field: "manual" for field in FIELDS}
+        )
+        if any(field not in FIELDS for field in actions):
+            raise EngineError("INVALID_METADATA")
+        if body.field_actions is None and "abstract" not in body.model_fields_set:
+            actions["abstract"] = "keep"
+        accepted = []
+        for field in FIELDS:
+            action = actions.get(field, "keep")
+            if action == "keep":
+                requested[field] = current_values[field]
+            elif action in {"manual", "confirm"}:
+                if action == "confirm":
+                    requested[field] = current_values[field]
+                origins[field] = "confirmed" if action == "confirm" else "manual"
+            else:
+                candidate = current_values["metadata_candidates"].get(field)
+                if not candidate or candidate["id"] != action:
+                    raise EngineError("METADATA_CANDIDATE_CHANGED", status=409)
+                requested[field] = candidate["value"]
+                origins[field] = "automatic"
+                accepted.append(candidate["id"])
+        body = MetadataUpdate.model_validate(requested)
         with self.db.transaction() as conn:
             self.require_document(conn, document_id)
             current = conn.execute(
@@ -177,10 +253,10 @@ class Library:
                 raise EngineError("METADATA_CONFLICT", status=409)
             conn.execute("UPDATE documents SET title=? WHERE id=?", (body.title, document_id))
             conn.execute(
-                """INSERT INTO document_metadata VALUES(?,?,?,?,?,?,?,'manual',?)
+                """INSERT INTO document_metadata(document_id,authors_json,publication_year,doi,venue,tags_json,revision,origin,updated_at,abstract,field_origins_json) VALUES(?,?,?,?,?,?,?,'manual',?,?,?)
                 ON CONFLICT(document_id) DO UPDATE SET authors_json=excluded.authors_json,
                 publication_year=excluded.publication_year,doi=excluded.doi,venue=excluded.venue,
-                tags_json=excluded.tags_json,revision=excluded.revision,updated_at=excluded.updated_at""",
+                tags_json=excluded.tags_json,revision=excluded.revision,updated_at=excluded.updated_at,abstract=excluded.abstract,field_origins_json=excluded.field_origins_json""",
                 (
                     document_id,
                     json.dumps(body.authors, ensure_ascii=False),
@@ -190,8 +266,15 @@ class Library:
                     json.dumps(body.tags, ensure_ascii=False),
                     revision + 1,
                     utc_now(),
+                    body.abstract,
+                    json.dumps(origins),
                 ),
             )
+            for candidate_id in accepted:
+                conn.execute(
+                    "UPDATE metadata_candidates SET review_status='accepted' WHERE id=?",
+                    (candidate_id,),
+                )
         return next(row for row in self.list_documents() if row["document_id"] == document_id)
 
     def file_record(self, version_id, root: Path):

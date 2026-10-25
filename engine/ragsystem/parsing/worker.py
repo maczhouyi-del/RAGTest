@@ -106,6 +106,22 @@ def main():
             if not 0 < len(document) <= 500:
                 raise ValueError("PAGE_LIMIT")
             document_page_count = len(document)
+            if request.get("operation") == "metadata":
+                attributes = {
+                    key: value[:8000]
+                    for key, value in document.get_metadata_dict().items()
+                    if key in {"Title", "Author", "Subject", "Keywords"}
+                }
+                for index in range(min(2, len(document))):
+                    with closing(document[index]) as page:
+                        with closing(page.get_textpage()) as textpage:
+                            if textpage.count_chars() > 50000:
+                                raise ValueError("PAGE_TEXT_LIMIT")
+                            pages.append(
+                                {"page_number": index + 1, "text": textpage.get_text_range()}
+                            )
+                sys.stdout.write(json.dumps({"attributes": attributes, "pages": pages}))
+                return 0
             if request.get("operation") == "page_count":
                 sys.stdout.write(json.dumps({"page_count": len(document)}))
                 return 0

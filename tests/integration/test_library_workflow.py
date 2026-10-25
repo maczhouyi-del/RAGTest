@@ -56,7 +56,10 @@ def test_one_pdf_in_multiple_projects_is_persistent_and_does_not_duplicate(works
     assert set(reopened.list_documents()[0]["project_ids"]) == {one["id"], two["id"]}
     assert reopened.list_projects()[0]["document_count"] == 1
     digest = imported["file_sha256"]
-    assert hashlib.sha256((root / "papers" / (digest + ".pdf")).read_bytes()).hexdigest() == digest
+    assert (
+        hashlib.sha256((root / "papers" / (digest + ".pdf")).read_bytes()).hexdigest()
+        == digest
+    )
     library.set_membership(one["id"], document["document_id"], False)
     assert library.list_documents(one["id"]) == []
     assert len(library.list_documents(two["id"])) == 1
@@ -64,11 +67,15 @@ def test_one_pdf_in_multiple_projects_is_persistent_and_does_not_duplicate(works
         assert conn.execute("SELECT COUNT(*) FROM project_documents").fetchone()[0] == 2
 
 
-def test_metadata_conflict_does_not_overwrite_or_reparse_and_survives_restore(workspace):
+def test_metadata_conflict_does_not_overwrite_or_reparse_and_survives_restore(
+    workspace,
+):
     root, db, library, imported, document = workspace
     Parser(db, root).parse(imported["doc_version_id"], "parse")
     with db.connection() as conn:
-        chunks = [tuple(row) for row in conn.execute("SELECT * FROM chunks ORDER BY id")]
+        chunks = [
+            tuple(row) for row in conn.execute("SELECT * FROM chunks ORDER BY id")
+        ]
     saved = library.update_metadata(document["document_id"], metadata())
     assert saved["metadata_revision"] == 1
     assert saved["doi"] == "10.18653/v1/n19-1423"
@@ -76,9 +83,16 @@ def test_metadata_conflict_does_not_overwrite_or_reparse_and_survives_restore(wo
         library.update_metadata(document["document_id"], metadata("stale edit"))
     assert library.list_documents()[0]["title"] == "BERT 人工题名"
     with db.connection() as conn:
-        assert chunks == [tuple(row) for row in conn.execute("SELECT * FROM chunks ORDER BY id")]
+        assert chunks == [
+            tuple(row) for row in conn.execute("SELECT * FROM chunks ORDER BY id")
+        ]
     project = library.create_project("保留项目")
     library.set_membership(project["id"], document["document_id"], True)
+    from ragsystem.library.metadata import MetadataExtraction
+
+    extractor = MetadataExtraction(db, root)
+    while extractor.run_one():
+        pass
     backup = Backups(db, root).create(root / "backups")
     restored = root / "restored"
     Backups.restore(backup, restored)
@@ -93,7 +107,9 @@ def test_doi_duplicate_is_only_a_review_candidate(workspace, tmp_path):
         ROOT / "tests/fixtures/public/2020.emnlp-main.550.pdf", "two"
     )
     second = next(
-        row for row in library.list_documents() if row["document_id"] != document["document_id"]
+        row
+        for row in library.list_documents()
+        if row["document_id"] != document["document_id"]
     )
     library.update_metadata(document["document_id"], metadata())
     saved = library.update_metadata(second["document_id"], metadata("另一份人工元数据"))
@@ -109,13 +125,23 @@ def test_api_project_scope_and_unparsed_document_access(workspace):
     headers = {"X-RAG-Session": token}
     with TestClient(create_app(token, root), base_url="http://127.0.0.1") as client:
         assert client.post("/v0/projects", json={"name": "denied"}).status_code == 401
-        one = client.post("/v0/projects", headers=headers, json={"name": "项目一"}).json()
-        two = client.post("/v0/projects", headers=headers, json={"name": "项目二"}).json()
+        one = client.post(
+            "/v0/projects", headers=headers, json={"name": "项目一"}
+        ).json()
+        two = client.post(
+            "/v0/projects", headers=headers, json={"name": "项目二"}
+        ).json()
         path = f"/v0/projects/{one['id']}/documents/{document['document_id']}"
-        assert client.post(path, headers=headers, json={"linked": True}).status_code == 200
-        result = client.get("/v0/documents", headers=headers, params={"project_id": two["id"]})
+        assert (
+            client.post(path, headers=headers, json={"linked": True}).status_code == 200
+        )
+        result = client.get(
+            "/v0/documents", headers=headers, params={"project_id": two["id"]}
+        )
         assert result.json()["documents"] == []
-        file = client.get(f"/v0/documents/{imported['doc_version_id']}/file", headers=headers)
+        file = client.get(
+            f"/v0/documents/{imported['doc_version_id']}/file", headers=headers
+        )
         assert file.status_code == 200  # no ParseRun or synthetic SourceAnchor needed
         assert file.json()["file_sha256"] == imported["file_sha256"]
         assert "path" not in file.json() and "source_anchor_id" not in file.json()
@@ -165,17 +191,24 @@ def test_v3_upgrade_preserves_legacy_document_and_keeps_upgrade_backup(tmp_path)
                 (number, hashlib.sha256(source.encode()).hexdigest(), "legacy"),
             )
             conn.commit()
-        conn.execute("INSERT INTO documents VALUES(?,?,?)", (document_id, "legacy title", "legacy"))
+        conn.execute(
+            "INSERT INTO documents VALUES(?,?,?)",
+            (document_id, "legacy title", "legacy"),
+        )
         conn.execute("PRAGMA user_version=3")
     upgraded = Database(path)
     with upgraded.connection() as conn:
         assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
-        assert conn.execute("SELECT title FROM documents").fetchone()[0] == "legacy title"
+        assert (
+            conn.execute("SELECT title FROM documents").fetchone()[0] == "legacy title"
+        )
     backups = list((path.parent / "migration-backups").glob("before-v3-*.db"))
     assert len(backups) == 1
     with sqlite3.connect(backups[0]) as conn:
         assert conn.execute("PRAGMA user_version").fetchone()[0] == 3
-        assert conn.execute("SELECT title FROM documents").fetchone()[0] == "legacy title"
+        assert (
+            conn.execute("SELECT title FROM documents").fetchone()[0] == "legacy title"
+        )
     assert upgraded.integrity()["integrity_check"] == ["ok"]
 
 

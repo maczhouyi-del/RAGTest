@@ -44,7 +44,7 @@ export default function App() {
   function navigate(next:Tab){setReader(null);setTab(next);}
   function newConversation(){void run(async()=>{const conversation=await createConversation();setSelectedConversationId(conversation.id);setSelected("");setReader(null);setTab("ask");});}
   function openFile(file:ReaderFile,context?:ReadingContext){const id="anchor" in file?file.anchor.doc_version_id:file.document.doc_version_id;const doc=data?.documents.find(item=>item.doc_version_id===id);setReader({file,context:context??{title:doc?.title??("document" in file?file.document.title:"引用文献"),authors:doc?.authors??[],year:doc?.year??null},returnTo:context?.evidence?"ask":tab});}
-  async function read(doc:DocumentRow){openFile(await readDocument(doc.doc_version_id),{title:doc.title,authors:doc.authors,year:doc.year});}
+  async function read(doc:DocumentRow,page=1){const file=await readDocument(doc.doc_version_id);openFile({...file,document:{...file.document,page_number:page}},{title:doc.title,authors:doc.authors,year:doc.year});}
   const details=data?.documents.find(doc=>doc.doc_version_id===detailsId);
   const active=data?.jobs.some(job=>["queued","running"].includes(job.status))??false;
   const welcome=!!data&&!data.documents.length&&!selectedConversationId;
@@ -61,7 +61,7 @@ export default function App() {
         <div hidden={!!reader||tab!=="ask"} className="ask-view">
           {welcome?<Welcome data={data} modelConfigured={!!data.generator?.configured||providers.some(item=>item.configured)} busy={busy||active} onImport={()=>void run(importFiles)} onIndex={()=>void run(()=>chooseEmbeddingModel("sqlite-vec"))} onModels={()=>navigate("settings")}/>:<MvpAsk key={data.workspace?.directory??"workspace"} data={data} providers={providers} model={model} onModel={setModel} strategy={strategy} onStrategy={setStrategy} conversationId={selectedConversationId} onConversation={setSelectedConversationId} selectedId={selected} onSelected={setSelected} onCreated={refresh} onSettings={()=>navigate("settings")} onImport={()=>void run(importFiles)} onRead={openFile}/>}
         </div>
-        {!reader&&tab==="library"&&<MvpLibrary data={data} busy={busy} onImport={()=>void run(importFiles)} onPrepare={ids=>void run(()=>prepareMvp(ids))} onRead={doc=>void run(()=>read(doc))} onDetails={setDetailsId} onReparse={id=>void run(()=>parseDocument(id))} onAction={action=>void run(action)}/>}
+        <div hidden={!!reader||tab!=="library"} className="library-view"><MvpLibrary key={data.workspace?.directory??"workspace"} data={data} busy={busy} onImport={()=>void run(importFiles)} onPrepare={ids=>void run(()=>prepareMvp(ids))} onRead={(doc,page)=>void run(()=>read(doc,page))} onDetails={setDetailsId} onReparse={id=>void run(()=>parseDocument(id))} onAction={action=>void run(action)}/></div>
         {!reader&&tab==="settings"&&<MvpSettings key={data.workspace?.directory??"workspace"} data={data} providers={providers} model={model} strategy={strategy} onStrategy={setStrategy} onRefresh={refresh} onRead={openFile} onWorkspaceChange={async()=>{request.current++;setReader(null);setDetailsId("");setPendingImports([]);await refresh();}}/>}
       </>}
     </main>
