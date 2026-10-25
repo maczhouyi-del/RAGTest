@@ -68,6 +68,15 @@ async function main() {
     page.on('pageerror', error => errors.push(error.message));
     const broker = async (command, args = {}) => {
       fs.appendFileSync(path.join(evidence,'browser-commands-'+path.basename(dataRoot)+'.jsonl'),JSON.stringify({command,time:new Date().toISOString()})+'\n');
+      if (command === 'restart_engine') {
+        child.stdin.end();await once(child,'exit');
+        token=crypto.randomBytes(32).toString('hex');child=startEngine();
+        const readiness=once(readline.createInterface({input:child.stdout}),'line');
+        child.stdin.write(JSON.stringify({protocol_version:'0.1.0',token,data_root:dataRoot})+'\n');
+        const [startup]=await Promise.race([readiness,new Promise((_,reject)=>setTimeout(()=>reject(Error('RESTART_HANDSHAKE_TIMEOUT')),25000))]);port=JSON.parse(startup).port;
+        for(let i=0;;i++){try{await rpc('GET','/v0/health');break;}catch(error){if(i>100)throw error;await new Promise(resolve=>setTimeout(resolve,50));}}
+        return;
+      }
       if (command === 'workspace_snapshot') {
         const health=await rpc('GET','/v0/health'),docs=await rpc('GET','/v0/documents'),jobs=await rpc('GET','/v0/jobs'),projects=await rpc('GET','/v0/projects'),index=await rpc('GET','/v0/index'),generator=await rpc('GET','/v0/generator'),ocr=await rpc('GET','/v0/ocr'),docling=await rpc('GET','/v0/docling');
         return {health, documents: docs.documents, jobs: jobs.jobs, projects: projects.projects, index, generator, ocr, docling, workspace: {label: path.basename(dataRoot), warning: '', directory:dataRoot}};
@@ -195,7 +204,11 @@ async function main() {
     await page.goto(base);
     if(mvp){
       await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
-      if(round2)await require('./browser_round2.cjs')({page,rpc,root,evidence,errors,stage:round2});
+      if(round2)await require('./browser_round2.cjs')({page,rpc,root,evidence,errors,stage:round2,audit:()=>{const script=`import sqlite3,json,hashlib,sys
+c=sqlite3.connect(sys.argv[1]); c.execute('BEGIN'); h=hashlib.sha256()
+for row in c.execute('SELECT id,vector_bytes FROM embedding_records ORDER BY id'): h.update(row[0].encode()); h.update(row[1])
+a=c.execute("SELECT value_json FROM app_settings WHERE key='active_index'").fetchone()
+print(json.dumps({'vector_sha256':h.hexdigest(),'vectors':c.execute('SELECT count(*) FROM embedding_records').fetchone()[0],'index_builds':c.execute("SELECT count(*) FROM jobs WHERE type='embed_batch'").fetchone()[0],'active_index':json.loads(a[0]) if a else None,'secret_in_db':any('local-protocol-fixture-key' in line for line in c.iterdump())}))`;const output=require('node:child_process').spawnSync(path.join(root,'engine/.venv/bin/python'),['-c',script,path.join(dataRoot,'data/research.db')],{encoding:'utf8'});if(output.status!==0)throw Error('SQLITE_AUDIT_FAILED');return JSON.parse(output.stdout);}});
       else if(reference)await require('./browser_reference.cjs')({page,rpc,root,evidence,errors});
       else await require('./browser_mvp.cjs')({page,rpc,root,evidence,errors});
     }else{
@@ -299,8 +312,8 @@ async function main() {
     }
     }
     if (errors.length) throw new Error('BROWSER_PAGE_ERRORS:' + errors.join(','));
-    fs.writeFileSync(path.join(evidence, reference?'browser-ui-reference-smoke.json':mvp?(process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'browser-mvp-extractive-smoke.json':'browser-mvp-smoke.json'):'browser-smoke.json'), JSON.stringify({status: 'PASS', mvp_workflow:mvp, data_root: dataRoot, real_frozen_engine: true, transport: 'SIMULATED TAURI BRIDGE', native_dialogs_tested: false, full_native_e2e: false, windows_tested: false, p1_workflow: p1, workbench_workflow:process.env.RAGSYSTEM_WORKBENCH_SMOKE==='1', page_errors: errors, assertions: reference?['reference layouts/real states','batch import/dedup/parse','document filters/details','real E5/RRF/extractive answer','scope isolation','PDF source/review persistence/return','API consent/session key','backup/restore','responsive 1586/1200/720']:mvp?['three tabs/default QA','batch PDF/dedup/automatic parse','real E5/sqlite-vec index',process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'real cited extractive answer':'real cited local generation','SHA-verified PDF rendering','history reload','backup/restore persistence']:['real import shown', 'real parse shown', 'real FTS hits', 'SHA-verified PDF canvas rendered', ...(p1 ? ['project create/switch', 'project-targeted import', 'unparsed PDF reading/page jump/zoom', 'same original in two projects', 'metadata persisted across reload', 'DOI normalization', 'tag filter'] : [])]}, null, 2));
-    console.log('BROWSER_UI_SMOKE: PASS; real frozen engine, simulated Tauri transport; not native/Windows acceptance');
+    fs.writeFileSync(path.join(evidence, reference?'browser-ui-reference-smoke.json':mvp?(process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'browser-mvp-extractive-smoke.json':'browser-mvp-smoke.json'):'browser-smoke.json'), JSON.stringify({status: 'PASS', mvp_workflow:mvp, data_root: dataRoot, real_frozen_engine: process.env.RAGSYSTEM_BROWSER_SOURCE_ENGINE!=='1', transport: 'SIMULATED TAURI BRIDGE', native_dialogs_tested: false, full_native_e2e: false, windows_tested: false, p1_workflow: p1, workbench_workflow:process.env.RAGSYSTEM_WORKBENCH_SMOKE==='1', page_errors: errors, assertions: round2?['See stage-'+round2+'-browser.json; real process; no native IME certification']:reference?['reference layouts/real states','batch import/dedup/parse','document filters/details','real E5/RRF/extractive answer','scope isolation','PDF source/review persistence/return','API consent/session key','backup/restore','responsive 1586/1200/720']:mvp?['three tabs/default QA','batch PDF/dedup/automatic parse','real E5/sqlite-vec index',process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'real cited extractive answer':'real cited local generation','SHA-verified PDF rendering','history reload','backup/restore persistence']:['real import shown', 'real parse shown', 'real FTS hits', 'SHA-verified PDF canvas rendered', ...(p1 ? ['project create/switch', 'project-targeted import', 'unparsed PDF reading/page jump/zoom', 'same original in two projects', 'metadata persisted across reload', 'DOI normalization', 'tag filter'] : [])]}, null, 2));
+    console.log('BROWSER_UI_SMOKE: PASS; real engine process, simulated Tauri transport; not native/Windows acceptance');
   } catch (error) {
     const stamp = Date.now();
     if (page && !page.isClosed()) {

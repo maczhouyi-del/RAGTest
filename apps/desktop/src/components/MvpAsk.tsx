@@ -7,7 +7,7 @@ function evidencePage(evidence:Evidence):number|null {try{const value=JSON.parse
 export default function MvpAsk({data,providers,model,onModel,strategy,onStrategy,conversationId,onConversation,selectedId,onSelected,onCreated,onSettings,onImport,onRead}: {
   data:Snapshot;providers:GenerationConnection[];model:string;onModel:(model:string)=>void;strategy:string;onStrategy:(value:string)=>void;conversationId:string;onConversation:(id:string)=>void;selectedId:string;onSelected:(id:string)=>void;onCreated:()=>Promise<unknown>;onSettings:()=>void;onImport:()=>void;onRead:(file:ReaderFile,context:ReadingContext)=>void;
 }) {
-  const [question,setQuestion]=useState("");
+  const [question,setQuestion]=useState(""),[loading,setLoading]=useState(false);
   const [answers,setAnswers]=useState<AnswerRun[]>([]),[olderCursor,setOlderCursor]=useState<string|null>(null);
   const answer=answers.find(item=>item.id===selectedId)??answers.at(-1)??null;
   const [scope,setScope]=useState("all");
@@ -18,9 +18,9 @@ export default function MvpAsk({data,providers,model,onModel,strategy,onStrategy
   useEffect(()=>setConsent(false),[model,provider?.revision]);
   useEffect(()=>{
     let alive=true,inFlight=false,cursorLoaded=false;
-    setAnswers([]);setOlderCursor(null);setError("");setAllSources(false);setPending(false);setConsent(false);setQuestion("");
+    setLoading(!!conversationId);setAnswers([]);setOlderCursor(null);setError("");setAllSources(false);setPending(false);setConsent(false);setQuestion("");
     if(!conversationId){setScope("all");return;}
-    const poll=async()=>{if(inFlight)return;inFlight=true;try{const result=await conversationTurns(conversationId);if(alive&&current.current===conversationId){setAnswers(previous=>[...previous.filter(old=>!result.items.some(item=>item.id===old.id)),...result.items]);if(!cursorLoaded){setOlderCursor(result.next_cursor);cursorLoaded=true;}setPending(result.items.some(item=>["queued","running"].includes(item.status)));}}catch(err){if(alive)setError(errorMessage(err));}finally{inFlight=false;}};
+    const poll=async()=>{if(inFlight)return;inFlight=true;try{const result=await conversationTurns(conversationId);if(alive&&current.current===conversationId){setLoading(false);setAnswers(previous=>[...previous.filter(old=>!result.items.some(item=>item.id===old.id)),...result.items]);if(!cursorLoaded){setOlderCursor(result.next_cursor);cursorLoaded=true;}setPending(result.items.some(item=>["queued","running"].includes(item.status)));}}catch(err){if(alive){setLoading(false);setError(errorMessage(err));}}finally{inFlight=false;}};
     void poll();const timer=window.setInterval(()=>void poll(),1000);return()=>{alive=false;window.clearInterval(timer);};
   },[conversationId]);
   const parsed=data.documents.filter(doc=>["ready","partial"].includes(doc.parse_status));
@@ -42,8 +42,8 @@ export default function MvpAsk({data,providers,model,onModel,strategy,onStrategy
   return <section className="chat-page">
     <div className="chat-center"><header className="page-heading chat-heading"><div><h1>与文献对话</h1><p>基于你的 PDF 文献，进行问答、总结与知识探索</p></div><div className="chat-scope"><label><Icon name="book"/><select aria-label="问答文献范围" value={scope} onChange={e=>setScope(e.target.value)}><option value="all">全部文献</option>{parsed.map(doc=><option key={doc.doc_version_id} value={doc.doc_version_id}>{doc.title}</option>)}</select></label><span className="count-badge"><Icon name="database"/>{parsed.length} 篇可检索</span></div></header>
       <div className="chat-scroll" aria-live="polite">
-        {!answers.length&&!conversationId&&<div className="chat-start"><span className="round-icon"><Icon name="chat" size={34}/></span><h2>从文献出发，找到有据可查的答案</h2><p>输入你的问题，或选择左侧的历史对话继续核查。<br/>每条引用都能回到本地 PDF 原文。</p><div className="prompt-examples"><button onClick={()=>setQuestion("这篇论文采用了什么研究方法？")}>论文采用了什么研究方法？</button><button onClick={()=>setQuestion("论文中的主要实验结论是什么？")}>论文的主要实验结论是什么？</button></div></div>}
-        {conversationId&&!answers.length&&<p className="loading-text" role="status">正在读取本地对话…</p>}
+        {!answers.length&&!loading&&<div className="chat-start"><span className="round-icon"><Icon name="chat" size={34}/></span><h2>从文献出发，找到有据可查的答案</h2><p>输入你的问题，或选择左侧的历史对话继续核查。<br/>每条引用都能回到本地 PDF 原文。</p><div className="prompt-examples"><button onClick={()=>setQuestion("这篇论文采用了什么研究方法？")}>论文采用了什么研究方法？</button><button onClick={()=>setQuestion("论文中的主要实验结论是什么？")}>论文的主要实验结论是什么？</button></div></div>}
+        {loading&&!answers.length&&<p className="loading-text" role="status">正在读取本地对话…</p>}
         {olderCursor&&<button onClick={()=>void conversationTurns(conversationId,olderCursor).then(page=>{setAnswers(previous=>[...page.items.filter(item=>!previous.some(old=>old.id===item.id)),...previous]);setOlderCursor(page.next_cursor);}).catch(err=>setError(errorMessage(err)))}>加载更早消息</button>}
         {answers.map(answer=>{const sources=answer.evidence.filter((item,index,rows)=>rows.findIndex(other=>other.source_anchor_id===item.source_anchor_id)===index);return <div key={answer.id} className="conversation-turn" data-run-id={answer.id} onClick={()=>onSelected(answer.id)}><div className="user-message"><span className="user-avatar">U</span><div><h3>{answer.question}</h3></div></div><div className="assistant-message"><span className="assistant-avatar"><Icon name="robot" size={23}/></span><article className="answer-card"><small className="text-muted">{answer.mode==="extractive"?"原文摘录":String(answer.model_history?.[0]?.fingerprint.model??"生成模型")} · {answer.status}</small><h2><span className="mini-icon"><Icon name="database" size={18}/></span>{answer.mode==="extractive"?"检索到的原文证据":"基于检索证据的回答"}</h2>
           {["queued","running"].includes(answer.status)&&<p role="status" className="loading-text">正在查找来源并整理回答…</p>}

@@ -18,6 +18,17 @@ def extract_candidates(attributes, pages):
 
     def add(field, value, method, page=None, excerpt=None):
         if value not in (None, "", []):
+            from pydantic import ValidationError
+
+            from ragsystem.library.repository import MetadataUpdate
+
+            try:
+                checked = MetadataUpdate.model_validate(
+                    {"expected_revision": 0, "title": "candidate", field: value}
+                )
+            except ValidationError:
+                return  # Invalid bibliographic fields stay explicitly unrecognized.
+            value = checked.model_dump()[field]
             result[field] = {
                 "value": value,
                 "extraction_method": method,
@@ -32,7 +43,7 @@ def extract_candidates(attributes, pages):
         add("title", title, "pdf_info:Title")
     author = attributes.get("Author", "").strip()
     # Only explicit separators, never guess how whitespace separates people.
-    authors = [v.strip() for v in re.split(r"\s*;\s*|\s+and\s+|、", author) if v.strip()]
+    authors = [v.strip() for v in re.split(r"\s*;\s*|\r?\n|\s+and\s+|、", author) if v.strip()]
     if (
         authors
         and len(authors) <= 100

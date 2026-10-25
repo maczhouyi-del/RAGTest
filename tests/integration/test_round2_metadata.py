@@ -3,6 +3,7 @@
 import time
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from ragsystem.ingestion.import_pdf import PdfImporter
 from ragsystem.ipc.server import create_app
@@ -191,3 +192,34 @@ def test_legacy_manual_values_survive_later_automatic_candidates(tmp_path):
     )
     assert after["metadata_candidates"]["year"]["value"] == 2019
     assert after["abstract"].startswith("We introduce")
+
+
+def test_candidate_edit_rejects_other_document_version(tmp_path):
+    from ragsystem.domain.errors import EngineError
+
+    root, db, version = store(tmp_path)
+    MetadataExtraction(db, root).run_one()
+    doc = Library(db).list_documents()[0]
+    with pytest.raises(EngineError, match="NOT_FOUND"):
+        Library(db).update_metadata(
+            doc["document_id"],
+            {
+                "expected_revision": 0,
+                "title": "bad version",
+                "doc_version_id": "different-version",
+                "field_actions": {"title": "manual"},
+            },
+        )
+
+
+def test_embedded_fields_share_manual_validation_without_guessing_names():
+    from ragsystem.library.metadata import extract_candidates
+
+    valid = extract_candidates(
+        {"Author": "Jane Doe\nJohn Smith", "Title": "A valid embedded paper title"}, []
+    )
+    assert valid["authors"]["value"] == ["Jane Doe", "John Smith"]
+    invalid = extract_candidates(
+        {"Author": "Bad\x00Name", "Title": "A paper title with\x00control"}, []
+    )
+    assert invalid == {}

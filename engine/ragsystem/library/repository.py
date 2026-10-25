@@ -209,7 +209,13 @@ class Library:
         except ValidationError as exc:
             raise EngineError("INVALID_METADATA") from exc
         current_values = next(
-            (row for row in self.list_documents() if row["document_id"] == document_id), None
+            (
+                row
+                for row in self.list_documents()
+                if row["document_id"] == document_id
+                and (body.doc_version_id is None or row["doc_version_id"] == body.doc_version_id)
+            ),
+            None,
         )
         if current_values is None:
             raise EngineError("NOT_FOUND", status=404)

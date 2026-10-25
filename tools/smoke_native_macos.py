@@ -21,10 +21,15 @@ def processes():
 
 def main():
     root = Path(__file__).resolve().parents[1]
-    executable = (
-        root
-        / "apps/desktop/src-tauri/target/debug/bundle/macos/RAGSystem.app/Contents/MacOS/ragsystem-desktop"
+    app_path = Path(
+        os.environ.get(
+            "RAGSYSTEM_NATIVE_APP",
+            str(
+                root / "apps/desktop/src-tauri/target/debug/bundle/macos/RAGSystem.app"
+            ),
+        )
     )
+    executable = app_path / "Contents/MacOS/ragsystem-desktop"
     sidecar = executable.with_name("ragsystem-engine")
     if any("ragsystem-desktop" in command for _, _, command in processes()):
         raise RuntimeError("EXISTING_DESKTOP_INSTANCE: do not interrupt user session")
@@ -81,7 +86,8 @@ def main():
     output = (
         root
         / os.environ.get(
-            "RAGSYSTEM_EVIDENCE_DIR", "docs/engineering/evidence/P0-implementation-2026-10-24"
+            "RAGSYSTEM_EVIDENCE_DIR",
+            "docs/engineering/evidence/P0-implementation-2026-10-24",
         )
         / ("native-macos-" + run_id + ".json")
     )

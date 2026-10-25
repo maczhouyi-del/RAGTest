@@ -2,7 +2,9 @@
 
 > 本文件是本项目的**工作规划约定**。用户在P0-00后授权继续开发，并最新要求标记、延期不阻断开发的测试后继续功能。按ADR-009及用户连续开发指令推进独立P1–P4本地实现；P0正式验收仍BLOCKED，未把未测项标PASS。功能状态见§14；新增指定GitHub仓库源码上传授权见§15。
 
-最新UI任务：UI-01按用户五张参考图重构视觉和布局；范围、风险与验收见[UI计划](docs/engineering/execplans/UI-01-reference-redesign.md)。原MVP功能和安全机制复用，禁止假数据/假连接/假高亮。
+最新任务：MVP-02第二轮四项功能，按用户 A→E 顺序本地开发与独立提交；禁止本轮推送/发布，见§18。
+
+既有UI任务：UI-01按用户五张参考图重构视觉和布局；范围、风险与验收见[UI计划](docs/engineering/execplans/UI-01-reference-redesign.md)。原MVP功能和安全机制复用，禁止假数据/假连接/假高亮。
 
 既有任务：MVP-01极简本地PDF问答重构，用户明确要求直接在当前main实施并同步RAGTest，无需新分支。仅保留问答/文献/设置一级入口，保留旧Research与安全/恢复实现。执行顺序、审查缺口、影响文件及验收见[方案](docs/engineering/execplans/MVP-01-local-pdf-qa.md)。代码同步已授权，付费API/论文外发/安装包发布与旧数据操作未授权；人工金标未通过前不扩大1000篇容量验收。
 
@@ -176,3 +178,5 @@ TS/Vite、真实冻结引擎浏览器流程及15张三尺寸截图PASS；核查�
 ## 18. MVP-02 第二轮（2026-10-25）
 
 最新用户授权按 A 快捷键 → B 多轮会话 → C Provider → D 自动元数据 → E 组合验收连续实施，每阶段测试和独立本地提交，不推送、不发布。检索与生成质量优化明确暂缓。详见 [MVP-02计划](docs/engineering/execplans/MVP-02-round-two.md)。原生/Windows/科研门禁保留，不自动标 PASS。
+
+MVP-02 A–E本地实现及最终自动化组合已完成：154 Python通过/7跳过，Rust3通过/3忽略，真实冻结组合39条检查通过；2篇公开PDF/424向量，模型切换无重嵌入，恢复重建424复用/0新增。最终新Mac开发app启动回收通过；原生完整操作/中文IME仍NOT EXECUTED，Windows/科研金标未通过，真实厂商付费API未授权。分阶段提交均留在main本地，未push/publish。详见[组合报告](docs/engineering/reports/MVP-02-E-2026-10-25.md)及[原生待测清单](docs/engineering/reports/MVP-02-native-checklist.md)。

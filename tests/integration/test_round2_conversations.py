@@ -132,6 +132,7 @@ def test_v14_migration_preserves_legacy_conversation_and_snapshot(tmp_path):
     import hashlib
     import sqlite3
     from pathlib import Path
+
     from ragsystem.storage.database import utc_now
 
     path = tmp_path / "research.db"

@@ -148,3 +148,50 @@ def test_explicit_parameter_profiles_no_fallback(output, tokens):
                 },
             )
         assert len(calls) == before + 1
+
+
+def test_existing_local_model_prompt_upgrade_checks_all_other_fingerprints(
+    tmp_path, monkeypatch
+):
+    import json
+
+    import ragsystem.models.generation_service as module
+
+    root, db, _version = store(tmp_path)
+    directory = root / "existing-local-resource"
+    directory.mkdir()
+    old = {
+        "model": "explicit runtime fixture",
+        "runtime": "fixture",
+        "weight_sha256": "fixed",
+        "prompt_version": "evidence-json-v9",
+    }
+    new = {**old, "prompt_version": "evidence-json-v10-history"}
+
+    class RuntimeFixture:
+        fingerprint = new
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    runtime = RuntimeFixture()
+    monkeypatch.setattr(module, "LocalGenerator", lambda *args, **kwargs: runtime)
+    with db.transaction() as conn:
+        conn.execute(
+            "INSERT INTO app_settings VALUES('generator',?,'fixture')",
+            (json.dumps({"directory": str(directory), "fingerprint": old}),),
+        )
+    service = module.GenerationService(db)
+    assert service.require() is runtime
+    with db.connection() as conn:
+        saved = json.loads(
+            conn.execute(
+                "SELECT value_json FROM app_settings WHERE key='generator'"
+            ).fetchone()[0]
+        )
+    assert saved["fingerprint"] == new
+    runtime.fingerprint = {**new, "weight_sha256": "changed"}
+    with pytest.raises(EngineError, match="MODEL_FINGERPRINT_CHANGED"):
+        module.GenerationService(db).require()
+    assert runtime.closed
