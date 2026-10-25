@@ -11,6 +11,7 @@ export default function MvpAsk({data,providers,model,onModel,strategy,onStrategy
   const [answer,setAnswer]=useState<AnswerRun|null>(null);
   const [scope,setScope]=useState("all");
   const [busy,setBusy]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState(""),[consent,setConsent]=useState(false),[allSources,setAllSources]=useState(false);
+  const submitting=useRef(false),composing=useRef(false);
   const current=useRef(selectedId);current.current=selectedId;
   const provider=providers.find(item=>item.id===model);
   useEffect(()=>setConsent(false),[model,provider?.revision]);
@@ -26,10 +27,10 @@ export default function MvpAsk({data,providers,model,onModel,strategy,onStrategy
   const effectiveStrategy=data.index?.ready?strategy:"keyword";
   const available=model==="extractive"||(model==="local"?data.generator?.configured:provider?.configured);
   async function submit(event:FormEvent) {
-    event.preventDefault();if(!question.trim()||!versions.length||!available||(provider&&!consent))return;
-    setBusy(true);setPending(true);setError("");
+    event.preventDefault();if(submitting.current||busy||pending||!question.trim()||question.length>4000||!versions.length||!available||(provider&&!consent))return;
+    submitting.current=true;setBusy(true);setPending(true);setError("");
     try{const run=await askQuestion({question,version_ids:versions,project_id:null,mode:model==="extractive"?"extractive":"generative",strategy:effectiveStrategy,conversation_id:selectedId?answer?.conversation_id??null:null,provider_id:provider?.id??null,allow_external:!!provider&&consent,provider_revision:provider?.revision,per_paper_limit:8});setConsent(false);onSelected(run.id);setQuestion("");await onCreated();}
-    catch(err){setError(errorMessage(err));setPending(false);}finally{setBusy(false);}
+    catch(err){setError(errorMessage(err));setPending(false);}finally{submitting.current=false;setBusy(false);}
   }
   async function open(evidence:Evidence) {
     try{setError("");const file=await readSource(evidence.source_anchor_id);const document=data.documents.find(doc=>doc.doc_version_id===file.anchor.doc_version_id);const claim=answer?.claims.find(item=>item.evidence_ids.includes(evidence.id));onRead({...file,evidence_quote:evidence.quote},{title:document?.title??"引用文献",authors:document?.authors??[],year:document?.year??null,evidence,claim:claim?.text,question:answer?.question});}
@@ -53,10 +54,10 @@ export default function MvpAsk({data,providers,model,onModel,strategy,onStrategy
           {answer.evidence.some(e=>e.current_source_status!=="verified")&&<p className="notice">部分来源已变化或不可用，请重新提问获取当前引用。</p>}
         </article></div></>}
       </div>
-      <form className="chat-composer" onSubmit={event=>void submit(event)}><label className="sr-only" htmlFor="chat-question">你的问题</label><textarea id="chat-question" aria-label="你的问题" value={question} onChange={event=>setQuestion(event.target.value)} maxLength={4000} required placeholder="询问你的 PDF 文献…" rows={2}/>
+      <form className="chat-composer" onSubmit={event=>void submit(event)}><label className="sr-only" htmlFor="chat-question">你的问题</label><textarea id="chat-question" aria-label="你的问题" value={question} onCompositionStart={()=>{composing.current=true;}} onCompositionEnd={()=>{composing.current=false;}} onKeyDown={event=>{if(event.key!=="Enter"||event.shiftKey)return;if(composing.current||event.nativeEvent.isComposing||event.keyCode===229)return;event.preventDefault();event.currentTarget.form?.requestSubmit();}} onChange={event=>setQuestion(event.target.value)} maxLength={4000} required placeholder="询问你的 PDF 文献…" rows={2}/>
         {provider&&<label className="provider-consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/>允许本次请求向 {provider.base_url} 的 {provider.model} 发送问题与检索片段；该服务可能产生费用。不会自动切换其他服务。</label>}
         {error&&<p role="alert" className="job-error">{error}</p>}
-        <div className="composer-toolbar"><div className="composer-left"><button type="button" className="icon-button" aria-label="导入 PDF" title="导入 PDF" onClick={onImport} disabled={busy||pending}><Icon name="folder"/></button><button type="button" className="icon-button" aria-label="配置模型" title="配置模型" onClick={onSettings}><Icon name="settings"/></button><small>回答可溯源，结论需核对</small></div><div className="composer-controls"><label><Icon name="sliders" size={18}/><select aria-label="检索策略" value={effectiveStrategy} onChange={e=>onStrategy(e.target.value)}><option value="hybrid" disabled={!data.index?.ready}>混合检索</option><option value="keyword">关键词检索</option><option value="vector_exact" disabled={!data.index?.ready}>向量检索</option></select></label><label><Icon name="monitor" size={18}/><select aria-label="生成模型" value={model} onChange={e=>onModel(e.target.value)}><option value="extractive">原文摘录（不调用模型）</option><option value="local" disabled={!data.generator?.configured}>本地 Qwen{data.generator?.configured?"":"（未配置）"}</option>{providers.map(item=><option key={item.id} value={item.id} disabled={!item.configured}>{item.name} · {item.model}{item.configured?"":"（需配置）"}</option>)}</select></label><button className="primary" disabled={busy||pending||!versions.length||!question.trim()||!available||!!provider&&!consent}><Icon name="send" size={19}/>{busy||pending?"处理中…":"发送问题"}</button></div></div>
+        <div className="composer-toolbar"><div className="composer-left"><button type="button" className="icon-button" aria-label="导入 PDF" title="导入 PDF" onClick={onImport} disabled={busy||pending}><Icon name="folder"/></button><button type="button" className="icon-button" aria-label="配置模型" title="配置模型" onClick={onSettings}><Icon name="settings"/></button><small>Enter 发送 · Shift+Enter 换行</small></div><div className="composer-controls"><label><Icon name="sliders" size={18}/><select aria-label="检索策略" value={effectiveStrategy} onChange={e=>onStrategy(e.target.value)}><option value="hybrid" disabled={!data.index?.ready}>混合检索</option><option value="keyword">关键词检索</option><option value="vector_exact" disabled={!data.index?.ready}>向量检索</option></select></label><label><Icon name="monitor" size={18}/><select aria-label="生成模型" value={model} onChange={e=>onModel(e.target.value)}><option value="extractive">原文摘录（不调用模型）</option><option value="local" disabled={!data.generator?.configured}>本地 Qwen{data.generator?.configured?"":"（未配置）"}</option>{providers.map(item=><option key={item.id} value={item.id} disabled={!item.configured}>{item.name} · {item.model}{item.configured?"":"（需配置）"}</option>)}</select></label><button className="primary" disabled={busy||pending||!versions.length||!question.trim()||!available||!!provider&&!consent}><Icon name="send" size={19}/>{busy||pending?"处理中…":"发送问题"}</button></div></div>
         {!data.index?.ready&&<p className="composer-hint">当前使用关键词检索；在设置中准备本地索引后启用混合检索。</p>}
       </form>
     </div>

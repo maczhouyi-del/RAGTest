@@ -172,3 +172,7 @@ P0-05C按用户持续授权实施，见[ExecPlan](docs/engineering/execplans/P0-
 按用户参考图完成欢迎/问答/设置/文献/原文核查五种界面，公共浅色侧栏和最近对话、青绿视觉、证据侧栏、文献详情、模型类型标签及页级PDF核查。以真实状态替代图中示例数据，未增加伪高亮/假连接/假容量；未修改engine/Rust/契约/迁移或新增依赖。
 
 TS/Vite、真实冻结引擎浏览器流程及15张三尺寸截图PASS；核查落库/返回、API密钥和许可、备份恢复实际验证。原生启动因用户实例在运行而BLOCKED，Windows与科研门禁未变化。已重建本机debug app，范围、命令、失败修复与证据见[UI报告](docs/engineering/reports/UI-2026-10-25.md)。指定main正常同步沿用已有授权。
+
+## 18. MVP-02 第二轮（2026-10-25）
+
+最新用户授权按 A 快捷键 → B 多轮会话 → C Provider → D 自动元数据 → E 组合验收连续实施，每阶段测试和独立本地提交，不推送、不发布。检索与生成质量优化明确暂缓。详见 [MVP-02计划](docs/engineering/execplans/MVP-02-round-two.md)。原生/Windows/科研门禁保留，不自动标 PASS。

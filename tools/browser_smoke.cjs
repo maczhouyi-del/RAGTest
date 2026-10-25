@@ -14,8 +14,9 @@ async function main() {
   const root = path.resolve(__dirname, '..');
   const evidence = path.join(root, process.env.RAGSYSTEM_EVIDENCE_DIR || 'docs/engineering/evidence/P0-implementation-2026-10-24');
   const p1 = process.env.RAGSYSTEM_P1_SMOKE === '1';
+  const round2 = process.env.RAGSYSTEM_MVP_ROUND2_STAGE;
   const reference = process.env.RAGSYSTEM_UI_REFERENCE_SMOKE === '1';
-  const mvp = process.env.RAGSYSTEM_MVP_SMOKE === '1' || reference;
+  const mvp = process.env.RAGSYSTEM_MVP_SMOKE === '1' || reference || !!round2;
   fs.mkdirSync(evidence, {recursive: true});
   let dataRoot = path.join(root, '.tools/test-data', 'browser-' + crypto.randomUUID());
   let token = crypto.randomBytes(32).toString('hex');
@@ -189,7 +190,8 @@ async function main() {
     await page.goto(base);
     if(mvp){
       await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
-      if(reference)await require('./browser_reference.cjs')({page,rpc,root,evidence,errors});
+      if(round2)await require('./browser_round2.cjs')({page,rpc,root,evidence,errors,stage:round2});
+      else if(reference)await require('./browser_reference.cjs')({page,rpc,root,evidence,errors});
       else await require('./browser_mvp.cjs')({page,rpc,root,evidence,errors});
     }else{
     await page.locator('.sidebar-note').filter({hasText: '本地引擎已连接'}).waitFor();
