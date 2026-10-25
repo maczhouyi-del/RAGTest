@@ -1,0 +1,34 @@
+[
+  {
+    "sample_id": "N19-1423",
+    "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+    "authors": "Jacob Devlin; Ming-Wei Chang; Kenton Lee; Kristina Toutanova",
+    "year": 2019,
+    "metadata_url": "https://aclanthology.org/N19-1423/",
+    "url": "https://aclanthology.org/N19-1423.pdf",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "license_basis": "Official ACL2016+ footer reviewed2026-10-24; attribution retained; PDF unchanged",
+    "sha256": "987545ffb087f1ece898142c403a516baeabeb70ce19089397fac6f7db12c3d4",
+    "bytes": 786279,
+    "path": "tests/fixtures/public/N19-1423.pdf",
+    "scientific_gold": "NOT ANNOTATED",
+    "recorded_at": "2026-10-24T05:45:49.744111+00:00"
+  },
+  {
+    "sample_id": "2020.emnlp-main.550",
+    "title": "Dense Passage Retrieval for Open-Domain Question Answering",
+    "authors": "Vladimir Karpukhin et al.",
+    "year": 2020,
+    "metadata_url": "https://aclanthology.org/2020.emnlp-main.550/",
+    "url": "https://aclanthology.org/2020.emnlp-main.550.pdf",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "license_basis": "Official ACL2016+ footer reviewed2026-10-24; attribution retained; PDF unchanged",
+    "sha256": "2abfc7991519be2b8ce30215905516fdb593218b7bf59e50ece0d8a088a7c4d5",
+    "bytes": 403775,
+    "path": "tests/fixtures/public/2020.emnlp-main.550.pdf",
+    "scientific_gold": "NOT ANNOTATED",
+    "recorded_at": "2026-10-24T05:45:49.744712+00:00"
+  }
+]

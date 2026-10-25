@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ragsystem.local/contracts/job.v0.schema.json",
+  "title": "Durable Job v0 (proposal)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "type", "status", "idempotency_key", "attempt_count", "max_attempts", "created_at", "updated_at"],
+  "properties": {
+    "schema_version": {"const": "0.1-draft"},
+    "id": {"type": "string", "minLength": 1},
+    "type": {"enum": ["import", "parse_page", "embed_batch", "index_upsert", "verify", "research_extract", "backup"]},
+    "status": {"enum": ["queued", "running", "completed", "failed", "retry_wait", "cancelling", "cancelled"]},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "payload_ref": {"type": ["string", "null"], "description": "Reference to validated persisted payload, not an arbitrary shell command or path"},
+    "attempt_count": {"type": "integer", "minimum": 0},
+    "max_attempts": {"type": "integer", "minimum": 1},
+    "lease_until": {"type": ["string", "null"], "format": "date-time"},
+    "heartbeat_at": {"type": ["string", "null"], "format": "date-time"},
+    "result_ref": {"type": ["string", "null"]},
+    "error_code": {"type": ["string", "null"]},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "completed"}}, "required": ["status"]},
+     "then": {"required": ["result_ref"], "properties": {"result_ref": {"type": "string", "minLength": 1}}}}
+  ],
+  "description": "Job schema is not sufficient to validate transactional CAS, lease ownership, attempt count, monotonic transitions, schema migrations or duplicate publish; implement separately."
+}

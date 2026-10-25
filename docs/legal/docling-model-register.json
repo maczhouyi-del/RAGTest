@@ -1,0 +1,70 @@
+{
+  "authorization": "User explicitly allowed both fixed candidates and project-local dependencies",
+  "status": "DOWNLOADED AND VERIFIED; CANDIDATE ONLY",
+  "root": ".tools/models/docling-heron-tableformer-fast-candidates",
+  "files": [
+    {
+      "repository": "docling-project/docling-layout-heron",
+      "revision": "8f39ad3c0b4c58e9c2d2c84a38465abf757272d8",
+      "file": "config.json",
+      "relative_path": "docling-project--docling-layout-heron/config.json",
+      "bytes": 3268,
+      "sha256": "fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d",
+      "git_blob_id": "98434d37ace2399b824d685b0795ab7a68e53dd2",
+      "lfs_sha256_from_repository_metadata": null,
+      "download_source": "https://hf-mirror.com/docling-project/docling-layout-heron/resolve/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/config.json"
+    },
+    {
+      "repository": "docling-project/docling-layout-heron",
+      "revision": "8f39ad3c0b4c58e9c2d2c84a38465abf757272d8",
+      "file": "preprocessor_config.json",
+      "relative_path": "docling-project--docling-layout-heron/preprocessor_config.json",
+      "bytes": 444,
+      "sha256": "cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1",
+      "git_blob_id": "fcdff16b42e5ebc51d28f59184490c6eff91a88b",
+      "lfs_sha256_from_repository_metadata": null,
+      "download_source": "https://hf-mirror.com/docling-project/docling-layout-heron/resolve/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/preprocessor_config.json"
+    },
+    {
+      "repository": "docling-project/docling-layout-heron",
+      "revision": "8f39ad3c0b4c58e9c2d2c84a38465abf757272d8",
+      "file": "model.safetensors",
+      "relative_path": "docling-project--docling-layout-heron/model.safetensors",
+      "bytes": 171658996,
+      "sha256": "00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c",
+      "git_blob_id": "fdbf7f57ab84ba924eab94530c6cabb0a5d83a5e",
+      "lfs_sha256_from_repository_metadata": "00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c",
+      "download_source": "https://hf-mirror.com/docling-project/docling-layout-heron/resolve/8f39ad3c0b4c58e9c2d2c84a38465abf757272d8/model.safetensors"
+    },
+    {
+      "repository": "docling-project/docling-models",
+      "revision": "2199320848bb9a8a519d22e4b528185a4f9a6f64",
+      "file": "model_artifacts/tableformer/fast/tm_config.json",
+      "relative_path": "docling-project--docling-models/model_artifacts/tableformer/fast/tm_config.json",
+      "bytes": 7060,
+      "sha256": "dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a",
+      "git_blob_id": "d02c5889d288b8baefd42e9e4da094f0cea07bbe",
+      "lfs_sha256_from_repository_metadata": null,
+      "download_source": "https://hf-mirror.com/docling-project/docling-models/resolve/2199320848bb9a8a519d22e4b528185a4f9a6f64/model_artifacts/tableformer/fast/tm_config.json"
+    },
+    {
+      "repository": "docling-project/docling-models",
+      "revision": "2199320848bb9a8a519d22e4b528185a4f9a6f64",
+      "file": "model_artifacts/tableformer/fast/tableformer_fast.safetensors",
+      "relative_path": "docling-project--docling-models/model_artifacts/tableformer/fast/tableformer_fast.safetensors",
+      "bytes": 145453276,
+      "sha256": "3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718",
+      "git_blob_id": "f6653fe54c4cb33f058203af9ee424debcbcbaf2",
+      "lfs_sha256_from_repository_metadata": "3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718",
+      "download_source": "https://hf-mirror.com/docling-project/docling-models/resolve/2199320848bb9a8a519d22e4b528185a4f9a6f64/model_artifacts/tableformer/fast/tableformer_fast.safetensors"
+    }
+  ],
+  "declared_licenses": {
+    "layout-heron": "Apache-2.0 model card",
+    "tableformer": "repository model card lists CDLA-Permissive-2.0 and Apache-2.0; per-file assignment not supplied"
+  },
+  "license_texts": "docs/legal/models/docling-candidates/",
+  "metadata_transport": "Official repository metadata obtained through hf-mirror because direct huggingface.co TLS fails; no independent direct-endpoint verification claim",
+  "redistribution": "NOT APPROVED; local trial only",
+  "model_weights_bundled": false
+}

@@ -1,0 +1,1 @@
+question_id,dataset_id,question,language,query_scope_id,answerability,gold_document_version_ids,gold_pages,gold_element_ids,gold_table_cells,gold_answer_summary,experimental_conditions,annotator_id,adjudication_status,notes

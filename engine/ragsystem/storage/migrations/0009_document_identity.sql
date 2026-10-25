@@ -1,0 +1,1 @@
+CREATE TABLE document_merges (id TEXT PRIMARY KEY, source_id TEXT NOT NULL REFERENCES documents(id), target_id TEXT NOT NULL REFERENCES documents(id), before_json TEXT NOT NULL, after_json TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('active','undone')), created_at TEXT NOT NULL, undone_at TEXT);

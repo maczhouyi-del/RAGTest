@@ -1,0 +1,4 @@
+ALTER TABLE human_reviews ADD COLUMN snapshot_json TEXT NOT NULL DEFAULT '{}';
+CREATE TABLE observation_revisions (id TEXT PRIMARY KEY, plan_id TEXT NOT NULL REFERENCES research_plans(id), doc_version_id TEXT NOT NULL REFERENCES document_versions(id), evidence_id TEXT NOT NULL REFERENCES evidence_records(id), revision INTEGER NOT NULL, before_json TEXT NOT NULL, after_json TEXT NOT NULL, actor TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(evidence_id,revision));
+CREATE TABLE annotations (id TEXT PRIMARY KEY, doc_version_id TEXT NOT NULL REFERENCES document_versions(id), source_anchor_id TEXT, page_number INTEGER NOT NULL CHECK(page_number>0), note TEXT NOT NULL, revision INTEGER NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE TABLE annotation_revisions (annotation_id TEXT NOT NULL REFERENCES annotations(id), revision INTEGER NOT NULL, note TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(annotation_id,revision));

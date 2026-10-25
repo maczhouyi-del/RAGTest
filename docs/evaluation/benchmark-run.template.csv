@@ -1,0 +1,1 @@
+run_id,recorded_at_utc,device_id,os_build,cpu_model,ram_gb,dataset_id,document_count,chunk_count,vector_dim,embedding_space_id,backend,backend_version,query_id,filter_id,strategy,k,is_cold,iteration,component,latency_ms,correctness_status,result_ids,peak_rss_mb,on_disk_mb,error_code,log_ref

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ragsystem.local/contracts/source-anchor.v0.schema.json",
+  "title": "SourceAnchor v0 (P0 proposal)",
+  "description": "Provisional location anchor for a specific immutable PDF document version. Coordinates require real PDFium/PDF.js calibration before release; page-only fallback is valid.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "source_anchor_id", "doc_version_id", "file_sha256",
+    "parse_run_id", "element_id", "page_number", "location_level",
+    "coordinate_system", "page_rotation_degrees", "bbox_norm",
+    "alignment_confidence", "clean_text_offsets"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1-draft"},
+    "source_anchor_id": {"type": "string", "minLength": 1},
+    "doc_version_id": {"type": "string", "minLength": 1},
+    "file_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+    "parse_run_id": {"type": "string", "minLength": 1},
+    "element_id": {"type": "string", "minLength": 1},
+    "page_number": {"type": "integer", "minimum": 1, "description": "One-based PDF page number"},
+    "location_level": {"enum": ["region", "table_cell", "page_only", "unresolved"]},
+    "coordinate_system": {"const": "page_normalized_top_left_unrotated_v1"},
+    "page_rotation_degrees": {"type": "integer", "enum": [0, 90, 180, 270]},
+    "bbox_norm": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["x0", "y0", "x1", "y1"],
+          "properties": {
+            "x0": {"type": "number", "minimum": 0, "maximum": 1},
+            "y0": {"type": "number", "minimum": 0, "maximum": 1},
+            "x1": {"type": "number", "minimum": 0, "maximum": 1},
+            "y1": {"type": "number", "minimum": 0, "maximum": 1}
+          },
+          "description": "Normalized top-left unrotated visible page bounds. Require 0<=x0<x1<=1 and 0<=y0<y1<=1 in application validation."
+        }
+      ]
+    },
+    "table_cell": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["table_id", "row_index", "column_index"],
+          "properties": {
+            "table_id": {"type": "string", "minLength": 1},
+            "row_index": {"type": "integer", "minimum": 0},
+            "column_index": {"type": "integer", "minimum": 0}
+          }
+        }
+      ],
+      "default": null
+    },
+    "alignment_confidence": {"enum": ["high", "medium", "low", "unknown"], "description": "Uncalibrated categorical quality, not a statistical probability"},
+    "clean_text_offsets": {
+      "type": "object", "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 0}
+      },
+      "description": "Half-open [start, end) offsets in versioned cleaned text; application must verify end > start and passage consistency"
+    },
+    "reason_if_degraded": {"type": ["string", "null"]},
+    "source_text_sha256": {"type": ["string", "null"], "pattern": "^[a-fA-F0-9]{64}$"}
+  },
+  "allOf": [
+    {"if": {"properties": {"location_level": {"enum": ["region", "table_cell"]}}, "required": ["location_level"]},
+     "then": {"properties": {"bbox_norm": {"type": "object"}}}},
+    {"if": {"properties": {"location_level": {"enum": ["page_only", "unresolved"]}}, "required": ["location_level"]},
+     "then": {"properties": {"bbox_norm": {"type": "null"}}}},
+    {"if": {"properties": {"location_level": {"const": "table_cell"}}, "required": ["location_level"]},
+     "then": {"required": ["table_cell"], "properties": {"table_cell": {"type": "object"}}}}
+  ]
+}

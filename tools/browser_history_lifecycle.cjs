@@ -1,0 +1,35 @@
+/* Real API/UI history and reversible manual lifecycle workflow; broker simulated. */
+const fs=require('node:fs'),path=require('node:path');
+module.exports=async function({page,rpc,evidence}){
+  const doc=(await rpc('GET','/v0/documents')).documents[0];
+  const old=(await rpc('GET','/v0/research')).plans.find(plan=>plan.reports.length);
+  const before=(await rpc('GET',`/v0/reports/${old.reports[0].id}`)).body;
+  for(let index=0;index<35;index++)await rpc('POST','/v0/research',{question:'history-seed-'+index,fields:['BERT'],version_ids:[doc.doc_version_id],mode:'extractive'});
+  await page.getByRole('button',{name:'文献库',exact:false}).click();
+  await page.getByRole('button',{name:'Research 工作台',exact:true}).click();
+  await page.getByRole('button',{name:'载入更早计划',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('select[aria-label="研究计划"] option').length===36);
+  await page.getByLabel('研究计划',{exact:true}).selectOption(old.id);
+  await page.locator('.report-preview pre').filter({hasText:'人工修订测试值'}).waitFor();
+  await page.screenshot({path:path.join(evidence,'history-older-plan.png'),fullPage:true});
+  await page.getByRole('button',{name:'设置与备份',exact:true}).click();
+  await page.getByLabel('管理文献',{exact:true}).selectOption(doc.document_id);
+  await page.getByLabel('文献处理',{exact:true}).selectOption('retracted');
+  await page.getByLabel('文献状态变更原因',{exact:true}).fill('工程测试人工标记，未核实出版方状态');
+  await page.getByRole('button',{name:'保存文献状态',exact:true}).click();
+  await page.getByText('当前状态：人工标记撤稿 · 修订 1',{exact:true}).waitFor();
+  if((await rpc('GET','/v0/documents')).documents.length!==0)throw new Error('RETRACTED_DOCUMENT_VISIBLE');
+  const after=await rpc('GET',`/v0/reports/${old.reports[0].id}`);
+  if(after.body!==before||after.source_warnings[0]?.state!=='retracted'||!after.export_body.includes('来源状态提示'))throw new Error('HISTORICAL_REPORT_WARNING_MISSING');
+  await page.getByRole('button',{name:/核对保留原件/}).click();
+  await page.getByRole('heading',{name:'PDF 阅读 · 第 1 页',exact:true}).waitFor();
+  await page.getByRole('button',{name:'关闭',exact:true}).click();
+  await page.screenshot({path:path.join(evidence,'lifecycle-retracted-history.png'),fullPage:true});
+  await page.getByLabel('文献处理',{exact:true}).selectOption('active');
+  await page.getByLabel('文献状态变更原因',{exact:true}).fill('恢复测试，保留此前人工标记历史');
+  await page.getByRole('button',{name:'保存文献状态',exact:true}).click();
+  await page.getByText('当前状态：可用于研究 · 修订 2',{exact:true}).waitFor();
+  const record=(await rpc('GET','/v0/lifecycle')).records[0];
+  if(record.history.length!==2||(await rpc('GET','/v0/documents')).documents.length!==1)throw new Error('LIFECYCLE_RESTORE_FAILED');
+  fs.writeFileSync(path.join(evidence,'browser-history-lifecycle.json'),JSON.stringify({status:'PASS',transport:'SIMULATED TAURI',history_plans:36,manual_flag_revisions:2,retained_pdf_opened:true,report_body_unchanged:true,export_warning:true,windows_tested:false},null,2));
+};
