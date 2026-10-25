@@ -14,7 +14,8 @@ async function main() {
   const root = path.resolve(__dirname, '..');
   const evidence = path.join(root, process.env.RAGSYSTEM_EVIDENCE_DIR || 'docs/engineering/evidence/P0-implementation-2026-10-24');
   const p1 = process.env.RAGSYSTEM_P1_SMOKE === '1';
-  const mvp = process.env.RAGSYSTEM_MVP_SMOKE === '1';
+  const reference = process.env.RAGSYSTEM_UI_REFERENCE_SMOKE === '1';
+  const mvp = process.env.RAGSYSTEM_MVP_SMOKE === '1' || reference;
   fs.mkdirSync(evidence, {recursive: true});
   let dataRoot = path.join(root, '.tools/test-data', 'browser-' + crypto.randomUUID());
   let token = crypto.randomBytes(32).toString('hex');
@@ -188,7 +189,8 @@ async function main() {
     await page.goto(base);
     if(mvp){
       await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
-      await require('./browser_mvp.cjs')({page,rpc,root,evidence,errors});
+      if(reference)await require('./browser_reference.cjs')({page,rpc,root,evidence,errors});
+      else await require('./browser_mvp.cjs')({page,rpc,root,evidence,errors});
     }else{
     await page.locator('.sidebar-note').filter({hasText: '本地引擎已连接'}).waitFor();
     async function createProject(name) {
@@ -290,7 +292,7 @@ async function main() {
     }
     }
     if (errors.length) throw new Error('BROWSER_PAGE_ERRORS:' + errors.join(','));
-    fs.writeFileSync(path.join(evidence, mvp?(process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'browser-mvp-extractive-smoke.json':'browser-mvp-smoke.json'):'browser-smoke.json'), JSON.stringify({status: 'PASS', mvp_workflow:mvp, data_root: dataRoot, real_frozen_engine: true, transport: 'SIMULATED TAURI BRIDGE', native_dialogs_tested: false, full_native_e2e: false, windows_tested: false, p1_workflow: p1, workbench_workflow:process.env.RAGSYSTEM_WORKBENCH_SMOKE==='1', page_errors: errors, assertions: mvp?['three tabs/default QA','batch PDF/dedup/automatic parse','real E5/sqlite-vec index',process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'real cited extractive answer':'real cited local generation','SHA-verified PDF rendering','history reload','backup/restore persistence']:['real import shown', 'real parse shown', 'real FTS hits', 'SHA-verified PDF canvas rendered', ...(p1 ? ['project create/switch', 'project-targeted import', 'unparsed PDF reading/page jump/zoom', 'same original in two projects', 'metadata persisted across reload', 'DOI normalization', 'tag filter'] : [])]}, null, 2));
+    fs.writeFileSync(path.join(evidence, reference?'browser-ui-reference-smoke.json':mvp?(process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'browser-mvp-extractive-smoke.json':'browser-mvp-smoke.json'):'browser-smoke.json'), JSON.stringify({status: 'PASS', mvp_workflow:mvp, data_root: dataRoot, real_frozen_engine: true, transport: 'SIMULATED TAURI BRIDGE', native_dialogs_tested: false, full_native_e2e: false, windows_tested: false, p1_workflow: p1, workbench_workflow:process.env.RAGSYSTEM_WORKBENCH_SMOKE==='1', page_errors: errors, assertions: reference?['reference layouts/real states','batch import/dedup/parse','document filters/details','real E5/RRF/extractive answer','scope isolation','PDF source/review persistence/return','API consent/session key','backup/restore','responsive 1586/1200/720']:mvp?['three tabs/default QA','batch PDF/dedup/automatic parse','real E5/sqlite-vec index',process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'real cited extractive answer':'real cited local generation','SHA-verified PDF rendering','history reload','backup/restore persistence']:['real import shown', 'real parse shown', 'real FTS hits', 'SHA-verified PDF canvas rendered', ...(p1 ? ['project create/switch', 'project-targeted import', 'unparsed PDF reading/page jump/zoom', 'same original in two projects', 'metadata persisted across reload', 'DOI normalization', 'tag filter'] : [])]}, null, 2));
     console.log('BROWSER_UI_SMOKE: PASS; real frozen engine, simulated Tauri transport; not native/Windows acceptance');
   } catch (error) {
     const stamp = Date.now();

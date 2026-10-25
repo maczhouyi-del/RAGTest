@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { activateRestoredWorkspace, createBackup, errorMessage, listBackups, restoreBackup, type BackupRecord } from "../bridge";
 
-export default function BackupSettings({workspace, onChange}: {workspace?: {label: string; warning: string}; onChange: () => Promise<unknown>}) {
+export default function BackupSettings({workspace, onChange, onRecords}: {onRecords?:(rows:BackupRecord[])=>void; workspace?: {label: string; warning: string}; onChange: () => Promise<unknown>}) {
   const [records, setRecords] = useState<BackupRecord[]>([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const refresh = useCallback(async () => {
-    try {setRecords((await listBackups()).records);}
+    try {const rows=(await listBackups()).records;setRecords(rows);onRecords?.(rows);}
     catch (err) {setError(errorMessage(err));}
-  }, []);
+  }, [onRecords]);
   useEffect(() => {void refresh(); const timer = window.setInterval(() => void refresh(), 3000); return () => window.clearInterval(timer);}, [refresh]);
   async function run(action: () => Promise<unknown>, success: string, changed = false) {
     setBusy(true); setError(""); setMessage("");

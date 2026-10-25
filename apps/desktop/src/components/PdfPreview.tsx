@@ -6,11 +6,12 @@ import { type ReaderFile } from "../bridge";
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 
-export default function PdfPreview({file, onClose, presentation="reader"}: {file: ReaderFile; onClose: () => void; presentation?:"reader"|"evidence"}) {
+export default function PdfPreview({file, onClose, presentation="reader"}: {file: ReaderFile; onClose: () => void; presentation?:"reader"|"evidence"|"embedded"}) {
   const [wide,setWide]=useState(()=>window.matchMedia("(min-width: 1600px)").matches);
   const [surfaceWidth,setSurfaceWidth]=useState(0);
   useEffect(()=>{const media=window.matchMedia("(min-width: 1600px)");const update=()=>setWide(media.matches);media.addEventListener("change",update);return()=>media.removeEventListener("change",update);},[]);
-  const inline=presentation==="evidence"&&wide;
+  const embedded=presentation==="embedded";
+  const inline=embedded||presentation==="evidence"&&wide;
   const initialPage = "anchor" in file ? file.anchor.page_number : (file.document.page_number??1);
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(()=>{const surface=canvas.current?.parentElement;if(!surface)return;const update=()=>setSurfaceWidth(surface.clientWidth);const observer=new ResizeObserver(update);observer.observe(surface);update();return()=>observer.disconnect();},[]);
@@ -42,7 +43,7 @@ export default function PdfPreview({file, onClose, presentation="reader"}: {file
     setError(""); setRendering(true);
     void pdf.getPage(pageNumber).then(async page => {
       if (cancelled || !canvas.current) return;
-      const scale = Math.min(1.25, (inline?Math.max(120,surfaceWidth-16):1600) / page.getViewport({scale: 1}).width) * zoom;
+      const scale = Math.min(1.25, (inline?Math.max(120,surfaceWidth-24):1600) / page.getViewport({scale: 1}).width) * zoom;
       const viewport = page.getViewport({scale});
       if (viewport.width * viewport.height > 6000000) throw new Error("PAGE_CANVAS_LIMIT");
       const surface = canvas.current;
@@ -58,11 +59,11 @@ export default function PdfPreview({file, onClose, presentation="reader"}: {file
     const next = Number(jump);
     if (pdf && Number.isInteger(next) && next >= 1 && next <= pdf.numPages) setPageNumber(next);
   }
-  return <section className={`pdf-overlay ${presentation==="evidence"?"evidence-panel":""}`} role={inline?"region":"dialog"} aria-modal={inline?undefined:true} aria-labelledby="pdf-title"
+  return <section className={`pdf-overlay ${embedded?"pdf-embedded":""} ${presentation==="evidence"?"evidence-panel":""}`} role={inline?"region":"dialog"} aria-modal={inline?undefined:true} aria-labelledby="pdf-title"
     onKeyDown={event => {if (event.key === "Escape") onClose();}}>
     <header><div><h2 id="pdf-title">{"anchor" in file ? "原文来源" : "PDF 阅读"} · 第 {pageNumber} 页</h2>
       <small>{"anchor" in file ? `来源位于第 ${initialPage} 页 · 页级定位 · 坐标尚未校准` : file.document.title}</small>
-    </div><button onClick={onClose} autoFocus>关闭</button></header>
+    </div>{!embedded&&<button onClick={onClose} autoFocus>关闭</button>}</header>
     <div className="reader-toolbar">
       <button disabled={!pdf || pageNumber <= 1} onClick={() => setPageNumber(pageNumber - 1)}>上一页</button>
       <form onSubmit={go}><label htmlFor="reader-page">跳转页码</label><input id="reader-page" type="number" min={1} max={pdf?.numPages ?? 1} value={jump} onChange={event => setJump(event.target.value)} disabled={!pdf} /><span>/ {pdf?.numPages ?? "—"}</span><button disabled={!pdf}>跳转</button></form>
@@ -71,7 +72,7 @@ export default function PdfPreview({file, onClose, presentation="reader"}: {file
       <button onClick={()=>setNotesOpen(!notesOpen)}>{notesOpen?"收起批注":"阅读批注"}</button>
     </div>
     {"anchor" in file&&file.anchor.reason_if_degraded?.startsWith("OCR_")&&<p className="notice">来源文本由 OCR 识别，请对照本页图像核对字符、数值和单位。</p>}
-    {"anchor" in file&&file.evidence_quote&&<blockquote className="reader-evidence">{file.evidence_quote}</blockquote>}
+    {!embedded&&"anchor" in file&&file.evidence_quote&&<blockquote className="reader-evidence">{file.evidence_quote}</blockquote>}
     {notesOpen&&<ReadingNotes key={versionId+pageNumber} versionId={versionId} pageNumber={pageNumber} sourceId={"anchor" in file&&pageNumber===initialPage?file.anchor.source_anchor_id:null}/>}
     {rendering && <p role="status" className="reader-status">正在渲染页面…</p>}{error && <p role="alert">{error}</p>}
     <div className="pdf-page"><canvas ref={canvas} aria-label={`PDF 第 ${pageNumber} 页`} /></div>

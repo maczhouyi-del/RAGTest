@@ -1,0 +1,6 @@
+import type {DocumentRow, Job, Snapshot} from "../bridge";
+export const statusLabels:Record<string,string>={not_started:"待解析",ready:"已就绪",partial:"部分解析",failed:"失败",queued:"等待中",running:"处理中",completed:"完成",cancelled:"已取消",retry_wait:"待重试"};
+export function bytesLabel(bytes:number) {return bytes>=1024**3?`${(bytes/1024**3).toFixed(2)} GB`:`${(bytes/1024**2).toFixed(1)} MB`;}
+export function jobLabel(job:Job) {return job.type==="import"?`导入 ${job.label??"PDF"}`:job.type==="parse_page"?"解析 PDF":job.type==="embed_batch"?"建立检索索引":job.label==="mvp_prepare"?"准备问答":"后台任务";}
+export function indexLabel(doc:DocumentRow,data:Snapshot) {return !["ready","partial"].includes(doc.parse_status)?"待解析":data.index?.ready?"已就绪":data.jobs.some(j=>j.type==="embed_batch"&&["queued","running"].includes(j.status))?"处理中":"需更新";}
+export function recentDate(value:string) {const date=new Date(value);if(Number.isNaN(date.getTime()))return "";const today=new Date();const previous=new Date();previous.setDate(today.getDate()-1);const day=date.toDateString()===today.toDateString()?"今天":date.toDateString()===previous.toDateString()?"昨天":date.toLocaleDateString("zh-CN",{month:"short",day:"numeric"});return `${day} ${date.toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}`;}

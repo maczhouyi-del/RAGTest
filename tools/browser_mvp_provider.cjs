@@ -17,6 +17,7 @@ module.exports=async function({page,rpc}){
   try{
     const nav=page.getByRole('navigation',{name:'主导航'});
     await nav.getByRole('button',{name:'设置',exact:true}).click();
+    if(await page.getByRole('tab',{name:/^API/}).count())await page.getByRole('tab',{name:/^API/}).click();
     await page.getByLabel('连接名称',{exact:true}).fill('Protocol Fixture');
     await page.getByLabel('接口地址（以 /v1 结尾）',{exact:true}).fill(`http://127.0.0.1:${server.address().port}/v1`);
     await page.getByLabel('API Key',{exact:true}).fill('local-protocol-fixture-key');
