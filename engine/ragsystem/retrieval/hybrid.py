@@ -1,5 +1,6 @@
 import hashlib
 import json
+import sqlite3
 import struct
 import time
 from pathlib import Path
@@ -8,10 +9,12 @@ from uuid import uuid4
 from ragsystem.domain.errors import EngineError
 from ragsystem.indexing.embeddings import Embeddings
 from ragsystem.indexing.incremental import embed_visible
+from ragsystem.indexing.integrity import checked_path, manifest, stamp
 from ragsystem.jobs.repository import Jobs
 from ragsystem.models.local_onnx import LocalE5
 from ragsystem.retrieval.metadata_scope import require_metadata_scope
 from ragsystem.retrieval.source_search import Sources
+from ragsystem.retrieval.tokenizer import TOKENIZER_VERSION
 from ragsystem.storage.database import utc_now
 
 
@@ -19,6 +22,7 @@ class HybridSearch:
     def __init__(self, db, root):
         self.db, self.root = db, Path(root)
         self.encoder, self.encoder_path = None, None
+        self._integrity_cache = None
         self.sources, self.cache, self.jobs = Sources(db, root), Embeddings(db), Jobs(db)
 
     def chunks(self, conn):
@@ -44,13 +48,25 @@ class HybridSearch:
         with self.db.connection() as conn:
             count = len(self.chunks(conn))
             current = self.fingerprint(conn)
+        ready, reason = False, "EMBEDDING_NOT_CONFIGURED"
+        if config:
+            reason = "INDEX_REBUILD_REQUIRED"
+            try:
+                if config["chunk_fingerprint"] == current and config.get("index_manifest"):
+                    path = checked_path(self.root, config["relative_path"])
+                    signature = (config["generation"], stamp(path))
+                    if self._integrity_cache != signature:
+                        if manifest(path) != config["index_manifest"]:
+                            raise EngineError("INDEX_INVALID")
+                        self._integrity_cache = signature
+                    ready = True
+                    reason = None
+            except (EngineError, OSError, ValueError, KeyError, sqlite3.DatabaseError):
+                reason = "INDEX_INVALID"
         return {
             "configured": bool(config),
-            "ready": bool(
-                config
-                and config["chunk_fingerprint"] == current
-                and (self.root / config["relative_path"]).exists()
-            ),
+            "ready": ready,
+            "reason": reason,
             "visible_chunks": count,
             "backend": config["backend"] if config else None,
             "model": config["fingerprint"]["model"] if config else None,
@@ -70,13 +86,15 @@ class HybridSearch:
             return LanceDB(path, space, dimension)
         raise EngineError("VECTOR_BACKEND_INVALID")
 
-    def build(self, job_id, directory, backend):
+    def build(self, job_id, directory, backend, *, parent_check=None):
         job = self.jobs.claim(job_id, lease_seconds=1800)
         if not job:
             return
         token = job["lease_token"]
 
         def progress(current, total):
+            if parent_check:
+                parent_check()
             directory.check()
             self.jobs.heartbeat(job_id, token, seconds=1800)
 
@@ -118,9 +136,12 @@ class HybridSearch:
                 "model_dir": str(directory.path),
                 "fingerprint": encoder.fingerprint,
                 "chunk_fingerprint": expected,
+                "index_manifest": manifest(checked_path(self.root, relative)),
             }
             with self.db.transaction() as conn:
                 self.jobs.require_lease(conn, job_id, token)
+                if parent_check:
+                    parent_check(conn)
                 if self.fingerprint(conn) != expected:
                     raise EngineError("INDEX_SCOPE_CHANGED")
                 conn.execute(
@@ -180,7 +201,7 @@ class HybridSearch:
                 "results": self.paper_quota(lexical, k, paper_quota),
                 "per_paper_limit": paper_quota,
                 "strategy": strategy,
-                "tokenizer_version": "cjk-bigrams-latin-v1"
+                "tokenizer_version": TOKENIZER_VERSION
                 if strategy == "keyword"
                 else "unicode61-literal",
             }
@@ -238,7 +259,7 @@ class HybridSearch:
                             "chunk_id": row["id"],
                             "source_anchor_id": row["id"],
                             "page_number": row["page_number"],
-                            "preview": row["clean_text"][:1000],
+                            "preview": row["clean_text"],
                             "rank": len(vector_hits) + 1,
                             "location_confidence": "unknown",
                             "distance": hit["distance"],
@@ -259,6 +280,7 @@ class HybridSearch:
             ]
         require_metadata_scope(self.db, versions, filters)
         with self.db.connection() as conn:
+            conn.execute("BEGIN")
             visible = {
                 row[0]
                 for row in conn.execute(
@@ -270,6 +292,17 @@ class HybridSearch:
             }
             if visible != set(versions):
                 raise EngineError("SCOPE_NOT_AVAILABLE", status=409)
+            active = conn.execute(
+                "SELECT value_json FROM app_settings WHERE key='active_index'"
+            ).fetchone()
+            if (
+                not active
+                or json.loads(active[0])["generation"] != config["generation"]
+                or self.fingerprint(conn) != config["chunk_fingerprint"]
+            ):
+                raise EngineError("INDEX_SCOPE_CHANGED", status=409)
+        if not self.status()["ready"]:
+            raise EngineError("INDEX_REBUILD_REQUIRED", status=409)
         results = self.paper_quota(results, k, paper_quota)
         return {
             "per_paper_limit": paper_quota,

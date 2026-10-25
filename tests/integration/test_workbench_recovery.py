@@ -68,7 +68,7 @@ def test_research_cancel_resume_reuses_committed_chunks_without_overwriting_revi
     work.execute_plan(plan["id"], second["id"])
     completed = work.plans()[0]
     assert completed["coverage"]["completed"] == 1
-    assert completed["items"][0]["processed_chunks"] == 64
+    assert completed["items"][0]["processed_chunks"] == item["total_chunks"] > 0
     assert [value["evidence_id"] for value in completed["items"][0]["observations"]][
         : len(previous_ids)
     ] == previous_ids

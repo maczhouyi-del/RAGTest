@@ -165,6 +165,10 @@ def test_lifecycle_change_during_model_or_parse_work_cannot_publish(store, monke
     Lifecycle(db).update(document["document_id"], 1, "active", "restore")
     import ragsystem.parsing.pipeline as pipeline
 
+    with db.connection() as conn:
+        previous_chunks = [
+            row[0] for row in conn.execute("SELECT id FROM chunks WHERE visible=1 ORDER BY id")
+        ]
     original = pipeline.run_worker
 
     def changed(*args, **kwargs):
@@ -176,7 +180,9 @@ def test_lifecycle_change_during_model_or_parse_work_cannot_publish(store, monke
     with pytest.raises(EngineError, match="SCOPE_NOT_AVAILABLE"):
         Parser(db, root).parse(version, "late parse")
     with db.connection() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM chunks WHERE visible=1").fetchone()[0] == 64
+        assert [
+            row[0] for row in conn.execute("SELECT id FROM chunks WHERE visible=1 ORDER BY id")
+        ] == previous_chunks
 
 
 def test_inactive_merge_undo_is_fenced_and_prior_hidden_versions_stay_hidden(store):

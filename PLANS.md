@@ -156,3 +156,10 @@ P0-05C按用户持续授权实施，见[ExecPlan](docs/engineering/execplans/P0-
 2026-10-25用户明确要求上传代码到`https://github.com/maczhouyi-del/RAGTest.git`。本次允许初始化本项目Git、创建源码提交并推送指定仓库，覆盖此前不使用GitHub/不外发源码的限制；不允许上传论文、模型权重、用户数据库、日志、凭据或擅自发布Release/安装包。旧记录保留其历史含义，正式门禁状态不变。
 
 执行计划：[GH-01](docs/engineering/execplans/GH-01-source-upload.md)。目标仓库为公开空仓库，账号与本机已有授权已核对；密码不写入任何文件、命令或Git配置。上传前检查全部候选文件、Git忽略规则和疑似秘密；正常推送main后比对远端HEAD与文件树。运行证据与最终报告保留在本机被忽略的GH-01证据目录，不把源码上传当作发布或功能验收。
+
+
+## 16. MVP-01 极简本地PDF问答（2026-10-25）
+
+用户指定当前main直接改造并同步RAGTest，方案提交20894d4后实施。阶段1–6功能已接入：问答默认/文献/设置三入口、自动准备、中文FTS5词频/单字、400码点重叠Chunk/E5溢出拒绝、索引清单/世代校验、真实来源问答/PDF、统一本地/API/可选Magpie。旧App保留LegacyWorkspace，Research/复杂审查折叠隐藏，既有安全/迁移/去重/恢复代码不删除。契约[mvp-v0.3](contracts/mvp-v0.3.md)，ADR-010记录兼容和发送许可边界。
+
+最终源码/冻结回归145 PASS，Rust含显式候选6 PASS；原文摘录浏览器闭环PASS。真实Qwen有带引用完成样例，但答案未列出任务名，跨论文用例仍拒答；生成质量FAIL样例/科研金标BLOCKED，不宣称完整科研MVP验收通过。真实API未执行、Magpie默认本机未运行、Windows/干净安装待测；Mac原生启动因已有用户实例而BLOCKED。无人工金标前不运行1000篇验收。所有阶段结果、失败证据及后续见[本轮报告](docs/engineering/reports/MVP-2026-10-25.md)。

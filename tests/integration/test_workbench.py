@@ -140,7 +140,11 @@ def test_research_per_paper_coverage_revisions_report_and_unparsed_not_absence(s
         and result["coverage"]["needs_parse"] == 1
     )
     item = next(item for item in result["items"] if item["doc_version_id"] == one)
-    assert item["processed_chunks"] == item["total_chunks"] == 64
+    with db.connection() as conn:
+        expected = conn.execute(
+            "SELECT COUNT(*) FROM chunks WHERE doc_version_id=? AND visible=1", (one,)
+        ).fetchone()[0]
+    assert item["processed_chunks"] == item["total_chunks"] == expected > 0
     assert item["observations"] and all(
         obs["meaning_status"] == "evidence_insufficient" for obs in item["observations"]
     )

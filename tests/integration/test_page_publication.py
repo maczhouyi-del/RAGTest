@@ -438,5 +438,7 @@ def test_v11_upgrade_seeds_latest_pages_including_blanks_and_preserves_snapshot(
     assert pointers(db) == {1: "e1", 2: "e2"}
     assert len(list((path.parent / "migration-backups").glob("before-v11-*.db"))) == 1
     with db.connection() as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 12
+        from ragsystem.storage.database import SCHEMA_VERSION
+
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     assert db.integrity()["foreign_key_check"] == []

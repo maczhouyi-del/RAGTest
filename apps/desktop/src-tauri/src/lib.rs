@@ -49,7 +49,7 @@ async fn workspace_snapshot(state: State<'_, Arc<Bridge>>) -> Result<Value, Stri
             let ocr = engine.request("GET", "/v0/ocr", None)?;
             let docling = engine.request("GET", "/v0/docling", None)?;
             let root = bridge.current_root()?;
-            Ok(json!({"health":health,"documents":documents["documents"],"jobs":jobs["jobs"],"projects":projects["projects"],"index":index,"generator":generator,"ocr":ocr,"docling":docling,"workspace":{"label":root.file_name().and_then(|s|s.to_str()).unwrap_or("RAGSystem"),"warning":bridge.warning}}))
+            Ok(json!({"health":health,"documents":documents["documents"],"jobs":jobs["jobs"],"projects":projects["projects"],"index":index,"generator":generator,"ocr":ocr,"docling":docling,"workspace":{"label":root.file_name().and_then(|s|s.to_str()).unwrap_or("RAGSystem"),"warning":bridge.warning,"directory":root.to_string_lossy()}}))
         })
     })
     .await
@@ -991,6 +991,119 @@ async fn inspect_document_parse(
     .map_err(|_| "ENGINE_TASK_FAILED")?
 }
 
+#[tauri::command]
+async fn prepare_mvp(
+    version_ids: Vec<String>,
+    state: State<'_, Arc<Bridge>>,
+) -> Result<Value, String> {
+    if version_ids.is_empty()
+        || version_ids.len() > 1000
+        || version_ids.iter().any(|id| !valid_job_id(id))
+        || version_ids
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            != version_ids.len()
+    {
+        return Err("INVALID_REQUEST".into());
+    }
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        bridge.with_engine(|engine| {
+            engine.request(
+                "POST",
+                "/v0/mvp/prepare",
+                Some(json!({"version_ids":version_ids,"idempotency_key":random_key()?})),
+            )
+        })
+    })
+    .await
+    .map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
+async fn read_mvp_answer(
+    answer_id: String,
+    state: State<'_, Arc<Bridge>>,
+) -> Result<Value, String> {
+    if !valid_job_id(&answer_id) {
+        return Err("INVALID_REQUEST".into());
+    }
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        bridge
+            .with_engine(|engine| engine.request("GET", &format!("/v0/answers/{answer_id}"), None))
+    })
+    .await
+    .map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
+async fn list_generation_providers(state: State<'_, Arc<Bridge>>) -> Result<Value, String> {
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        bridge.with_engine(|engine| engine.request("GET", "/v0/generation-providers", None))
+    })
+    .await
+    .map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
+async fn save_generation_provider(
+    body: Value,
+    state: State<'_, Arc<Bridge>>,
+) -> Result<Value, String> {
+    if !body.is_object() || body.to_string().len() > 16000 {
+        return Err("INVALID_REQUEST".into());
+    }
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        bridge.with_engine(|engine| engine.request("POST", "/v0/generation-providers", Some(body)))
+    })
+    .await
+    .map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
+async fn preview_generation_provider(
+    body: Value,
+    state: State<'_, Arc<Bridge>>,
+) -> Result<Value, String> {
+    if !body.is_object() || body.to_string().len() > 16000 {
+        return Err("INVALID_REQUEST".into());
+    }
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        bridge.with_engine(|engine| {
+            engine.request("POST", "/v0/generation-provider-probe", Some(body))
+        })
+    })
+    .await
+    .map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
+async fn probe_generation_provider(
+    identifier: String,
+    state: State<'_, Arc<Bridge>>,
+) -> Result<Value, String> {
+    if !valid_job_id(&identifier) {
+        return Err("INVALID_REQUEST".into());
+    }
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || {
+        bridge.with_engine(|engine| {
+            engine.request(
+                "POST",
+                &format!("/v0/generation-providers/{identifier}/probe"),
+                None,
+            )
+        })
+    })
+    .await
+    .map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
 pub fn run() {
     let application = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -1042,6 +1155,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            preview_generation_provider,
+            list_generation_providers,
+            save_generation_provider,
+            probe_generation_provider,
+            prepare_mvp,
+            read_mvp_answer,
             workspace_snapshot,
             choose_pdf_and_import,
             restart_engine,

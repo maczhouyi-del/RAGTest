@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 
 import pytest
+from ragsystem.chunking.mapping import chunk_page
+from ragsystem.domain.errors import EngineError
 from ragsystem.indexing.embeddings import Embeddings
 from ragsystem.models.local_onnx import LocalE5
 from ragsystem.storage.database import Database
@@ -29,3 +31,8 @@ def test_real_approved_model_local_output_and_full_fingerprint(tmp_path):
     space = cache.space(encoder.fingerprint)
     cache.persist(space, "a" * 64, vectors[0])
     assert cache.get(space, "a" * 64) is not None
+
+    with pytest.raises(EngineError, match="EMBEDDING_CONTEXT_LIMIT"):
+        encoder.encode(["中" * 1200])
+    chunks = list(chunk_page("中" * 1200))
+    assert len(encoder.encode([chunk["text"] for chunk in chunks])) == len(chunks)

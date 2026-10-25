@@ -29,7 +29,7 @@ class Sources:
             self.ensure_terms()
             tokens = search_terms(query)[:100]
             phrase = " OR ".join('"' + token.replace('"', '""') + '"' for token in tokens)
-            table = "chunks_terms_v1"
+            table = "chunks_terms_v2"
             if not phrase:
                 raise EngineError("INVALID_SEARCH")
         with self.db.connection() as conn:
@@ -73,7 +73,7 @@ class Sources:
                     "chunk_id": row["id"],
                     "source_anchor_id": row["id"],
                     "page_number": row["page_number"],
-                    "preview": row["clean_text"][:1000],
+                    "preview": row["clean_text"],
                     "rank": rank + 1,
                     "location_confidence": "unknown",
                 }
@@ -84,7 +84,7 @@ class Sources:
         while True:
             with self.db.transaction() as conn:
                 rows = conn.execute("""SELECT c.id,c.clean_text FROM chunks c
-                    LEFT JOIN terms_indexed_chunks t ON t.chunk_id=c.id
+                    LEFT JOIN terms_indexed_chunks_v2 t ON t.chunk_id=c.id
                     WHERE t.chunk_id IS NULL AND c.visible=1 LIMIT 200""").fetchall()
                 for row in rows:
                     index_terms(conn, row["id"], row["clean_text"])

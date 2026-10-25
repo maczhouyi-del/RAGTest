@@ -1,0 +1,22 @@
+import {useEffect, useRef, useState, type FormEvent} from "react";
+import {errorMessage,previewGenerationConnection,generationConnections,saveGenerationConnection,probeGenerationConnection,type GenerationConnection} from "../bridge";
+
+export default function GenerationConnections(){
+  const [items,setItems]=useState<GenerationConnection[]>([]),[selected,setSelected]=useState<GenerationConnection|null>(null);
+  const [kind,setKind]=useState("api"),[catalog,setCatalog]=useState<{id:string;name:string}[]>([]),[name,setName]=useState(""),[url,setUrl]=useState(""),[model,setModel]=useState("");
+  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState("");
+  const key=useRef<HTMLInputElement>(null);
+  const refresh=()=>generationConnections().then(result=>setItems(result.providers));
+  useEffect(()=>{void refresh().catch(err=>setError(errorMessage(err)));},[]);
+  function edit(item:GenerationConnection|null){setSelected(item);setKind(item?.kind??"api");setCatalog([]);setName(item?.name??"");setUrl(item?.base_url??"");setModel(item?.model??"");if(key.current)key.current.value="";setMessage("");}
+  async function save(event:FormEvent){event.preventDefault();setBusy(true);setError("");try{const saved=await saveGenerationConnection({id:selected?.id??null,name,kind,base_url:url,model,expected_revision:selected?.revision??0,api_key:key.current?.value??""});setSelected(saved);await refresh();setMessage("连接已保存。尚未向服务器发送问题或论文片段。");}catch(err){setError(errorMessage(err));}finally{if(key.current)key.current.value="";setBusy(false);}}
+  async function preview(){setBusy(true);setError("");try{const result=await previewGenerationConnection({kind,base_url:url,api_key:key.current?.value??""});setCatalog(result.models);setMessage("模型列表已获取，请选择模型后保存。API 密钥需重新输入。");}catch(err){setError(errorMessage(err));}finally{if(key.current)key.current.value="";setBusy(false);}}
+  async function probe(item:GenerationConnection){setBusy(true);setError("");try{const result=await probeGenerationConnection(item.id);setCatalog(result.models);setMessage("连接成功，可用模型："+result.models.slice(0,20).map(m=>m.id).join("、"));}catch(err){setError(errorMessage(err));}finally{setBusy(false);}}
+  return <section className="panel"><div className="panel-head"><h2>生成模型连接</h2><button onClick={()=>edit(null)}>新增连接</button></div><div className="settings-content">
+    <p>支持 OpenAI 兼容接口。密钥仅在本次引擎会话有效；重启后选择已有连接重新输入。测试连接只获取模型列表，不发送论文。</p>
+    {items.map(item=><div className="provider-row" key={item.id}><button onClick={()=>edit(item)}>{item.name} · {item.model}</button><span>{item.configured?"本次会话可用":"需要重新输入密钥"}</span><button disabled={busy||!item.configured} onClick={()=>void probe(item)}>测试连接</button></div>)}
+    {kind==="magpie"&&<p className="notice">Magpie 需由你自行启动。网关可能把请求路由到云端，发送仍需逐次确认。模型 ID 使用其模型列表中的原始值。</p>}
+    <form onSubmit={event=>void save(event)} className="provider-form"><label>连接类型<select aria-label="连接类型" value={kind} onChange={e=>{setKind(e.target.value);setCatalog([]);if(e.target.value==="magpie"){setUrl("http://127.0.0.1:3425/v1");if(!name)setName("Magpie");}}}><option value="api">OpenAI 兼容 API / 本地服务</option><option value="magpie">Magpie 本机网关（可选）</option></select></label><label>连接名称<input required maxLength={80} value={name} onChange={e=>setName(e.target.value)}/></label><label>接口地址（以 /v1 结尾）<input required maxLength={2048} placeholder="https://api.example.com/v1" value={url} onChange={e=>setUrl(e.target.value)}/></label><button type="button" disabled={busy||!url} onClick={()=>void preview()}>获取模型列表</button><label>模型 ID<input aria-label="模型 ID" required maxLength={200} list="provider-models" value={model} onChange={e=>setModel(e.target.value)}/><datalist id="provider-models">{catalog.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</datalist></label><label>API Key<input type="password" disabled={kind==="magpie"} ref={key} maxLength={4096} autoComplete="off"/></label><button disabled={busy}>保存连接</button></form>
+    {message&&<p role="status">{message}</p>}{error&&<p role="alert" className="job-error">{error}</p>}
+  </div></section>;
+}

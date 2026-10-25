@@ -32,7 +32,13 @@ from ragsystem.workflows.workbench import Workbench
 
 MAX_REQUEST_BYTES = 16 * 1024
 MAX_SCOPE_REQUEST_BYTES = 128 * 1024
-SCOPE_ENDPOINTS = {"/v0/search", "/v0/answers", "/v0/research", "/v0/document-merges"}
+SCOPE_ENDPOINTS = {
+    "/v0/search",
+    "/v0/answers",
+    "/v0/research",
+    "/v0/document-merges",
+    "/v0/mvp/prepare",
+}
 
 
 class LocalBoundary:
@@ -198,6 +204,10 @@ class AnswerRequest(StrictModel):
         pattern="^(fts_only|keyword|vector_exact|hybrid|keyword_review|hybrid_review)$",
     )
     conversation_id: str | None = Field(default=None, min_length=1, max_length=100)
+    provider_id: str | None = Field(default=None, min_length=1, max_length=100)
+    allow_external: bool = False
+    provider_revision: int | None = Field(default=None, ge=1)
+    per_paper_limit: int = Field(default=3, ge=1, le=8)
 
 
 class ResearchRequest(StrictModel):
@@ -904,6 +914,10 @@ def create_app(token: str, data_root: Path):
                 body.mode,
                 body.strategy,
                 body.conversation_id,
+                body.provider_id,
+                body.allow_external,
+                body.provider_revision,
+                body.per_paper_limit,
             )
             background.add_task(run_workflow, "answer", row["id"])
             return row
@@ -962,4 +976,7 @@ def create_app(token: str, data_root: Path):
     def report_content(report_id: str):
         return workbench.report_content(report_id)
 
+    from ragsystem.ipc.mvp import register_mvp
+
+    register_mvp(app, db, data_root, hybrid, workbench, jobs, slot)
     return app

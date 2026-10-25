@@ -155,9 +155,23 @@ class Workbench:
             raise EngineError("NOT_FOUND", status=404)
         return dict(row) | {"versions": json.loads(row["versions_json"])}
 
-    def create_answer(self, question, versions, project_id, mode, strategy, conversation_id=None):
+    def create_answer(
+        self,
+        question,
+        versions,
+        project_id,
+        mode,
+        strategy,
+        conversation_id=None,
+        provider_id=None,
+        allow_external=False,
+        provider_revision=None,
+        per_paper_limit=3,
+    ):
         if (
             not question.strip()
+            or type(per_paper_limit) is not int
+            or not 1 <= per_paper_limit <= 8
             or mode not in {"extractive", "generative"}
             or strategy
             not in {
@@ -183,6 +197,11 @@ class Workbench:
             )
         ):
             raise EngineError("RESEARCH_REQUIRED", status=409)
+        provider = None
+        if mode == "generative" and provider_id not in {None, "local"}:
+            provider = self.generation.providers.freeze(
+                provider_id, allow_external, provider_revision
+            )
         scope_id = self.freeze(versions, project_id)
         run_id = identifier()
         with self.db.transaction() as conn:
@@ -198,7 +217,16 @@ class Workbench:
                     "INSERT INTO conversations VALUES(?,?,?,?)",
                     (conversation_id, question[:80], project_id, utc_now()),
                 )
-            job = self.jobs.enqueue("verify", run_id, {"run_id": run_id}, connection=conn)
+            job = self.jobs.enqueue(
+                "verify",
+                run_id,
+                {
+                    "run_id": run_id,
+                    "per_paper_limit": per_paper_limit,
+                    **({"generation_provider": provider} if provider else {}),
+                },
+                connection=conn,
+            )
             conn.execute(
                 "INSERT INTO answer_runs VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                 (
@@ -278,8 +306,22 @@ class Workbench:
         if job is None:
             return
         token = job["lease_token"]
+        external_generators = []
         try:
             scope = self.scope(run["scope_id"])
+            provider = json.loads(job["payload_json"]).get("generation_provider")
+
+            def selected_generator():
+                if provider:
+                    from ragsystem.models.network_provider import definition
+
+                    if definition(self.generation.providers.get(provider["id"])) != provider:
+                        raise EngineError("PROVIDER_CHANGED", status=409)
+                    selected = self.generation.require(provider["id"])
+                    external_generators.append(selected)
+                    return selected
+                return self.generation.require()
+
             versions = [value["doc_version_id"] for value in scope["versions"]]
             for document in scope["versions"]:
                 if self.current_runs(document["doc_version_id"]) != document["parse_run_ids"]:
@@ -290,11 +332,11 @@ class Workbench:
                 8,
                 scope["project_id"],
                 run["strategy"].removesuffix("_review"),
-                3,
+                json.loads(job["payload_json"]).get("per_paper_limit", 3),
             )["results"]
             ranking = None
             if run["strategy"].endswith("_review") and hits:
-                reviewer = self.generation.require()
+                reviewer = selected_generator()
                 self.record_model(job["id"], token, run_id, reviewer, stage="relevance")
                 reviewer.cancel_check = lambda: self.cancellation_check(job["id"], token)
                 hits, ranking = review_order(reviewer, run["question"], hits)
@@ -307,8 +349,8 @@ class Workbench:
                 "coverage": "Top-K local retrieval; not whole-library coverage",
             }
             raw_claims = []
-            if run["mode"] == "generative":
-                generator = self.generation.require()
+            if run["mode"] == "generative" and hits:
+                generator = selected_generator()
                 self.record_model(job["id"], token, run_id, generator)
                 generator.cancel_check = lambda: self.jobs.heartbeat(job["id"], token, seconds=1800)
                 raw = generator.generate(
@@ -450,6 +492,8 @@ class Workbench:
                 )
 
         finally:
+            for external_generator in external_generators:
+                external_generator.close()
             if self.generation.generator is not None:
                 self.generation.generator.cancel_check = None
 

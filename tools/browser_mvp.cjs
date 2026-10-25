@@ -1,0 +1,63 @@
+/* New MVP UI + actual frozen engine. Native file dialogs are simulated. */
+const fs=require('node:fs'),path=require('node:path');
+module.exports=async function({page,rpc,evidence}){
+  page.setDefaultTimeout(60000);
+  const extractive=process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1';
+  const nav=page.getByRole('navigation',{name:'主导航'});
+  if((await nav.getByRole('button').allTextContents()).join(',')!=='问答,文献,设置')throw new Error('MVP_NAVIGATION');
+  await page.getByRole('heading',{name:'与论文对话',exact:true}).waitFor();
+  await page.getByRole('button',{name:'导入 PDF',exact:true}).click();
+  await page.getByRole('heading',{name:'我的文献（2）',exact:true}).waitFor();
+  for(let i=0;;i++){const docs=(await rpc('GET','/v0/documents')).documents;if(docs.length===2&&docs.every(d=>d.parse_status==='ready'))break;if(i>200)throw new Error('AUTO_PREPARATION_FAILED');await page.waitForTimeout(300);}
+  await page.getByRole('button',{name:'阅读 PDF',exact:true}).first().click();
+  await page.getByRole('heading',{name:'PDF 阅读 · 第 1 页',exact:true}).waitFor();
+  await page.getByText('正在渲染页面…',{exact:true}).waitFor({state:'hidden'});
+  await page.getByRole('button',{name:'下一页',exact:true}).click();
+  await page.getByRole('heading',{name:'PDF 阅读 · 第 2 页',exact:true}).waitFor();
+  await page.getByRole('button',{name:'关闭',exact:true}).click();
+  await page.screenshot({path:path.join(evidence,'mvp-library.png'),fullPage:true});
+  await nav.getByRole('button',{name:'设置',exact:true}).click();
+  await page.getByRole('button',{name:'选择 E5 目录并建立索引',exact:true}).click();
+  for(let i=0;;i++){if((await rpc('GET','/v0/index')).ready)break;if(i>300)throw new Error('INDEX_NOT_READY');await page.waitForTimeout(300);}
+  await page.getByText('检索已就绪',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'选择本地生成模型目录',exact:true}).click();
+  for(let i=0;;i++){if((await rpc('GET','/v0/generator')).configured)break;if(i>150)throw new Error('GENERATOR_NOT_READY');await page.waitForTimeout(200);}
+  await nav.getByRole('button',{name:'问答',exact:true}).click();
+  if(!extractive)await page.getByLabel('生成模型',{exact:true}).selectOption('local');
+  await page.getByLabel('你的问题',{exact:true}).fill('Which two pre-training tasks are used in BERT?');
+  await page.getByRole('button',{name:'发送问题',exact:true}).click();
+  await page.getByRole('button',{name:/^查看引用 1(?: ·|$)/}).waitFor({timeout:180000});
+  await page.getByText(extractive?'以下是相关原文摘录，未生成综合结论。':'模型生成的回答，请结合引用核对。',{exact:true}).waitFor({timeout:180000});
+  await page.getByRole('button',{name:/^查看引用 1(?: ·|$)/}).click();
+  await page.getByRole('heading',{name:/原文来源 · 第 \d+ 页/}).waitFor();
+  await page.waitForFunction(()=>{const c=document.querySelector('.pdf-page canvas');return c&&c.width>100&&c.getContext('2d').getImageData(10,10,1,1).data[3]>0;});
+  await page.screenshot({path:path.join(evidence,'mvp-answer-source.png'),fullPage:true});
+  await page.getByRole('button',{name:'关闭',exact:true}).click();
+  const before=(await rpc('GET','/v0/answers')).answers[0];
+  if((!extractive&&!before.claims.length)||!before.evidence.length)throw new Error('NO_REAL_CITED_ANSWER');
+  await page.reload();
+  await page.getByRole('button',{name:/Which two pre-training tasks/}).click();
+  await page.getByRole('button',{name:/^查看引用 1(?: ·|$)/}).waitFor();
+  const nextQuestion='What is BERT?';
+  await page.getByLabel('你的问题',{exact:true}).fill(nextQuestion);
+  await page.getByRole('button',{name:'发送问题',exact:true}).click();
+  await page.getByRole('heading',{name:nextQuestion,exact:true}).waitFor();
+  await page.getByText('以下是相关原文摘录，未生成综合结论。',{exact:true}).waitFor();
+  const second=(await rpc('GET','/v0/answers')).answers.find(a=>a.question===nextQuestion);
+  if(second.conversation_id!==before.conversation_id)throw new Error('CONVERSATION_NOT_REUSED');
+  const providerProtocol=await require('./browser_mvp_provider.cjs')({page,rpc});
+  await nav.getByRole('button',{name:'设置',exact:true}).click();
+  await page.getByRole('button',{name:'创建备份',exact:true}).click();
+  await page.getByText('已完成备份',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'从备份恢复副本',exact:true}).click();
+  await page.getByRole('button',{name:'使用此恢复副本',exact:true}).waitFor();
+  const record=(await rpc('GET','/v0/backups')).records.find(row=>row.kind==='restored');
+  const target=await rpc('GET',`/v0/internal/restored-workspaces/${record.id}`);
+  await page.getByRole('button',{name:'使用此恢复副本',exact:true}).click();
+  await page.getByText(`当前工作区：${path.basename(target.data_root)}`,{exact:true}).waitFor();
+  const after=(await rpc('GET','/v0/answers')).answers.find(a=>a.id===before.id);
+  if(!after||after.evidence[0].source_anchor_id!==before.evidence[0].source_anchor_id)throw new Error('RESTORED_CITATIONS_LOST');
+  if((await rpc('GET','/v0/generation-providers')).providers[0].configured)throw new Error('RESTORED_KEY_PERSISTED');
+  if((await rpc('GET','/v0/documents')).documents.length!==2)throw new Error('RESTORED_DOCUMENTS_LOST');
+  fs.writeFileSync(path.join(evidence,extractive?'mvp-browser-extractive-functional.json':'mvp-browser-functional.json'),JSON.stringify({status:'PASS',provider_protocol:providerProtocol,mode:extractive?'extractive':'generative',real_frozen_engine:true,native_dialogs:false,documents:2,imports:3,answer_id:before.id,claims:before.claims.length,evidence:before.evidence.length,restored_citations:true,scientific_quality:'NOT_EVALUATED'},null,2));
+};

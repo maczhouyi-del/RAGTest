@@ -71,6 +71,7 @@ class LocalE5:
             "preprocessing": {
                 "algorithm": "e5_masked_mean_l2_v1",
                 "max_length": 512,
+                "overflow_policy": "reject_without_embedding",
                 "query_prefix": "query: ",
                 "document_prefix": "passage: ",
                 "runtime": "onnxruntime-" + ort.__version__,
@@ -93,6 +94,8 @@ class LocalE5:
             raise EngineError("EMBEDDING_INPUT_INVALID")
         prefix = "query: " if query else "passage: "
         encoded = self.tokenizer.encode_batch([prefix + text for text in texts])
+        if any(e.overflowing for e in encoded):
+            raise EngineError("EMBEDDING_CONTEXT_LIMIT")
         values = {
             "input_ids": np.array([e.ids for e in encoded], dtype=np.int64),
             "attention_mask": np.array([e.attention_mask for e in encoded], dtype=np.int64),

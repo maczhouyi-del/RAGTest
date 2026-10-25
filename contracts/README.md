@@ -38,3 +38,5 @@
 - [history-lifecycle-v0.2.md](history-lifecycle-v0.2.md)：历史游标、选定计划按篇/观察分页、逐条模型指纹、手工撤稿/停用与导出时失效提示。
 
 - [layout-tables-v0.2.md](layout-tables-v0.2.md)：已授权Docling离线候选、schema11表格/单元格与原文映射、分页核对/复核历史及证据引用；科学质量未验收。
+
+- [mvp-v0.3.md](mvp-v0.3.md)：三入口MVP、自动准备、schema13/14、FTS词频/中文、重叠切分/溢出拒绝、索引清单及显式Provider/API/Magpie。旧握手与端点兼容。

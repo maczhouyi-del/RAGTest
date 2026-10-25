@@ -1,23 +1,33 @@
 import re
+import unicodedata
 
-TOKENIZER_VERSION = "cjk-bigrams-latin-v1"
+TOKENIZER_VERSION = "cjk-unigrams-bigrams-tf-v2"
 
 
-def search_terms(text):
+def tokenize(text, *, unigrams=False):
     output = []
-    for token in re.findall(r"[\u3400-\u9fff]+|[^\W_\u3400-\u9fff]+", text.lower()):
+    for token in re.findall(
+        r"[\u3400-\u9fff]+|[^\W_\u3400-\u9fff]+", unicodedata.normalize("NFKC", text).casefold()
+    ):
         if re.fullmatch(r"[\u3400-\u9fff]+", token):
+            if unigrams and len(token) > 1:
+                output.extend(token)
             output.extend(token[index : index + 2] for index in range(max(1, len(token) - 1)))
         else:
             output.append(token)
-    return list(dict.fromkeys(output))
+    return output
+
+
+def search_terms(text):
+    return list(dict.fromkeys(tokenize(text)))
 
 
 def index_terms(conn, chunk_id, text):
     if not conn.execute(
-        "SELECT 1 FROM terms_indexed_chunks WHERE chunk_id=?", (chunk_id,)
+        "SELECT 1 FROM terms_indexed_chunks_v2 WHERE chunk_id=?", (chunk_id,)
     ).fetchone():
         conn.execute(
-            "INSERT INTO chunks_terms_v1 VALUES(?,?)", (chunk_id, " ".join(search_terms(text)))
+            "INSERT INTO chunks_terms_v2 VALUES(?,?)",
+            (chunk_id, " ".join(tokenize(text, unigrams=True))),
         )
-        conn.execute("INSERT INTO terms_indexed_chunks VALUES(?)", (chunk_id,))
+        conn.execute("INSERT INTO terms_indexed_chunks_v2 VALUES(?)", (chunk_id,))

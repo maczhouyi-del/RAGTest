@@ -71,6 +71,7 @@ export default function PdfPreview({file, onClose, presentation="reader"}: {file
       <button onClick={()=>setNotesOpen(!notesOpen)}>{notesOpen?"收起批注":"阅读批注"}</button>
     </div>
     {"anchor" in file&&file.anchor.reason_if_degraded?.startsWith("OCR_")&&<p className="notice">来源文本由 OCR 识别，请对照本页图像核对字符、数值和单位。</p>}
+    {"anchor" in file&&file.evidence_quote&&<blockquote className="reader-evidence">{file.evidence_quote}</blockquote>}
     {notesOpen&&<ReadingNotes key={versionId+pageNumber} versionId={versionId} pageNumber={pageNumber} sourceId={"anchor" in file&&pageNumber===initialPage?file.anchor.source_anchor_id:null}/>}
     {rendering && <p role="status" className="reader-status">正在渲染页面…</p>}{error && <p role="alert">{error}</p>}
     <div className="pdf-page"><canvas ref={canvas} aria-label={`PDF 第 ${pageNumber} 页`} /></div>

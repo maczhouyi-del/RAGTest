@@ -3,12 +3,15 @@ import json
 from ragsystem.domain.errors import EngineError
 from ragsystem.models.generator_worker import IsolatedGenerator as LocalGenerator
 from ragsystem.models.local_generator import GENERATOR_NAME
+from ragsystem.models.provider import GenerationProvider
+from ragsystem.models.provider_registry import ProviderRegistry
 from ragsystem.storage.database import utc_now
 
 
 class GenerationService:
     def __init__(self, db):
         self.db, self.generator = db, None
+        self.providers = ProviderRegistry(db)
 
     def status(self):
         with self.db.connection() as conn:
@@ -69,7 +72,9 @@ class GenerationService:
             previous.close()
         return self.status()
 
-    def require(self):
+    def require(self, provider_id=None) -> GenerationProvider:
+        if provider_id is not None and provider_id != "local":
+            return self.providers.require(provider_id)
         if self.generator is None:
             from pathlib import Path
 

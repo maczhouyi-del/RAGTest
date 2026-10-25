@@ -25,10 +25,12 @@ from ragsystem.retrieval.tokenizer import index_terms
 from ragsystem.storage.database import Database, utc_now
 
 PARSER_CONFIG = {
-    "pipeline": "pdfium-page-only-v1",
+    "pipeline": "pdfium-page-chunks-v2",
     "max_pages": 500,
     "max_page_chars": 50000,
-    "chunk_max_chars": 1200,
+    "chunk_max_chars": 400,
+    "chunk_overlap_chars": 80,
+    "chunk_boundaries": "page-sentence-newline-v2",
     "offset_unit": "unicode_codepoint",
 }
 
@@ -47,6 +49,7 @@ class Parser:
         use_docling: bool = False,
         auto_enhance: bool = False,
         page_numbers: list[int] | None = None,
+        parent_check=None,
     ):
         if sum((use_ocr, use_docling, auto_enhance)) > 1:
             raise EngineError("PARSER_OPTIONS_CONFLICT")
@@ -169,6 +172,8 @@ class Parser:
 
             def check():
                 nonlocal heartbeat
+                if parent_check:
+                    parent_check()
                 with self.db.connection() as conn:
                     self.jobs.require_lease(conn, job["id"], token)
                 if time.monotonic() - started > 700:
@@ -219,6 +224,8 @@ class Parser:
                 raise EngineError("PAGE_LIMIT")
             with self.db.transaction() as conn:
                 self.jobs.require_lease(conn, job["id"], token)
+                if parent_check:
+                    parent_check(conn)
                 if (
                     conn.execute(
                         "SELECT 1 FROM document_versions WHERE id=? AND visibility='visible'",

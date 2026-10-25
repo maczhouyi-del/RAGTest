@@ -45,7 +45,7 @@ export interface Snapshot {
   documents: DocumentRow[];
   jobs: Job[];
   projects: Project[];
-  workspace?: {label: string; warning: string};
+  workspace?: {label: string; warning: string; directory?: string};
   index?: IndexStatus;
   generator?: GeneratorStatus;
   ocr?: ParsingCandidateStatus;
@@ -67,10 +67,13 @@ export async function snapshot(): Promise<Snapshot> {
   requireDesktop();
   return invoke<Snapshot>("workspace_snapshot");
 }
-export async function importPdf(projectId: string | null = null): Promise<{ job_id: string; status: string } | null> {
+export async function importPdf(projectId: string | null = null): Promise<{ job_id: string; status: string } | {jobs:Job[]} | null> {
   requireDesktop();
   return invoke("choose_pdf_and_import", {projectId});
 }
+
+export async function prepareMvp(versionIds:string[]):Promise<{job_id:string}>{requireDesktop();return invoke("prepare_mvp",{versionIds});}
+export async function readMvpAnswer(answerId:string):Promise<AnswerRun>{requireDesktop();return invoke("read_mvp_answer",{answerId});}
 export async function restartEngine(): Promise<void> {
   requireDesktop();
   return invoke("restart_engine");
@@ -81,7 +84,7 @@ export async function cancelJob(jobId: string): Promise<void> {
 }
 
 export interface SearchHit {doc_version_id: string; chunk_id: string; source_anchor_id: string; page_number: number; preview: string; rank: number; location_confidence: string}
-export interface SourceFile {anchor: {source_anchor_id: string; doc_version_id: string; file_sha256: string; page_number: number; location_level: string; reason_if_degraded?:string}; pdf_bytes: number[]}
+export interface SourceFile {evidence_quote?: string; anchor: {source_anchor_id: string; doc_version_id: string; file_sha256: string; page_number: number; location_level: string; reason_if_degraded?:string}; pdf_bytes: number[]}
 export interface DocumentFile {document: {doc_version_id: string; file_sha256: string; title: string; page_number?:number}; pdf_bytes: number[]}
 export type ReaderFile = SourceFile | DocumentFile;
 export async function parseDocument(versionId: string, useOcr=false, useDocling=false, options?:{autoEnhance?:boolean;pageNumbers?:number[]|null}) {
@@ -107,6 +110,24 @@ export async function updateMetadata(documentId: string, metadata: MetadataInput
 }
 
 const errors: Record<string, string> = {
+  MAGPIE_LOCAL_ONLY: "Magpie 连接目前仅支持本机地址，路径须为 /v1。",
+  MAGPIE_IDENTITY_INVALID: "目标服务未通过 Magpie 身份检查，请核对地址与端口。",
+  PROVIDER_CONSENT_REQUIRED: "请先确认允许向所选服务发送本次问题与检索片段。",
+  PROVIDER_CHANGED: "模型连接已更新，请重新选择连接并确认本次发送范围。",
+  PROVIDER_CREDENTIALS_REQUIRED: "当前引擎会话尚未配置此连接，请在设置中重新输入密钥并保存。",
+  PROVIDER_ENDPOINT_INVALID: "接口地址无效。远程接口必须使用 HTTPS，地址以 /v1 结尾且不含凭据或查询参数。",
+  PROVIDER_KEY_INVALID: "密钥格式无效，请检查是否包含换行。",
+  PROVIDER_AUTH_FAILED: "模型服务拒绝了认证，请核对当前会话密钥。",
+  PROVIDER_UNAVAILABLE: "无法连接模型服务，请确认地址与服务状态后重试。",
+  PROVIDER_TIMEOUT: "模型服务响应超时，请稍后重试。",
+  PROVIDER_HTTP_ERROR: "模型服务返回错误，请检查服务端状态和接口兼容性。",
+  PROVIDER_RESPONSE_INVALID: "模型服务返回了不兼容的数据格式。",
+  PROVIDER_REDIRECT_FORBIDDEN: "模型服务请求被重定向，已停止发送。请填写最终接口地址。",
+  PROVIDER_RESPONSE_LIMIT: "模型服务返回数据过大，本次请求已停止。",
+  EMBEDDING_CONTEXT_LIMIT: "文本超过向量模型长度限制，未进行截断索引；请重新解析为较短片段。",
+  INDEX_REBUILD_REQUIRED: "本地索引已变化或校验失败，请在文献页更新索引。已有向量会复用。",
+  PREPARATION_PARTIAL: "部分文献准备失败，其他文献仍可使用。请查看失败任务并重试。",
+  PREPARATION_FAILED: "文献准备未完成。原件已保留，请稍后重试。",
   DESKTOP_REQUIRED: "请在桌面应用中打开。浏览器预览无法访问本地文献。",
   SIDECAR_NOT_PACKAGED: "本地引擎尚未打包，请先按开发说明构建 Sidecar。",
   ENGINE_TIMEOUT: "本地组件加载或查询超时。任务记录仍保留，请稍后查看任务状态；无需直接重启。",
@@ -175,7 +196,7 @@ const errors: Record<string, string> = {
   MODEL_CONTEXT_LIMIT: "输入超出当前候选模型的上下文限制，请缩小范围或使用摘录模式。",
   MODEL_FINGERPRINT_CHANGED: "本地模型运行时或指纹变化，请重新校验配置。",
   SCOPE_STALE: "冻结范围的解析批次已经变化，请重新创建研究计划或问题。",
-  RESEARCH_REQUIRED: "这个问题需要逐篇覆盖，请在 Research 工作台建立计划，局部问答不能代表全库。",
+  RESEARCH_REQUIRED: "这个问题需要逐篇覆盖。当前问答仅检索局部来源，请缩小问题范围，不能据此推断全库结论。",
   REVIEW_CONFLICT: "该研究记录已有新修订，请关闭编辑器并刷新后重新核对。",
   EXPORT_EXISTS: "目标文件已经存在，请选择一个新文件名。",
   EXPORT_PATH_INVALID: "请选择工作区之外、普通本机目录内的新报告文件。",
@@ -186,7 +207,6 @@ const errors: Record<string, string> = {
   MODEL_HASH_MISMATCH: "模型文件校验不通过，未启用该资源。",
   MODEL_UNSUPPORTED: "当前仅接入了已批准固定版本的 multilingual-e5-small 候选。",
   NO_PARSED_DOCUMENTS: "请先导入并解析文献，再建立向量索引。",
-  INDEX_REBUILD_REQUIRED: "文献解析结果已变化或派生索引缺失，请在设置中重新构建；已存向量会复用。",
   INDEX_SCOPE_CHANGED: "索引构建期间文献范围变化，旧索引仍保留，请重试。",
   DIRECTORY_NOT_ALLOWED: "请选择本机的普通目录；符号链接、网络目录或不可访问的位置不能授权。",
   DIRECTORY_CHANGED: "授权目录发生变化，请重新选择。",
@@ -223,7 +243,7 @@ export interface HistoryPage {items:HistoryEntry[];next_cursor:string|null;total
 export interface WorkbenchSnapshot {answer_index:HistoryPage;research_index:HistoryPage;answers: AnswerRun[]; plans: ResearchPlan[]; generator: GeneratorStatus}
 export async function workbenchSnapshot(projectId: string | null, selection?:{answerId:string|null;planId:string|null;paperOffset:number;observationOffset:number}): Promise<WorkbenchSnapshot> {requireDesktop();return invoke("workbench_snapshot",{projectId,...selection});}
 export async function chooseGeneratorModel(): Promise<{job_id: string} | null> {requireDesktop(); return invoke("choose_generator_model");}
-export async function askQuestion(body: {question: string; version_ids: string[]; project_id: string | null; mode: string; strategy: string; conversation_id: string | null}): Promise<{id: string}> {requireDesktop();return invoke("ask_question",{body});}
+export async function askQuestion(body: {question: string; version_ids: string[]; project_id: string | null; mode: string; strategy: string; conversation_id: string | null; provider_id?: string | null; allow_external?: boolean; provider_revision?: number; per_paper_limit?: number}): Promise<{id: string; conversation_id: string}> {requireDesktop();return invoke("ask_question",{body});}
 export async function createResearchPlan(body: {question: string; fields: string[]; version_ids: string[]; project_id: string | null; mode: string}): Promise<{id: string}> {requireDesktop();return invoke("create_research_plan",{body});}
 export async function runResearchPlan(planId: string): Promise<{job_id: string}> {requireDesktop();return invoke("run_research_plan",{planId});}
 export async function reviewEvidence(targetId: string,status: string,note: string): Promise<void> {requireDesktop();return invoke("review_evidence",{targetId,body:{status,note}});}
@@ -257,3 +277,10 @@ export async function updateDocumentLifecycle(documentId:string,body:{expected_r
 
 export async function historyPage(kind:string,projectId:string|null,cursor:string):Promise<HistoryPage>{requireDesktop();return invoke("history_page",{kind,projectId,cursor});}
 export async function readResearchReport(reportId:string):Promise<Report>{requireDesktop();return invoke("read_research_report",{reportId});}
+
+export interface GenerationConnection {id:string; name:string; kind:"api"|"magpie"; base_url:string; model:string; revision:number; configured:boolean}
+export async function generationConnections():Promise<{providers:GenerationConnection[]}>{requireDesktop();return invoke("list_generation_providers");}
+export async function saveGenerationConnection(body:{id:string|null;name:string;kind:string;base_url:string;model:string;expected_revision:number;api_key:string}):Promise<GenerationConnection>{requireDesktop();return invoke("save_generation_provider",{body});}
+export async function probeGenerationConnection(identifier:string):Promise<{models:{id:string;name:string}[]}>{requireDesktop();return invoke("probe_generation_provider",{identifier});}
+
+export async function previewGenerationConnection(body:{kind:string;base_url:string;api_key:string}):Promise<{models:{id:string;name:string}[]}>{requireDesktop();return invoke("preview_generation_provider",{body});}

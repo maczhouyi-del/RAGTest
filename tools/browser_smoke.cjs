@@ -14,6 +14,7 @@ async function main() {
   const root = path.resolve(__dirname, '..');
   const evidence = path.join(root, process.env.RAGSYSTEM_EVIDENCE_DIR || 'docs/engineering/evidence/P0-implementation-2026-10-24');
   const p1 = process.env.RAGSYSTEM_P1_SMOKE === '1';
+  const mvp = process.env.RAGSYSTEM_MVP_SMOKE === '1';
   fs.mkdirSync(evidence, {recursive: true});
   let dataRoot = path.join(root, '.tools/test-data', 'browser-' + crypto.randomUUID());
   let token = crypto.randomBytes(32).toString('hex');
@@ -64,8 +65,14 @@ async function main() {
       fs.appendFileSync(path.join(evidence,'browser-commands-'+path.basename(dataRoot)+'.jsonl'),JSON.stringify({command,time:new Date().toISOString()})+'\n');
       if (command === 'workspace_snapshot') {
         const health=await rpc('GET','/v0/health'),docs=await rpc('GET','/v0/documents'),jobs=await rpc('GET','/v0/jobs'),projects=await rpc('GET','/v0/projects'),index=await rpc('GET','/v0/index'),generator=await rpc('GET','/v0/generator'),ocr=await rpc('GET','/v0/ocr'),docling=await rpc('GET','/v0/docling');
-        return {health, documents: docs.documents, jobs: jobs.jobs, projects: projects.projects, index, generator, ocr, docling, workspace: {label: path.basename(dataRoot), warning: ''}};
+        return {health, documents: docs.documents, jobs: jobs.jobs, projects: projects.projects, index, generator, ocr, docling, workspace: {label: path.basename(dataRoot), warning: '', directory:dataRoot}};
       }
+      if (command === 'prepare_mvp') return rpc('POST','/v0/mvp/prepare',{version_ids:args.versionIds,idempotency_key:crypto.randomUUID()});
+      if (command === 'read_mvp_answer') return rpc('GET',`/v0/answers/${args.answerId}`);
+      if (command === 'list_generation_providers') return rpc('GET','/v0/generation-providers');
+      if (command === 'save_generation_provider') return rpc('POST','/v0/generation-providers',args.body);
+      if (command === 'preview_generation_provider') return rpc('POST','/v0/generation-provider-probe',args.body);
+      if (command === 'probe_generation_provider') return rpc('POST',`/v0/generation-providers/${args.identifier}/probe`);
       if (command === 'workbench_snapshot') {
         const scope = args.projectId ? 'project_id=' + args.projectId + '&' : '';
         const answers=await rpc('GET','/v0/history/answers?'+scope),research=await rpc('GET','/v0/history/research?'+scope),generator=await rpc('GET','/v0/generator');
@@ -147,6 +154,9 @@ async function main() {
         } catch(error) {next.stdin.end();next.kill();throw error;}
         return;
       }
+      if (command === 'choose_pdf_and_import' && mvp) {
+        const grants=[];for(const name of ['N19-1423.pdf','2020.emnlp-main.550.pdf','N19-1423.pdf']){const grant=await rpc('POST','/v0/internal/file-grants',{path:path.join(root,'tests/fixtures/public',name)});grants.push(grant.file_grant_id);}return rpc('POST','/v0/import-batches',{file_grant_ids:grants,idempotency_key:crypto.randomUUID()});
+      }
       if (command === 'choose_pdf_and_import') {
         const grant = await rpc('POST', '/v0/internal/file-grants', {path: path.join(root, 'tests/fixtures/public/N19-1423.pdf')});
         return rpc('POST', '/v0/imports', {file_grant_id: grant.file_grant_id, idempotency_key: crypto.randomUUID(), project_id: args.projectId ?? null});
@@ -176,6 +186,10 @@ async function main() {
     await page.exposeFunction('__testBroker',(command,args)=>{const result=brokerChain.then(()=>broker(command,args));brokerChain=result.catch(()=>undefined);return result;});
     await page.addInitScript(() => {globalThis.isTauri = true; globalThis.__TAURI_INTERNALS__ = {invoke: (command, args) => globalThis.__testBroker(command, args)};});
     await page.goto(base);
+    if(mvp){
+      await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
+      await require('./browser_mvp.cjs')({page,rpc,root,evidence,errors});
+    }else{
     await page.locator('.sidebar-note').filter({hasText: '本地引擎已连接'}).waitFor();
     async function createProject(name) {
       await page.getByRole('button', {name: '新建项目', exact: true}).click();
@@ -274,8 +288,9 @@ async function main() {
         await page.screenshot({path: path.join(evidence, 'restored-workspace.png')});
       }
     }
+    }
     if (errors.length) throw new Error('BROWSER_PAGE_ERRORS:' + errors.join(','));
-    fs.writeFileSync(path.join(evidence, 'browser-smoke.json'), JSON.stringify({status: 'PASS', data_root: dataRoot, real_frozen_engine: true, transport: 'SIMULATED TAURI BRIDGE', native_dialogs_tested: false, full_native_e2e: false, windows_tested: false, p1_workflow: p1, workbench_workflow:process.env.RAGSYSTEM_WORKBENCH_SMOKE==='1', page_errors: errors, assertions: ['real import shown', 'real parse shown', 'real FTS hits', 'SHA-verified PDF canvas rendered', ...(p1 ? ['project create/switch', 'project-targeted import', 'unparsed PDF reading/page jump/zoom', 'same original in two projects', 'metadata persisted across reload', 'DOI normalization', 'tag filter'] : [])]}, null, 2));
+    fs.writeFileSync(path.join(evidence, mvp?(process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'browser-mvp-extractive-smoke.json':'browser-mvp-smoke.json'):'browser-smoke.json'), JSON.stringify({status: 'PASS', mvp_workflow:mvp, data_root: dataRoot, real_frozen_engine: true, transport: 'SIMULATED TAURI BRIDGE', native_dialogs_tested: false, full_native_e2e: false, windows_tested: false, p1_workflow: p1, workbench_workflow:process.env.RAGSYSTEM_WORKBENCH_SMOKE==='1', page_errors: errors, assertions: mvp?['three tabs/default QA','batch PDF/dedup/automatic parse','real E5/sqlite-vec index',process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'real cited extractive answer':'real cited local generation','SHA-verified PDF rendering','history reload','backup/restore persistence']:['real import shown', 'real parse shown', 'real FTS hits', 'SHA-verified PDF canvas rendered', ...(p1 ? ['project create/switch', 'project-targeted import', 'unparsed PDF reading/page jump/zoom', 'same original in two projects', 'metadata persisted across reload', 'DOI normalization', 'tag filter'] : [])]}, null, 2));
     console.log('BROWSER_UI_SMOKE: PASS; real frozen engine, simulated Tauri transport; not native/Windows acceptance');
   } catch (error) {
     const stamp = Date.now();

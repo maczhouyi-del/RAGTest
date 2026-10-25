@@ -20,7 +20,7 @@ export default function BackupSettings({workspace, onChange}: {workspace?: {labe
   return <section className="panel"><div className="panel-head"><h2>备份与恢复</h2><span>当前工作区：{workspace?.label ?? "RAGSystem"}</span></div>
     <div className="settings-content"><p>备份包含原件、文献与项目、任务和持久向量。恢复会先校验文件，再创建全新副本。</p>
       {workspace?.warning && <p role="alert">{workspace.warning}</p>}
-      <div className="settings-actions"><button disabled={busy} onClick={() => void run(createBackup, "备份任务已提交。请在任务与恢复中查看结果。")}>创建备份</button><button disabled={busy} onClick={() => void run(restoreBackup, "恢复任务已提交。校验成功后，可在下面使用恢复副本。")}>从备份恢复副本</button></div>
+      <div className="settings-actions"><button disabled={busy} onClick={() => void run(createBackup, "备份任务已提交。请在文献页查看任务进度。")}>创建备份</button><button disabled={busy} onClick={() => void run(restoreBackup, "恢复任务已提交。校验成功后，可在下面使用恢复副本。")}>从备份恢复副本</button></div>
       {error && <p role="alert" className="job-error">{error}</p>}{message && <p role="status">{message}</p>}
       <p className="settings-help">外部派生索引可以重建；模型权重单独管理。取消、失败或不完整的副本不会标为可使用。</p>
     </div>
