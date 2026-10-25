@@ -155,6 +155,45 @@ class Workbench:
             raise EngineError("NOT_FOUND", status=404)
         return dict(row) | {"versions": json.loads(row["versions_json"])}
 
+    def create_conversation(self, project_id=None, title="新会话"):
+        value, stamp = identifier(), utc_now()
+        with self.db.transaction() as conn:
+            if project_id is not None:
+                Library.require_project(conn, project_id)
+            conn.execute(
+                "INSERT INTO conversations(id,title,project_id,created_at,updated_at) VALUES(?,?,?,?,?)",
+                (value, title[:80], project_id, stamp, stamp),
+            )
+        return {"id": value, "title": title[:80], "created_at": stamp}
+
+    def conversation_context(self, conn, conversation_id):
+        # Strict character/UTF-8 bound (<= 6400 bytes), no new model calls.
+        # Prior answers are non-evidence context, never added to the citation pool.
+        rows = conn.execute(
+            "SELECT id,question,status FROM answer_runs WHERE conversation_id=? ORDER BY created_at DESC,id DESC LIMIT 3",
+            (conversation_id,),
+        ).fetchall()
+        result, remaining = [], 1600
+        for row in rows:
+            question = row["question"][: min(500, remaining)]
+            remaining -= len(question)
+            claims = conn.execute(
+                "SELECT text FROM claim_records WHERE run_id=? AND model_support='supported' ORDER BY rowid LIMIT 2",
+                (row["id"],),
+            ).fetchall()
+            answer = " ".join(r[0] for r in claims)[: min(300, remaining)]
+            remaining -= len(answer)
+            result.append(
+                {
+                    "question": question,
+                    "answer_context_not_evidence": answer,
+                    "status": row["status"],
+                }
+            )
+            if remaining <= 0:
+                break
+        return list(reversed(result))
+
     def create_answer(
         self,
         question,
@@ -211,17 +250,28 @@ class Workbench:
                 ).fetchone()
                 if row is None or row["project_id"] != project_id:
                     raise EngineError("CONVERSATION_SCOPE_MISMATCH", status=409)
+                if conn.execute(
+                    "SELECT 1 FROM answer_runs a JOIN jobs j ON j.id=a.job_id WHERE a.conversation_id=? AND j.status IN ('queued','running')",
+                    (conversation_id,),
+                ).fetchone():
+                    raise EngineError("CONVERSATION_BUSY", status=409)
             else:
                 conversation_id = identifier()
                 conn.execute(
-                    "INSERT INTO conversations VALUES(?,?,?,?)",
-                    (conversation_id, question[:80], project_id, utc_now()),
+                    "INSERT INTO conversations(id,title,project_id,created_at,updated_at) VALUES(?,?,?,?,?)",
+                    (conversation_id, question[:80], project_id, utc_now(), utc_now()),
                 )
+            context = self.conversation_context(conn, conversation_id)
+            conn.execute(
+                "UPDATE conversations SET updated_at=?,title=CASE WHEN NOT EXISTS(SELECT 1 FROM answer_runs WHERE conversation_id=?) THEN ? ELSE title END WHERE id=?",
+                (utc_now(), conversation_id, question[:80], conversation_id),
+            )
             job = self.jobs.enqueue(
                 "verify",
                 run_id,
                 {
                     "run_id": run_id,
+                    "conversation_context": context,
                     "per_paper_limit": per_paper_limit,
                     **({"generation_provider": provider} if provider else {}),
                 },
@@ -326,8 +376,14 @@ class Workbench:
             for document in scope["versions"]:
                 if self.current_runs(document["doc_version_id"]) != document["parse_run_ids"]:
                     raise EngineError("SCOPE_STALE")
+            context = json.loads(job["payload_json"]).get("conversation_context", [])
+            retrieval_query = (
+                run["question"] + "\n" + "\n".join(item["question"] for item in context[-2:])
+                if context
+                else run["question"]
+            )
             hits = self.search.search(
-                run["question"],
+                retrieval_query,
                 versions,
                 8,
                 scope["project_id"],
@@ -343,6 +399,12 @@ class Workbench:
             pool = {hit["chunk_id"]: hit["preview"] for hit in hits}
             result = {
                 "kind": "evidence_only",
+                "context_policy": {
+                    "version": "bounded-history-v1",
+                    "turns": len(context),
+                    "character_budget": 1600,
+                    "retrieval_query": retrieval_query,
+                },
                 "relevance_review": ranking,
                 "claims": [],
                 "evidence_ids": [],
@@ -357,6 +419,7 @@ class Workbench:
                     "answer",
                     {
                         "question": run["question"],
+                        "conversation_context_not_evidence": context,
                         "chunks": [{"chunk_id": key, "text": value} for key, value in pool.items()],
                     },
                 )

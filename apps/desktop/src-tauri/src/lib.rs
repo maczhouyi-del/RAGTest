@@ -562,7 +562,7 @@ async fn history_page(
     cursor: String,
     state: State<'_, Arc<Bridge>>,
 ) -> Result<Value, String> {
-    if !["answers", "research"].contains(&kind.as_str())
+    if !["answers", "research", "conversations"].contains(&kind.as_str())
         || cursor.len() > 512
         || !cursor
             .bytes()
@@ -600,6 +600,21 @@ async fn read_research_report(
     })
     .await
     .map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
+async fn create_conversation(state: State<'_, Arc<Bridge>>) -> Result<Value, String> {
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || bridge.with_engine(|engine| engine.request("POST", "/v0/conversations", None)))
+        .await.map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
+async fn conversation_turns(conversation_id: String, cursor: String, state: State<'_, Arc<Bridge>>) -> Result<Value, String> {
+    if !valid_job_id(&conversation_id) || cursor.len()>512 || !cursor.bytes().all(|b| b.is_ascii_alphanumeric() || b==b'-' || b==b'_') { return Err("INVALID_REQUEST".into()); }
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || bridge.with_engine(|engine| engine.request("GET", &format!("/v0/conversations/{conversation_id}/turns?cursor={cursor}&limit=30"), None)))
+        .await.map_err(|_| "ENGINE_TASK_FAILED")?
 }
 
 #[tauri::command]
@@ -1182,6 +1197,8 @@ pub fn run() {
             history_page,
             read_research_report,
             ask_question,
+            create_conversation,
+            conversation_turns,
             create_research_plan,
             run_research_plan,
             review_evidence,

@@ -284,3 +284,7 @@ export async function saveGenerationConnection(body:{id:string|null;name:string;
 export async function probeGenerationConnection(identifier:string):Promise<{models:{id:string;name:string}[]}>{requireDesktop();return invoke("probe_generation_provider",{identifier});}
 
 export async function previewGenerationConnection(body:{kind:string;base_url:string;api_key:string}):Promise<{models:{id:string;name:string}[]}>{requireDesktop();return invoke("preview_generation_provider",{body});}
+
+export interface ConversationTurns {items:AnswerRun[];total:number;next_cursor:string|null;conversation:{id:string;title:string}}
+export async function createConversation():Promise<{id:string}>{requireDesktop();return invoke("create_conversation");}
+export async function conversationTurns(conversationId:string,cursor=""):Promise<ConversationTurns>{requireDesktop();return invoke("conversation_turns",{conversationId,cursor});}

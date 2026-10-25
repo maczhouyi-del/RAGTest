@@ -41,7 +41,74 @@ class History:
     def __init__(self, workbench):
         self.work, self.db = workbench, workbench.db
 
+    def conversations(self, project_id=None, cursor=None, limit=30):
+        if type(limit) is not int or not 1 <= limit <= 50:
+            raise EngineError("INVALID_REQUEST")
+        suffix, args = "", [project_id]
+        if cursor:
+            stamp, identifier = decode_cursor(cursor)
+            suffix = " AND (c.updated_at<? OR (c.updated_at=? AND c.id<?))"
+            args += [stamp, stamp, identifier]
+        with self.db.connection() as conn:
+            conn.execute("BEGIN")
+            rows = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT c.id,c.title,c.title AS question,c.updated_at AS created_at,c.updated_at,"
+                    "(SELECT count(*) FROM answer_runs a WHERE a.conversation_id=c.id) AS turn_count "
+                    "FROM conversations c WHERE c.project_id IS ?"
+                    + suffix
+                    + " ORDER BY c.updated_at DESC,c.id DESC LIMIT ?",
+                    [*args, limit + 1],
+                )
+            ]
+            total = conn.execute(
+                "SELECT count(*) FROM conversations WHERE project_id IS ?", (project_id,)
+            ).fetchone()[0]
+        return {
+            "items": rows[:limit],
+            "total": total,
+            "next_cursor": encode_cursor(rows[limit - 1]) if len(rows) > limit else None,
+        }
+
+    def turns(self, identifier, project_id=None, cursor=None, limit=30):
+        if type(limit) is not int or not 1 <= limit <= 50:
+            raise EngineError("INVALID_REQUEST")
+        suffix, args = "", [identifier]
+        if cursor:
+            stamp, run_id = decode_cursor(cursor)
+            suffix = " AND (created_at<? OR (created_at=? AND id<?))"
+            args += [stamp, stamp, run_id]
+        with self.db.connection() as conn:
+            conn.execute("BEGIN")
+            conversation = conn.execute(
+                "SELECT * FROM conversations WHERE id=? AND project_id IS ?",
+                (identifier, project_id),
+            ).fetchone()
+            if conversation is None:
+                raise EngineError("NOT_FOUND", status=404)
+            rows = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT id,created_at FROM answer_runs WHERE conversation_id=?"
+                    + suffix
+                    + " ORDER BY created_at DESC,id DESC LIMIT ?",
+                    [*args, limit + 1],
+                )
+            ]
+            total = conn.execute(
+                "SELECT count(*) FROM answer_runs WHERE conversation_id=?", (identifier,)
+            ).fetchone()[0]
+        return {
+            "conversation": dict(conversation),
+            "items": [self.answer(r["id"], project_id) for r in reversed(rows[:limit])],
+            "total": total,
+            "next_cursor": encode_cursor(rows[limit - 1]) if len(rows) > limit else None,
+        }
+
     def index(self, kind, project_id=None, cursor=None, limit=30):
+        if kind == "conversations":
+            return self.conversations(project_id, cursor, limit)
         if kind not in {"answers", "research"} or type(limit) is not int or not 1 <= limit <= 50:
             raise EngineError("INVALID_REQUEST")
         table = "answer_runs" if kind == "answers" else "research_plans"

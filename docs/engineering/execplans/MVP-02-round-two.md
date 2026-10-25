@@ -25,3 +25,5 @@
 A IN PROGRESS；B/C/D/E NOT STARTED。开工审查：已有 SHA 原件/解析/索引/引用/备份、SQLite v14、会话外键和生成协议；缺会话分页与连续 UI、有界上下文、Provider 分层状态、快捷键、自动元数据来源。
 
 A 功能回归通过（build/browser exit0），首次 UI 就绪等待失败已保留并修复测试同步。原生中文 IME/Windows 未执行，见 A 报告；继续已授权 B。
+
+B 功能回归 PASS：136 Python通过/12跳过，Rust3通过/3忽略，浏览器13条断言，v14迁移和会话重载通过。首轮Rust编译失败已修复，日志保留。继续C；冻结app和组合重启留E。

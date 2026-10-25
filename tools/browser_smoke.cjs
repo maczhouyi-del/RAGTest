@@ -21,7 +21,10 @@ async function main() {
   let dataRoot = path.join(root, '.tools/test-data', 'browser-' + crypto.randomUUID());
   let token = crypto.randomBytes(32).toString('hex');
   const binary = path.join(root, 'apps/desktop/src-tauri/binaries/ragsystem-engine-aarch64-apple-darwin');
-  let child = spawn(binary, [], {stdio: ['pipe', 'pipe', 'pipe']});
+  const engineCommand=process.env.RAGSYSTEM_BROWSER_SOURCE_ENGINE==='1'?path.join(root,'engine/.venv/bin/python'):binary;
+  const engineArgs=process.env.RAGSYSTEM_BROWSER_SOURCE_ENGINE==='1'?['-m','ragsystem']:[];
+  const startEngine=()=>spawn(engineCommand,engineArgs,{stdio:['pipe','pipe','pipe'],env:{...process.env,PYTHONPATH:path.join(root,'engine')}});
+  let child = startEngine();
   let browser, server, page;
   const errors = [];
   try {
@@ -94,6 +97,8 @@ async function main() {
       if (command === 'undo_document_merge') return rpc('POST', `/v0/document-merges/${args.mergeId}/undo`);
       if (command === 'list_annotations') return rpc('GET', `/v0/documents/${args.versionId}/annotations`);
       if (command === 'save_annotation') return rpc('POST', `/v0/documents/${args.versionId}/annotations`, args.body);
+      if (command === 'create_conversation') return rpc('POST','/v0/conversations');
+      if (command === 'conversation_turns') return rpc('GET',`/v0/conversations/${args.conversationId}/turns?cursor=${args.cursor}`);
       if (command === 'ask_question') return rpc('POST', '/v0/answers', args.body);
       if (command === 'create_research_plan') return rpc('POST', '/v0/research', args.body);
       if (command === 'run_research_plan') return rpc('POST', `/v0/research/${args.planId}/run`);
@@ -144,7 +149,7 @@ async function main() {
         // Match native activation: authenticate the new process before retiring
         // the prior process. Keep test RPC assertions behind the visible UI swap.
         const nextToken=crypto.randomBytes(32).toString('hex');
-        const next=spawn(binary,[],{stdio:['pipe','pipe','pipe']});
+        const next=startEngine();
         try {
           const readiness=once(readline.createInterface({input:next.stdout}),'line');
           next.stdin.write(JSON.stringify({protocol_version:'0.1.0',token:nextToken,data_root:restored.data_root})+'\n');

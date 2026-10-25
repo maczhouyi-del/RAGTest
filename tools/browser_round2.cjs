@@ -18,6 +18,27 @@ module.exports=async function({page,rpc,evidence,errors,stage}){
  await input.fill('BERT pre-training');await page.getByRole('button',{name:'发送问题',exact:true}).waitFor({state:'visible'});check(!await page.getByRole('button',{name:'发送问题',exact:true}).isDisabled(),'SUBMIT_READY');await input.press('Enter');await input.press('Enter');await input.press('Enter');
  await wait(async()=>await count()===1);await page.getByRole('heading',{name:'BERT pre-training',exact:true}).waitFor();
  await wait(async()=>!(await rpc('GET','/v0/jobs')).jobs.some(j=>['queued','running'].includes(j.status)));
- check(await count()===1,'ENTER_AND_RAPID_KEYS_ONE_RUN');check(errors.length===0,'NO_BROWSER_ERRORS');
+ check(await count()===1,'ENTER_AND_RAPID_KEYS_ONE_RUN');
+ if(stage!=='A'){
+  const conversation=(await rpc('GET','/v0/history/conversations')).items[0];
+  for(const question of ['这两种任务有何区别？','作者验证了它们的重要性吗？']){
+   await wait(async()=>!await page.getByRole('button',{name:'发送问题',exact:true}).isDisabled()||await input.inputValue()==='');
+   await input.fill(question);await wait(async()=>!await page.getByRole('button',{name:'发送问题',exact:true}).isDisabled());await input.press('Enter');
+   await page.getByRole('heading',{name:question,exact:true}).waitFor();
+   await wait(async()=>!(await rpc('GET','/v0/jobs')).jobs.some(j=>['queued','running'].includes(j.status)));
+  }
+  check((await rpc('GET','/v0/history/conversations')).total===1,'THREE_TURNS_ONE_CONVERSATION');
+  check((await rpc('GET',`/v0/conversations/${conversation.id}/turns`)).total===3,'THREE_TURNS_PERSISTED');
+  await page.reload();await page.locator('.recent-conversation').first().click();
+  await page.waitForFunction(()=>document.querySelectorAll('.conversation-turn').length===3);
+  check(await page.locator('.conversation-turn').count()===3,'RELOAD_WHOLE_CONVERSATION');
+  for(const turn of await page.locator('.conversation-turn').all()){
+    const citation=turn.getByRole('button',{name:/查看引用 1/});
+    await citation.first().click();await page.getByRole('heading',{name:'原文核查',exact:true}).waitFor();
+    await page.getByRole('button',{name:'返回问答',exact:true}).click();
+  }
+  check(true,'EACH_TURN_SOURCE_OPENED');
+ }
+ check(errors.length===0,'NO_BROWSER_ERRORS');
  fs.writeFileSync(path.join(evidence,'stage-'+stage+'-browser.json'),JSON.stringify({status:'PASS',checks,native_IME:'NOT_EXECUTED',transport:'simulated Tauri; real engine'},null,2));
 };

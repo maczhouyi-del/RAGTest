@@ -37,3 +37,7 @@ EmbeddingSpace包含模型revision/权重/tokenizer SHA、预处理、归一化�
 备份使用OnlineBackup+被引用原件SHA manifest；恢复只允许新目录并校验路径、hash、FK/integrity。原始向量随SQLite备份，外部索引恢复后重建；没有LanceDB与SQLite跨存储同点快照保证。备份库接口已测，GUI流程未交付。
 
 未实现：Docling/OCR、表格结构/区域坐标、中文分词策略、混合检索/重排、LLM、Claim/Evidence核验、Research逐篇覆盖、云密钥、迁移旧数据、签名发布。现有API/DB不能作为这些能力已完成的证据。
+
+## MVP-02 B additive conversation API (2026-10-25)
+
+SQLite v15 adds conversations.updated_at, backfilled from existing answers, with activity/turn indexes. Existing answer and evidence IDs unchanged; migration saves pre-upgrade snapshot. POST /v0/conversations creates a conversation; GET /v0/history/conversations uses existing bounded cursor envelope sorted by recent activity; GET /v0/conversations/{id}/turns returns latest bounded page in chronological order with cursor for older pages. Existing answer/history endpoints remain supported. Rust validates UUID/cursor and uses authenticated engine bridge. A run can append to an existing conversation; concurrent active run rejected. History context is last <=3 turns/1600 text characters, is not evidence, and current retrieval/citation/support verification remains mandatory. External per-request consent includes bounded history. Prompt fingerprints updated for history semantics, no generation quality thresholds changed.

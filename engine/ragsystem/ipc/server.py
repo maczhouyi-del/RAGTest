@@ -876,6 +876,19 @@ def create_app(token: str, data_root: Path):
     ):
         return History(workbench).index(kind, project_id, cursor, limit)
 
+    @app.post("/v0/conversations", status_code=201)
+    def create_conversation():
+        return workbench.create_conversation()
+
+    @app.get("/v0/conversations/{conversation_id}/turns")
+    def conversation_turns(
+        conversation_id: str,
+        project_id: str | None = None,
+        cursor: str | None = None,
+        limit: int = 30,
+    ):
+        return History(workbench).turns(conversation_id, project_id, cursor, limit)
+
     @app.get("/v0/answers/{run_id}")
     def answer_detail(run_id: str, project_id: str | None = None):
         return History(workbench).answer(run_id, project_id)
