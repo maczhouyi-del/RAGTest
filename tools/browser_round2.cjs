@@ -39,6 +39,16 @@ module.exports=async function({page,rpc,evidence,errors,stage}){
   }
   check(true,'EACH_TURN_SOURCE_OPENED');
  }
+ if(['C','D','E'].includes(stage)){
+  const nav=page.getByRole('navigation',{name:'主导航'});
+  await nav.getByRole('button',{name:'设置',exact:true}).click();
+  for(const [vendor,url] of [['DeepSeek','https://api.deepseek.com/v1'],['OpenAI','https://api.openai.com/v1']]){
+   await page.getByRole('tab',{name:new RegExp('^'+vendor)}).click();
+   check(await page.getByLabel('接口地址（以 /v1 结尾）',{exact:true}).inputValue()===url,vendor+'_PRESET');
+  }
+  const protocol=await require('./browser_mvp_provider.cjs')({page,rpc});
+  check(protocol.status==='PASS','API_PROTOCOL_AND_DRAFT_SECRET_SAVE');
+ }
  check(errors.length===0,'NO_BROWSER_ERRORS');
  fs.writeFileSync(path.join(evidence,'stage-'+stage+'-browser.json'),JSON.stringify({status:'PASS',checks,native_IME:'NOT_EXECUTED',transport:'simulated Tauri; real engine'},null,2));
 };

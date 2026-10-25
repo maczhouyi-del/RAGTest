@@ -357,6 +357,7 @@ class Workbench:
             return
         token = job["lease_token"]
         external_generators = []
+        provider = None
         try:
             scope = self.scope(run["scope_id"])
             provider = json.loads(job["payload_json"]).get("generation_provider")
@@ -459,6 +460,8 @@ class Workbench:
                 ):
                     raise EngineError("MODEL_OUTPUT_INVALID")
                 checked.append((claim, support))
+            if provider and run["mode"] == "generative" and hits:
+                self.generation.providers.mark_generation(provider["id"])
             result["support_checks"] = []
             result["claim_details"] = []
             self.jobs.heartbeat(job["id"], token, seconds=1800)
@@ -541,6 +544,8 @@ class Workbench:
                 self.jobs.complete(job["id"], token, "answer_run:" + run_id, connection=conn)
         except Exception as exc:
             code = exc.code if isinstance(exc, EngineError) else "ANSWER_FAILED"
+            if provider:
+                self.generation.providers.mark_error(provider["id"], code)
             self.jobs.fail(job["id"], token, code)
             with self.db.transaction() as conn:
                 conn.execute(

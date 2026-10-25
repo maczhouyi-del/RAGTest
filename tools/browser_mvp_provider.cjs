@@ -6,6 +6,7 @@ module.exports=async function({page,rpc}){
   const server=http.createServer((request,response)=>{
     let input='';request.on('data',chunk=>input+=chunk);request.on('end',()=>{
       calls.push(request.url);
+      if(request.headers.authorization!=='Bearer local-protocol-fixture-key'){response.writeHead(401);response.end('{}');return;}
       response.setHeader('Content-Type','application/json');
       if(request.method==='GET'){response.end(JSON.stringify({data:[{id:'protocol-fixture'}]}));return;}
       const body=JSON.parse(input),support=body.messages[0].content.includes('entire claim');
@@ -17,15 +18,14 @@ module.exports=async function({page,rpc}){
   try{
     const nav=page.getByRole('navigation',{name:'主导航'});
     await nav.getByRole('button',{name:'设置',exact:true}).click();
-    if(await page.getByRole('tab',{name:/^API/}).count())await page.getByRole('tab',{name:/^API/}).click();
+    if(await page.getByRole('tab',{name:/^自定义兼容接口/}).count())await page.getByRole('tab',{name:/^自定义兼容接口/}).click();else if(await page.getByRole('tab',{name:/^API/}).count())await page.getByRole('tab',{name:/^API/}).click();
     await page.getByLabel('连接名称',{exact:true}).fill('Protocol Fixture');
     await page.getByLabel('接口地址（以 /v1 结尾）',{exact:true}).fill(`http://127.0.0.1:${server.address().port}/v1`);
     await page.getByLabel('API Key',{exact:true}).fill('local-protocol-fixture-key');
     await page.getByRole('button',{name:'获取模型列表',exact:true}).click();
-    await page.getByText('模型列表已获取，请选择模型后保存。API 密钥需重新输入。',{exact:true}).waitFor();
+    await page.getByText('模型列表已获取，连接/认证已验证。选择模型后直接保存，无需重复输入密钥。',{exact:true}).waitFor();
     if(await page.getByLabel('API Key',{exact:true}).inputValue()!=='')throw new Error('PROBE_KEY_NOT_CLEARED');
     await page.getByLabel('模型 ID',{exact:true}).fill('protocol-fixture');
-    await page.getByLabel('API Key',{exact:true}).fill('local-protocol-fixture-key');
     await page.getByRole('button',{name:'保存连接',exact:true}).click();
     await page.getByRole('button',{name:'Protocol Fixture · protocol-fixture',exact:true}).waitFor();
     if(await page.getByLabel('API Key',{exact:true}).inputValue()!=='')throw new Error('SAVE_KEY_NOT_CLEARED');
@@ -36,6 +36,8 @@ module.exports=async function({page,rpc}){
     await page.getByLabel('生成模型',{exact:true}).selectOption(connection.id);
     await page.getByLabel('你的问题',{exact:true}).fill('BERT protocol fixture');
     if(!await page.getByRole('button',{name:'发送问题',exact:true}).isDisabled())throw new Error('CONSENT_NOT_REQUIRED');
+    await page.getByLabel('你的问题',{exact:true}).press('Enter');
+    if(calls.some(url=>url==='/v1/chat/completions'))throw new Error('KEYBOARD_BYPASSED_CONSENT');
     const consent=page.getByRole('checkbox',{name:/允许本次请求/});
     await consent.check();
     await page.getByRole('button',{name:'发送问题',exact:true}).click();

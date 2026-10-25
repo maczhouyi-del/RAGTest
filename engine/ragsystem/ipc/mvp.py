@@ -6,7 +6,6 @@ from fastapi import BackgroundTasks
 from pydantic import BaseModel, ConfigDict, Field
 
 from ragsystem.domain.errors import EngineError
-from ragsystem.models.network_provider import NetworkProvider
 from ragsystem.workflows.preparation import Preparation
 
 
@@ -24,6 +23,13 @@ class ProviderRequest(BaseModel):
     base_url: str = Field(min_length=1, max_length=2048)
     model: str = Field(min_length=1, max_length=200)
     expected_revision: int = Field(ge=0)
+    vendor: str = Field(default="custom", pattern="^(custom|deepseek|openai|magpie)$")
+    output_mode: str = Field(default="json_object", pattern="^(json_object|prompt_json)$")
+    token_parameter: str = Field(
+        default="max_tokens", pattern="^(max_tokens|max_completion_tokens|none)$"
+    )
+    credential_token: str | None = Field(default=None, max_length=100, repr=False)
+    auth_mode: str = Field(default="bearer", pattern="^(bearer|none)$")
     api_key: str = Field(default="", max_length=4096, repr=False)
 
 
@@ -31,6 +37,7 @@ class ConnectionProbe(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     kind: str = Field(pattern="^(api|magpie)$")
     base_url: str = Field(min_length=1, max_length=2048)
+    auth_mode: str = Field(default="bearer", pattern="^(bearer|none)$")
     api_key: str = Field(default="", max_length=4096, repr=False)
 
 
@@ -43,22 +50,7 @@ def register_mvp(app, db, root, search, work, jobs, slot):
 
     @app.post("/v0/generation-provider-probe")
     def preview_provider(body: ConnectionProbe):
-        provider = NetworkProvider(
-            {
-                "id": "connection-test",
-                "name": "connection-test",
-                "kind": body.kind,
-                "base_url": body.base_url,
-                "model": "",
-                "revision": 1,
-            },
-            body.api_key,
-        )
-        try:
-            models = provider.models()
-            return {"models": models, "gateway_version": provider.gateway_version}
-        finally:
-            provider.close()
+        return work.generation.providers.preview(body.model_dump(exclude={"api_key"}), body.api_key)
 
     @app.post("/v0/generation-providers")
     def save_provider(body: ProviderRequest):
@@ -80,12 +72,7 @@ def register_mvp(app, db, root, search, work, jobs, slot):
 
     @app.post("/v0/generation-providers/{identifier}/probe")
     def probe_provider(identifier: str):
-        provider = work.generation.providers.require(identifier)
-        try:
-            models = provider.models()
-            return {"models": models, "gateway_version": provider.gateway_version}
-        finally:
-            provider.close()
+        return work.generation.providers.probe(identifier)
 
     def run(job_id, versions):
         try:

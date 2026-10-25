@@ -28,7 +28,13 @@ def protocol_server():
 
         def do_GET(self):
             calls.append((self.path, None, self.headers.get("Authorization")))
-            self.send_response(302 if state["redirect"] else 200)
+            status = (
+                401
+                if state.get("auth")
+                and self.headers.get("Authorization") != "Bearer valid-test-key"
+                else state.get("catalog_status", 200)
+            )
+            self.send_response(302 if state["redirect"] else status)
             self.send_header("Content-Type", "application/json")
             if state["redirect"]:
                 self.send_header("Location", "/forbidden")
@@ -45,21 +51,34 @@ def protocol_server():
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             calls.append((self.path, body, self.headers.get("Authorization")))
             if "entire claim" in body["messages"][0]["content"]:
-                result = {"status": "supported", "reason": "protocol fixture, not quality gold"}
+                result = {
+                    "status": "supported",
+                    "reason": "protocol fixture, not quality gold",
+                }
             else:
                 result = {
                     "claims": [
                         {
                             "text": "Protocol fixture draft",
-                            "evidence": [{"citation_id": "invented" if state["forged"] else "E1"}],
+                            "evidence": [
+                                {"citation_id": "invented" if state["forged"] else "E1"}
+                            ],
                         }
                     ]
                 }
-            self.send_response(200)
+            status = (
+                401
+                if state.get("auth")
+                and self.headers.get("Authorization") != "Bearer valid-test-key"
+                else state.get("post_status", 200)
+            )
+            self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(
-                json.dumps({"choices": [{"message": {"content": json.dumps(result)}}]}).encode()
+                json.dumps(
+                    {"choices": [{"message": {"content": json.dumps(result)}}]}
+                ).encode()
             )
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -101,16 +120,22 @@ def test_endpoint_rejects_unsafe_or_credential_urls(value):
         endpoint(value)
 
 
-def test_explicit_api_consent_citations_fingerprint_and_no_secrets_in_database(tmp_path):
+def test_explicit_api_consent_citations_fingerprint_and_no_secrets_in_database(
+    tmp_path,
+):
     root, db, version = store(tmp_path)
     Parser(db, root).parse(version, "parse")
     app = create_app("a" * 64, root)
     with (
         protocol_server() as (url, calls, state),
-        TestClient(app, base_url="http://127.0.0.1", headers={"X-RAG-Session": "a" * 64}) as client,
+        TestClient(
+            app, base_url="http://127.0.0.1", headers={"X-RAG-Session": "a" * 64}
+        ) as client,
     ):
         secret = "fixture-session-secret-598320"
-        response = client.post("/v0/generation-providers", json={**values(url), "api_key": secret})
+        response = client.post(
+            "/v0/generation-providers", json={**values(url), "api_key": secret}
+        )
         assert response.status_code == 200, response.text
         config = response.json()
         assert secret not in response.text and calls == []
@@ -122,22 +147,30 @@ def test_explicit_api_consent_citations_fingerprint_and_no_secrets_in_database(t
             "provider_id": config["id"],
             "provider_revision": config["revision"],
         }
-        assert client.post("/v0/answers", json=base).json()["code"] == "PROVIDER_CONSENT_REQUIRED"
+        assert (
+            client.post("/v0/answers", json=base).json()["code"]
+            == "PROVIDER_CONSENT_REQUIRED"
+        )
         assert calls == []
         assert (
             client.post(
-                "/v0/answers", json={**base, "allow_external": True, "provider_revision": 99}
+                "/v0/answers",
+                json={**base, "allow_external": True, "provider_revision": 99},
             ).json()["code"]
             == "PROVIDER_CHANGED"
         )
         probe = client.post(f"/v0/generation-providers/{config['id']}/probe")
         assert probe.json()["models"][0]["id"] == "protocol-fixture"
         assert calls[-1][1] is None
-        answer = client.post("/v0/answers", json={**base, "allow_external": True}).json()
+        answer = client.post(
+            "/v0/answers", json={**base, "allow_external": True}
+        ).json()
         run = client.get("/v0/answers/" + answer["id"]).json()
         assert run["status"] == "completed", run
         assert (
-            run["claims"] and run["evidence"] and run["claims"][0]["model_support"] == "supported"
+            run["claims"]
+            and run["evidence"]
+            and run["claims"][0]["model_support"] == "supported"
         )
         assert (
             run["result"]["model_fingerprint"]["configuration_sha256"]
@@ -145,13 +178,19 @@ def test_explicit_api_consent_citations_fingerprint_and_no_secrets_in_database(t
         )
         assert all(auth == "Bearer " + secret for _, _, auth in calls)
         state["forged"] = True
-        forged = client.post("/v0/answers", json={**base, "allow_external": True}).json()
+        forged = client.post(
+            "/v0/answers", json={**base, "allow_external": True}
+        ).json()
         failed = client.get("/v0/answers/" + forged["id"]).json()
-        assert failed["status"] == "failed" and failed["error_code"] == "MODEL_OUTPUT_INVALID"
+        assert (
+            failed["status"] == "failed"
+            and failed["error_code"] == "MODEL_OUTPUT_INVALID"
+        )
         assert failed["claims"] == [] and failed["evidence"] == []
         before = len(calls)
         empty = client.post(
-            "/v0/answers", json={**base, "question": "zzzzzznomatches", "allow_external": True}
+            "/v0/answers",
+            json={**base, "question": "zzzzzznomatches", "allow_external": True},
         ).json()
         assert client.get("/v0/answers/" + empty["id"]).json()["status"] == "refused"
         assert len(calls) == before
@@ -171,7 +210,7 @@ def test_changed_provider_never_silently_uses_new_endpoint_or_local_model(tmp_pa
     work = Workbench(db, root, HybridSearch(db, root))
     with protocol_server() as (url, calls, state):
         registry = work.generation.providers
-        config = registry.save(values(url), "")
+        config = registry.save(values(url, auth_mode="none"), "")
         run = work.create_answer(
             "BERT",
             [version],
@@ -183,11 +222,20 @@ def test_changed_provider_never_silently_uses_new_endpoint_or_local_model(tmp_pa
             provider_revision=config["revision"],
         )
         registry.save(
-            values(url, id=config["id"], expected_revision=config["revision"], model="changed"), ""
+            values(
+                url,
+                id=config["id"],
+                expected_revision=config["revision"],
+                model="changed",
+                auth_mode="none",
+            ),
+            "",
         )
         work.run_answer(run["id"])
         answer = work.answers()[0]
-        assert answer["status"] == "failed" and answer["error_code"] == "PROVIDER_CHANGED"
+        assert (
+            answer["status"] == "failed" and answer["error_code"] == "PROVIDER_CHANGED"
+        )
         assert calls == [] and work.generation.generator is None
         state["redirect"] = True
         provider = registry.require(config["id"])
@@ -195,7 +243,10 @@ def test_changed_provider_never_silently_uses_new_endpoint_or_local_model(tmp_pa
             provider.models()
         assert len(calls) == 1
         with db.connection() as conn:
-            assert conn.execute("SELECT count(*) FROM embedding_records").fetchone()[0] == 0
+            assert (
+                conn.execute("SELECT count(*) FROM embedding_records").fetchone()[0]
+                == 0
+            )
 
 
 def test_invalid_model_ids_and_response_sizes_fail_closed():

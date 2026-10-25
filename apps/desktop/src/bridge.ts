@@ -116,6 +116,11 @@ const errors: Record<string, string> = {
   PROVIDER_CHANGED: "模型连接已更新，请重新选择连接并确认本次发送范围。",
   PROVIDER_CREDENTIALS_REQUIRED: "当前引擎会话尚未配置此连接，请在设置中重新输入密钥并保存。",
   PROVIDER_ENDPOINT_INVALID: "接口地址无效。远程接口必须使用 HTTPS，地址以 /v1 结尾且不含凭据或查询参数。",
+  PROVIDER_CATALOG_UNSUPPORTED: "服务不支持模型目录，请手动输入模型 ID；兼容性尚未验证。",
+  PROVIDER_PARAMETER_UNSUPPORTED: "服务拒绝了生成参数。请检查模型是否支持 Chat Completions，并在接口兼容设置中调整 JSON 模式及输出预算参数。",
+  PROVIDER_NOAUTH_LOCAL_ONLY: "无需认证模式仅支持本机自定义兼容服务，远程服务必须使用凭据。",
+  PROVIDER_DRAFT_EXPIRED: "会话凭据草稿已过期或地址已变化，请重新输入密钥并检查连接。",
+  CONVERSATION_BUSY: "当前会话已有问答正在执行，请等待完成。",
   PROVIDER_KEY_INVALID: "密钥格式无效，请检查是否包含换行。",
   PROVIDER_AUTH_FAILED: "模型服务拒绝了认证，请核对当前会话密钥。",
   PROVIDER_UNAVAILABLE: "无法连接模型服务，请确认地址与服务状态后重试。",
@@ -278,12 +283,12 @@ export async function updateDocumentLifecycle(documentId:string,body:{expected_r
 export async function historyPage(kind:string,projectId:string|null,cursor:string):Promise<HistoryPage>{requireDesktop();return invoke("history_page",{kind,projectId,cursor});}
 export async function readResearchReport(reportId:string):Promise<Report>{requireDesktop();return invoke("read_research_report",{reportId});}
 
-export interface GenerationConnection {id:string; name:string; kind:"api"|"magpie"; base_url:string; model:string; revision:number; configured:boolean}
+export interface GenerationConnection {id:string; name:string; kind:"api"|"magpie"; base_url:string; model:string; revision:number; configured:boolean;saved:boolean;vendor:"custom"|"deepseek"|"openai"|"magpie";auth_mode:"bearer"|"none";output_mode:string;token_parameter:string;credential_available:boolean;connection_verified:boolean;generation_verified:boolean;last_error:string|null}
 export async function generationConnections():Promise<{providers:GenerationConnection[]}>{requireDesktop();return invoke("list_generation_providers");}
-export async function saveGenerationConnection(body:{id:string|null;name:string;kind:string;base_url:string;model:string;expected_revision:number;api_key:string}):Promise<GenerationConnection>{requireDesktop();return invoke("save_generation_provider",{body});}
+export async function saveGenerationConnection(body:{id:string|null;name:string;kind:string;base_url:string;model:string;expected_revision:number;api_key:string;vendor?:string;auth_mode?:string;output_mode?:string;token_parameter?:string;credential_token?:string|null}):Promise<GenerationConnection>{requireDesktop();return invoke("save_generation_provider",{body});}
 export async function probeGenerationConnection(identifier:string):Promise<{models:{id:string;name:string}[]}>{requireDesktop();return invoke("probe_generation_provider",{identifier});}
 
-export async function previewGenerationConnection(body:{kind:string;base_url:string;api_key:string}):Promise<{models:{id:string;name:string}[]}>{requireDesktop();return invoke("preview_generation_provider",{body});}
+export async function previewGenerationConnection(body:{kind:string;base_url:string;api_key:string;auth_mode?:string}):Promise<{models:{id:string;name:string}[];credential_token:string;connection_verified:boolean;warning:string|null}>{requireDesktop();return invoke("preview_generation_provider",{body});}
 
 export interface ConversationTurns {items:AnswerRun[];total:number;next_cursor:string|null;conversation:{id:string;title:string}}
 export async function createConversation():Promise<{id:string}>{requireDesktop();return invoke("create_conversation");}

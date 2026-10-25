@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from ragsystem.domain.errors import EngineError
 
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 
 
 def utc_now() -> str:

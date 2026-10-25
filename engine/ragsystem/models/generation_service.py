@@ -92,8 +92,21 @@ class GenerationService:
                 Path(config["directory"]) / GENERATOR_NAME,
                 self.db.path.parent / "model-worker-logs",
             )
-            if generator.fingerprint != config["fingerprint"]:
+            previous_fingerprint = config["fingerprint"]
+            # Only the explicitly versioned prompt upgrade is compatible; model,
+            # runtime and weight fingerprints still must match exactly.
+            compatible = dict(previous_fingerprint)
+            if compatible.get("prompt_version") == "evidence-json-v9":
+                compatible["prompt_version"] = "evidence-json-v10-history"
+            if generator.fingerprint != compatible:
                 generator.close()
                 raise EngineError("MODEL_FINGERPRINT_CHANGED")
+            if previous_fingerprint != generator.fingerprint:
+                config["fingerprint"] = generator.fingerprint
+                with self.db.transaction() as conn:
+                    conn.execute(
+                        "UPDATE app_settings SET value_json=?,updated_at=? WHERE key='generator'",
+                        (json.dumps(config), utc_now()),
+                    )
             self.generator = generator
         return self.generator
