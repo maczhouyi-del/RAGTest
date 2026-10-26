@@ -200,3 +200,7 @@ MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统�
 用户提供新Key并指定官方Flash，授权本次官方api.deepseek.com少量真实测试；新Key不发送到§20第三方地址。范围/上限沿用公开BERT片段和最多6次生成POST，先官方文档与真实目录核对模型ID。详见[DeepSeek测试计划](docs/engineering/execplans/MVP-03-deepseek-flash.md)。Key只内存、不改用户库/计费、不push/publish。
 
 §21实际结果：官方api.deepseek.com/v1目录HTTP200/2模型，deepseek-flash实际4次生成/支持检查POST均200；首轮BERT回答completed且真实引用第4/8页；第二轮同会话带1轮有界上下文，但支持检查uncertain，保持INSUFFICIENT_EVIDENCE拒答。3541 total token（含1271 reasoning），没有独立账单核对。测试脚本总体exit1失败保留，不能把API连通PASS当两轮回答/科研质量通过。凭据不落盘、撤权与独立SQLite/来源复核通过；无生产源码/用户库/安装包变更。详见[DeepSeek真实测试报告](docs/engineering/reports/MVP-03-deepseek-flash-2026-10-26.md)。
+
+## 22. 最新代码GitHub同步授权（2026-10-26）
+
+用户明确要求将最新代码推送GitHub，授权本次既有RAGTest origin/main正常同步，覆盖§18–21历史任务的“不自动push”限制。开工main fb73712且干净，fetch确认远端无独有提交、本地领先11。仅代码/测试/项目文档；论文、模型、用户库、凭据、原始日志和安装包不外发，不强推/合并/发Release。详见[GH-02计划](docs/engineering/execplans/GH-02-latest-source-upload.md)，实际远端核对与报告保留本机忽略证据目录。
