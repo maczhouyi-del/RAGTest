@@ -1,6 +1,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
 export interface Health {
+  system_question_forms?:Record<string,string[]>;
   status: "starting" | "ready" | "degraded";
   sidecar_version: string;
   schema_version: string;
@@ -247,7 +248,7 @@ export interface ScopeDocument {document_id?: string; doc_version_id: string; fi
 export interface Evidence {table_candidates?:{table_id:string;cell_id:string;row_start:number;column_start:number}[];text_origin?:string;id: string; source_anchor_id: string; quote: string; anchor_json: string; human_status: string; review_note: string; reviews?: {id:string;status:string;note:string;created_at:string}[]; current_source_status: string}
 export interface Claim {id: string; text: string; evidence_ids: string[]; source_status: string; model_support: string; comparability: string; human_status: string}
 export interface ModelAttempt {job_id: string; created_at: string; fingerprint: Record<string,unknown>}
-export interface AnswerRun {model_history?: ModelAttempt[];id: string; conversation_id: string; question: string; status: string; mode: string; strategy: string; error_code: string | null; scope: ScopeDocument[]; claims: Claim[]; evidence: Evidence[]; result: {relevance_review?:Record<string,unknown>|null; kind: string; coverage: string; support_checks?: {claim_id: string; status: string; reason: string}[]} | null}
+export interface AnswerRun {model_history?: ModelAttempt[];id: string; conversation_id: string; question: string; status: string; mode: string; strategy: string; error_code: string | null; scope: ScopeDocument[]; claims: Claim[]; evidence: Evidence[]; result: {intent?:string;retrieval_status?:string;text?:string;system_topic?:string;configuration?:Record<string,unknown>;relevance_review?:Record<string,unknown>|null; kind: string; coverage: string; support_checks?: {claim_id: string; status: string; reason: string}[]} | null}
 export interface Observation {model_fingerprint?: Record<string,unknown> | null;field: string; value: string; unit: string; evidence_id: string; experiment_id: string; conditions_status: string; meaning_status: string; value_origin: string; conditions: Record<string,string>; revision: number}
 export interface ResearchItem {observation_count?:number;observation_offset?:number;observation_next_offset?:number|null;field_counts?:Record<string,number>;doc_version_id: string; status: string; processed_chunks: number; total_chunks: number; error_code: string | null; observations: Observation[]}
 export interface Report {source_warnings?:{doc_version_id:string;state:string;parse_changed?:boolean}[];id: string; revision: number; body: string; created_at: string}

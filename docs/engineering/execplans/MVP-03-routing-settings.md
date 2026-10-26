@@ -20,6 +20,8 @@ macOS26.2 arm64/16GB；npm --prefix apps/desktop run build；engine/.venv/bin/py
 
 ## 状态
 
-A IN PROGRESS；B/C NOT STARTED。审查已确认旧逐轮consent、所有run默认检索、selectedId缺失时退回最后答案、设置纵向堆叠均存在。
+A/B IMPLEMENTED AND TESTED；C IN PROGRESS。审查已确认旧逐轮consent、所有run默认检索、selectedId缺失时退回最后答案、设置纵向堆叠均存在。
 
 A实现/定向及浏览器回归通过；sqlite.Row与异步开关问题已修复，失败日志保留；详见A报告。B开始。
+
+B系统信息/证据隔离及28条真实引擎浏览器检查通过，全文回归163 PASS/12 SKIP；见B报告，C开始。

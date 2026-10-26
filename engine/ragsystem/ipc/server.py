@@ -200,7 +200,7 @@ class GeneratorRequest(StrictModel):
 
 class AnswerRequest(StrictModel):
     question: str = Field(min_length=1, max_length=4000)
-    version_ids: list[str] = Field(min_length=1, max_length=1000)
+    version_ids: list[str] = Field(default_factory=list, max_length=1000)
     project_id: str | None = Field(default=None, min_length=1, max_length=100)
     mode: str = Field(pattern="^(extractive|generative)$")
     strategy: str = Field(
@@ -329,10 +329,13 @@ def create_app(token: str, data_root: Path):
 
     @app.get("/v0/health")
     def health():
+        from ragsystem.workflows.system_information import system_question_forms
+
         return {
             "status": "ready",
             "sidecar_version": __version__,
-            "api_revision": "0.2-local",
+            "api_revision": "0.4-local",
+            "system_question_forms": system_question_forms(),
             "schema_version": "0.1-draft",
             "capabilities": [
                 "pdf_storage",

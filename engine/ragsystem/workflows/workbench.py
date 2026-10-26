@@ -14,6 +14,7 @@ from ragsystem.retrieval.source_search import Sources
 from ragsystem.retrieval.tokenizer import search_terms
 from ragsystem.storage.database import utc_now
 from ragsystem.verification.quotes import validate_quote
+from ragsystem.workflows.system_information import runtime_information, system_information_topic
 
 
 def identifier():
@@ -170,7 +171,7 @@ class Workbench:
         # Strict character/UTF-8 bound (<= 6400 bytes), no new model calls.
         # Prior answers are non-evidence context, never added to the citation pool.
         rows = conn.execute(
-            "SELECT id,question,status FROM answer_runs WHERE conversation_id=? ORDER BY created_at DESC,id DESC LIMIT 3",
+            "SELECT id,question,status FROM answer_runs WHERE conversation_id=? AND COALESCE(json_extract(result_json,'$.kind'),'') != 'system_info' ORDER BY created_at DESC,id DESC LIMIT 3",
             (conversation_id,),
         ).fetchall()
         result, remaining = [], 1600
@@ -236,12 +237,23 @@ class Workbench:
             )
         ):
             raise EngineError("RESEARCH_REQUIRED", status=409)
+        system_topic = system_information_topic(question)
         provider = None
-        if mode == "generative" and provider_id not in {None, "local"}:
+        if not system_topic and mode == "generative" and provider_id not in {None, "local"}:
             provider = self.generation.providers.freeze(
                 provider_id, allow_external, provider_revision
             )
-        scope_id = self.freeze(versions, project_id)
+        if system_topic:
+            scope_id = identifier()
+            with self.db.transaction() as conn:
+                if project_id is not None:
+                    Library.require_project(conn, project_id)
+                conn.execute(
+                    "INSERT INTO scope_snapshots VALUES(?,?,?,?)",
+                    (scope_id, project_id, "[]", utc_now()),
+                )
+        else:
+            scope_id = self.freeze(versions, project_id)
         run_id = identifier()
         with self.db.transaction() as conn:
             if conversation_id:
@@ -271,6 +283,10 @@ class Workbench:
                 run_id,
                 {
                     "run_id": run_id,
+                    "system_topic": system_topic,
+                    "selected_generation_model": (
+                        "extractive" if mode == "extractive" else provider_id or "local"
+                    ),
                     "conversation_context": context,
                     "per_paper_limit": per_paper_limit,
                     **({"generation_provider": provider} if provider else {}),
@@ -359,6 +375,19 @@ class Workbench:
         external_generators = []
         provider = None
         try:
+            payload = json.loads(job["payload_json"])
+            if payload.get("system_topic"):
+                result = runtime_information(
+                    self, payload["system_topic"], payload["selected_generation_model"]
+                )
+                with self.db.transaction() as conn:
+                    self.jobs.require_lease(conn, job["id"], token)
+                    conn.execute(
+                        "UPDATE answer_runs SET status='completed',result_json=?,error_code=NULL WHERE id=?",
+                        (json.dumps(result, ensure_ascii=False), run_id),
+                    )
+                    self.jobs.complete(job["id"], token, "answer_run:" + run_id, connection=conn)
+                return
             scope = self.scope(run["scope_id"])
             provider = json.loads(job["payload_json"]).get("generation_provider")
 
@@ -400,6 +429,8 @@ class Workbench:
             pool = {hit["chunk_id"]: hit["preview"] for hit in hits}
             result = {
                 "kind": "evidence_only",
+                "intent": "literature",
+                "retrieval_status": "hits" if hits else "no_hits",
                 "context_policy": {
                     "version": "bounded-history-v1",
                     "turns": len(context),
