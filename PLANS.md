@@ -194,3 +194,9 @@ MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统�
 用户提供指定HTTPS兼容endpoint和Key，明确要求真实测试。仅本次少量协议/公开BERT片段问答外发获准，不含真实用户PDF/源码/完整PDF/其他服务/今后自动调用；Key只内存。先真实模型列表，最多6次生成POST/每次900输出token，隔离工作区，保留支持性检查，不改检索质量、不push/publish。详见[真实API计划](docs/engineering/execplans/MVP-03-real-api.md)。
 
 §20实际结果：指定真实API有效Key模型目录200/180项，无Key及错误Key对照401；qwen-flash首次生成403，服务insufficient_quota（免费额度耗尽），停止生成调用。应用现有401/403统一AUTH_FAILED会误报认证，问题保留；没有改账户计费/充值、换模型/放宽支持性。1次生成POST只发送公开BERT 3片段合计1141字符。真实带引用/多轮BLOCKED，安全/撤权测试通过。详见[真实API报告](docs/engineering/reports/MVP-03-real-api-2026-10-26.md)。本轮生产源码不变，不push/publish。
+
+## 21. DeepSeek官方Flash真实测试（2026-10-26）
+
+用户提供新Key并指定官方Flash，授权本次官方api.deepseek.com少量真实测试；新Key不发送到§20第三方地址。范围/上限沿用公开BERT片段和最多6次生成POST，先官方文档与真实目录核对模型ID。详见[DeepSeek测试计划](docs/engineering/execplans/MVP-03-deepseek-flash.md)。Key只内存、不改用户库/计费、不push/publish。
+
+§21实际结果：官方api.deepseek.com/v1目录HTTP200/2模型，deepseek-flash实际4次生成/支持检查POST均200；首轮BERT回答completed且真实引用第4/8页；第二轮同会话带1轮有界上下文，但支持检查uncertain，保持INSUFFICIENT_EVIDENCE拒答。3541 total token（含1271 reasoning），没有独立账单核对。测试脚本总体exit1失败保留，不能把API连通PASS当两轮回答/科研质量通过。凭据不落盘、撤权与独立SQLite/来源复核通过；无生产源码/用户库/安装包变更。详见[DeepSeek真实测试报告](docs/engineering/reports/MVP-03-deepseek-flash-2026-10-26.md)。
