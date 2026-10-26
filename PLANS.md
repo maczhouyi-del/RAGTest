@@ -188,3 +188,9 @@ MVP-02 A–E本地实现及最终自动化组合已完成：154 Python通过/7�
 MVP-03 A/B源码及定向/浏览器验证已完成：A配置修订绑定授权，B严格系统信息分流与当前run证据隔离；B全Python163 PASS/12 SKIP。失败、测试边界见A/B报告；C分类设置开始。未将模拟API、浏览器桥或工程功能标为真实厂商/原生完整/科研质量通过。
 
 MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统信息无检索/模型、当前run证据、六分类单面板。最终Python163 PASS/12 SKIP、冻结组合78检查、Rust复测3 PASS/3 ignored；新Mac开发包及真实原生启动回收PASS。并发冷启动首轮Rust失败日志保留，原生完整业务/真实付费API/Windows/科研质量不标通过。详见[MVP-03组合验收](docs/engineering/reports/MVP-03-acceptance-2026-10-26.md)。三个任务独立本地提交，未push/publish，任务结束后停止。
+
+## 20. MVP-03 真实兼容API测试授权（2026-10-26）
+
+用户提供指定HTTPS兼容endpoint和Key，明确要求真实测试。仅本次少量协议/公开BERT片段问答外发获准，不含真实用户PDF/源码/完整PDF/其他服务/今后自动调用；Key只内存。先真实模型列表，最多6次生成POST/每次900输出token，隔离工作区，保留支持性检查，不改检索质量、不push/publish。详见[真实API计划](docs/engineering/execplans/MVP-03-real-api.md)。
+
+§20实际结果：指定真实API有效Key模型目录200/180项，无Key及错误Key对照401；qwen-flash首次生成403，服务insufficient_quota（免费额度耗尽），停止生成调用。应用现有401/403统一AUTH_FAILED会误报认证，问题保留；没有改账户计费/充值、换模型/放宽支持性。1次生成POST只发送公开BERT 3片段合计1141字符。真实带引用/多轮BLOCKED，安全/撤权测试通过。详见[真实API报告](docs/engineering/reports/MVP-03-real-api-2026-10-26.md)。本轮生产源码不变，不push/publish。
