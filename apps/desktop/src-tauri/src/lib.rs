@@ -1098,6 +1098,14 @@ async fn preview_generation_provider(
 }
 
 #[tauri::command]
+async fn authorize_generation_provider(identifier: String, expected_revision: u64, enabled: bool, state: State<'_, Arc<Bridge>>) -> Result<Value, String> {
+    if !valid_job_id(&identifier) || expected_revision==0 { return Err("INVALID_REQUEST".into()); }
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || bridge.with_engine(|engine| engine.request("POST", &format!("/v0/generation-providers/{identifier}/authorization"), Some(json!({"expected_revision":expected_revision,"enabled":enabled})))))
+      .await.map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
 async fn probe_generation_provider(
     identifier: String,
     state: State<'_, Arc<Bridge>>,
@@ -1174,6 +1182,7 @@ pub fn run() {
             list_generation_providers,
             save_generation_provider,
             probe_generation_provider,
+            authorize_generation_provider,
             prepare_mvp,
             read_mvp_answer,
             workspace_snapshot,

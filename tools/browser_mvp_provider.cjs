@@ -26,7 +26,7 @@ module.exports=async function({page,rpc}){
     await page.getByText('模型列表已获取，连接/认证已验证。选择模型后直接保存，无需重复输入密钥。',{exact:true}).waitFor();
     if(await page.getByLabel('API Key',{exact:true}).inputValue()!=='')throw new Error('PROBE_KEY_NOT_CLEARED');
     await page.getByLabel('模型 ID',{exact:true}).fill('protocol-fixture');
-    await page.getByRole('button',{name:'保存连接',exact:true}).click();
+    await page.getByRole('button',{name:'保存并启用',exact:true}).click();
     await page.getByRole('button',{name:'Protocol Fixture · protocol-fixture',exact:true}).waitFor();
     if(await page.getByLabel('API Key',{exact:true}).inputValue()!=='')throw new Error('SAVE_KEY_NOT_CLEARED');
     const connection=(await rpc('GET','/v0/generation-providers')).providers[0];
@@ -35,17 +35,12 @@ module.exports=async function({page,rpc}){
     await page.waitForFunction(()=>[...document.querySelectorAll('select[aria-label="生成模型"] option')].some(item=>item.textContent.includes('Protocol Fixture')));
     await page.getByLabel('生成模型',{exact:true}).selectOption(connection.id);
     await page.getByLabel('你的问题',{exact:true}).fill('BERT protocol fixture');
-    if(!await page.getByRole('button',{name:'发送问题',exact:true}).isDisabled())throw new Error('CONSENT_NOT_REQUIRED');
-    await page.getByLabel('你的问题',{exact:true}).press('Enter');
-    if(calls.some(url=>url==='/v1/chat/completions'))throw new Error('KEYBOARD_BYPASSED_CONSENT');
-    const consent=page.getByRole('checkbox',{name:/允许本次请求/});
-    await consent.check();
+    if(await page.getByRole('checkbox',{name:/允许本次请求/}).count())throw new Error('PER_TURN_CONSENT_REMAINS');
     await page.getByRole('button',{name:'发送问题',exact:true}).click();
     await page.getByRole('heading',{name:'BERT protocol fixture',exact:true}).waitFor();
     await page.getByText('Protocol fixture draft',{exact:true}).waitFor();
-    if(await consent.isChecked())throw new Error('CONSENT_NOT_RESET');
     if((await rpc('GET','/v0/index')).generation!==before)throw new Error('MODEL_CHANGE_REBUILT_INDEX');
     if(calls.filter(url=>url==='/v1/chat/completions').length!==2)throw new Error('API_PROTOCOL_NOT_EXECUTED');
-    return {status:'PASS',scope:'protocol fixture only',catalog:true,key_cleared:true,consent_required:true,consent_reset:true,index_unchanged:true};
+    return {status:'PASS',scope:'protocol fixture only',catalog:true,key_cleared:true,provider_authorization:true,per_turn_checkbox:false,index_unchanged:true};
   }finally{await new Promise(resolve=>server.close(resolve));}
 };

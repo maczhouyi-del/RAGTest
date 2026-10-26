@@ -31,7 +31,8 @@ def test_draft_preserves_secret_for_save_but_never_persists_and_states_are_real(
         assert saved["credential_available"] and saved["connection_verified"]
         assert not saved["generation_verified"]
         assert all(body is None for _, body, _ in calls)
-        with pytest.raises(EngineError, match="PROVIDER_CONSENT_REQUIRED"):
+        registry.set_authorization(saved["id"], saved["revision"], False)
+        with pytest.raises(EngineError, match="PROVIDER_DOCUMENT_QA_DISABLED"):
             work.create_answer(
                 "BERT",
                 [version],
@@ -39,7 +40,9 @@ def test_draft_preserves_secret_for_save_but_never_persists_and_states_are_real(
                 "generative",
                 "keyword",
                 provider_id=saved["id"],
+                provider_revision=saved["revision"],
             )
+        registry.set_authorization(saved["id"], saved["revision"], True)
         run = work.create_answer(
             "BERT",
             [version],

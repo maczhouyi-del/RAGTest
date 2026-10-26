@@ -23,6 +23,7 @@ class ProviderRequest(BaseModel):
     base_url: str = Field(min_length=1, max_length=2048)
     model: str = Field(min_length=1, max_length=200)
     expected_revision: int = Field(ge=0)
+    enable_for_documents: bool | None = None
     vendor: str = Field(default="custom", pattern="^(custom|deepseek|openai|magpie)$")
     output_mode: str = Field(default="json_object", pattern="^(json_object|prompt_json)$")
     token_parameter: str = Field(
@@ -31,6 +32,12 @@ class ProviderRequest(BaseModel):
     credential_token: str | None = Field(default=None, max_length=100, repr=False)
     auth_mode: str = Field(default="bearer", pattern="^(bearer|none)$")
     api_key: str = Field(default="", max_length=4096, repr=False)
+
+
+class ProviderAuthorization(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    expected_revision: int = Field(ge=1)
+    enabled: bool
 
 
 class ConnectionProbe(BaseModel):
@@ -69,6 +76,12 @@ def register_mvp(app, db, root, search, work, jobs, slot):
             )
         finally:
             slot.release()
+
+    @app.post("/v0/generation-providers/{identifier}/authorization")
+    def authorize_provider(identifier: str, body: ProviderAuthorization):
+        return work.generation.providers.set_authorization(
+            identifier, body.expected_revision, body.enabled
+        )
 
     @app.post("/v0/generation-providers/{identifier}/probe")
     def probe_provider(identifier: str):

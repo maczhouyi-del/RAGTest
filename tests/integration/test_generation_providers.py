@@ -100,6 +100,7 @@ def values(url, **extra):
         "base_url": url,
         "model": "protocol-fixture",
         "expected_revision": 0,
+        "enable_for_documents": True,  # Protocol fixtures explicitly enable their test provider.
         **extra,
     }
 
@@ -134,7 +135,8 @@ def test_explicit_api_consent_citations_fingerprint_and_no_secrets_in_database(
     ):
         secret = "fixture-session-secret-598320"
         response = client.post(
-            "/v0/generation-providers", json={**values(url), "api_key": secret}
+            "/v0/generation-providers",
+            json={**values(url, enable_for_documents=False), "api_key": secret},
         )
         assert response.status_code == 200, response.text
         config = response.json()
@@ -149,9 +151,16 @@ def test_explicit_api_consent_citations_fingerprint_and_no_secrets_in_database(
         }
         assert (
             client.post("/v0/answers", json=base).json()["code"]
-            == "PROVIDER_CONSENT_REQUIRED"
+            == "PROVIDER_DOCUMENT_QA_DISABLED"
         )
         assert calls == []
+        assert (
+            client.post(
+                f"/v0/generation-providers/{config['id']}/authorization",
+                json={"expected_revision": config["revision"], "enabled": True},
+            ).status_code
+            == 200
+        )
         assert (
             client.post(
                 "/v0/answers",
@@ -268,7 +277,10 @@ def test_optional_magpie_identity_catalog_consent_and_restart(tmp_path):
         assert provider.models()[0]["id"] == "protocol-fixture"
         assert [item[0] for item in calls] == ["/api/hello", "/v1/models"]
         assert all(item[2] == "Bearer magpie-ragsystem" for item in calls)
-        with pytest.raises(EngineError, match="PROVIDER_CONSENT_REQUIRED"):
+        work.generation.providers.set_authorization(
+            config["id"], config["revision"], False
+        )
+        with pytest.raises(EngineError, match="PROVIDER_DOCUMENT_QA_DISABLED"):
             work.create_answer(
                 "BERT",
                 [version],
@@ -278,6 +290,9 @@ def test_optional_magpie_identity_catalog_consent_and_restart(tmp_path):
                 provider_id=config["id"],
                 provider_revision=config["revision"],
             )
+        work.generation.providers.set_authorization(
+            config["id"], config["revision"], True
+        )
         run = work.create_answer(
             "BERT",
             [version],

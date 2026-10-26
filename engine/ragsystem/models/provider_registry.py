@@ -38,6 +38,7 @@ class ProviderRegistry:
         available = (
             row["kind"] == "magpie" or row["auth_mode"] == "none" or bool(self._keys.get(row["id"]))
         )
+        authorization = self.authorization(row)
         return {
             **row,
             "saved": True,
@@ -46,9 +47,71 @@ class ProviderRegistry:
             "connection_verified": state.get("connection_verified", False),
             "generation_verified": state.get("generation_verified", False),
             "last_error": state.get("last_error"),
-            "requires_consent": True,
+            "requires_consent": False,
+            **authorization,
+            "can_answer": available and authorization["document_qa_enabled"],
             "fingerprint": definition(row),
         }
+
+    @staticmethod
+    def critical_configuration(row):
+        return tuple(
+            row[key]
+            for key in (
+                "kind",
+                "base_url",
+                "model",
+                "vendor",
+                "auth_mode",
+                "output_mode",
+                "token_parameter",
+            )
+        )
+
+    def authorization(self, row, connection=None):
+        if connection is None:
+            with self.db.connection() as conn:
+                return self.authorization(row, conn)
+        saved = connection.execute(
+            "SELECT * FROM generation_provider_authorizations WHERE provider_id=?", (row["id"],)
+        ).fetchone()
+        return {
+            "document_qa_enabled": bool(
+                saved and saved["enabled"] and saved["provider_revision"] == row["revision"]
+            ),
+            "authorization_revision": saved["provider_revision"] if saved else None,
+        }
+
+    def set_authorization(self, identifier, revision, enabled):
+        if type(enabled) is not bool:
+            raise EngineError("INVALID_REQUEST")
+        with self.db.transaction() as conn:
+            row = conn.execute(
+                "SELECT * FROM generation_providers WHERE id=?", (identifier,)
+            ).fetchone()
+            if row is None:
+                raise EngineError("PROVIDER_NOT_FOUND", status=404)
+            if row["revision"] != revision:
+                raise EngineError("PROVIDER_CHANGED", status=409)
+            conn.execute(
+                "INSERT INTO generation_provider_authorizations VALUES(?,?,?,?) ON CONFLICT(provider_id) DO UPDATE SET provider_revision=excluded.provider_revision,enabled=excluded.enabled,updated_at=excluded.updated_at",
+                (identifier, revision, int(enabled), utc_now()),
+            )
+        return self.public(dict(row))
+
+    def assert_authorized(self, identifier, revision):
+        with self.db.connection() as conn:
+            conn.execute("BEGIN")
+            row = conn.execute(
+                "SELECT * FROM generation_providers WHERE id=?", (identifier,)
+            ).fetchone()
+            if row is None:
+                raise EngineError("PROVIDER_NOT_FOUND", status=404)
+            if row["revision"] != revision:
+                raise EngineError("PROVIDER_CHANGED", status=409)
+            if not self.authorization(row, conn)["document_qa_enabled"]:
+                raise EngineError("PROVIDER_DOCUMENT_QA_DISABLED", status=403)
+        return dict(row)
 
     def mark_error(self, identifier, code):
         self._states.setdefault(identifier, {})["last_error"] = code
@@ -126,6 +189,9 @@ class ProviderRegistry:
             "token_parameter": "max_tokens",
             **values,
         }
+        enable_requested = values.pop("enable_for_documents", None)
+        if enable_requested is not None and type(enable_requested) is not bool:
+            raise EngineError("INVALID_REQUEST")
         verified = False
         credential_token = values.pop("credential_token", None)
         if credential_token:
@@ -143,9 +209,9 @@ class ProviderRegistry:
         NetworkProvider({**values, "id": identifier, "revision": 1}, key).close()
         with self.db.transaction() as conn:
             current = conn.execute(
-                "SELECT revision FROM generation_providers WHERE id=?", (identifier,)
+                "SELECT * FROM generation_providers WHERE id=?", (identifier,)
             ).fetchone()
-            revision = current[0] if current else 0
+            revision = current["revision"] if current else 0
             if values["expected_revision"] != revision:
                 raise EngineError("PROVIDER_CHANGED", status=409)
             if (
@@ -153,6 +219,21 @@ class ProviderRegistry:
                 and conn.execute("SELECT COUNT(*) FROM generation_providers").fetchone()[0] >= 16
             ):
                 raise EngineError("PROVIDER_LIMIT")
+            if (
+                not key
+                and not credential_token
+                and current
+                and self.identity(dict(current)) == self.identity(values)
+            ):
+                key = self._keys.get(identifier, "")
+            unchanged = bool(
+                current
+                and self.critical_configuration(current) == self.critical_configuration(values)
+            )
+            was_enabled = bool(current and self.authorization(current, conn)["document_qa_enabled"])
+            enabled = (
+                enable_requested if enable_requested is not None else unchanged and was_enabled
+            )
             conn.execute(
                 "INSERT INTO generation_providers(id,name,kind,base_url,model,revision,updated_at,vendor,auth_mode,output_mode,token_parameter) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,kind=excluded.kind,base_url=excluded.base_url,model=excluded.model,revision=excluded.revision,updated_at=excluded.updated_at,vendor=excluded.vendor,auth_mode=excluded.auth_mode,output_mode=excluded.output_mode,token_parameter=excluded.token_parameter",
                 (
@@ -169,6 +250,10 @@ class ProviderRegistry:
                     values["token_parameter"],
                 ),
             )
+            conn.execute(
+                "INSERT INTO generation_provider_authorizations VALUES(?,?,?,?) ON CONFLICT(provider_id) DO UPDATE SET provider_revision=excluded.provider_revision,enabled=excluded.enabled,updated_at=excluded.updated_at",
+                (identifier, revision + 1, int(enabled), utc_now()),
+            )
         if key:
             self._keys[identifier] = key
         else:
@@ -182,7 +267,7 @@ class ProviderRegistry:
             self._drafts.pop(credential_token, None)
         return next(row for row in self.list() if row["id"] == identifier)
 
-    def require(self, identifier):
+    def require(self, identifier, *, for_documents=False):
         config = self.get(identifier)
         if (
             config["kind"] != "magpie"
@@ -190,14 +275,17 @@ class ProviderRegistry:
             and not self._keys.get(identifier)
         ):
             raise EngineError("PROVIDER_CREDENTIALS_REQUIRED", status=409)
-        return NetworkProvider(config, self._keys.get(identifier, ""))
+        provider = NetworkProvider(config, self._keys.get(identifier, ""))
+        if for_documents:
+            self.assert_authorized(identifier, config["revision"])
+            provider.authorization_check = lambda: self.assert_authorized(
+                identifier, config["revision"]
+            )
+        return provider
 
     def freeze(self, identifier, allow_external, revision):
-        row = self.get(identifier)
-        if not allow_external:
-            raise EngineError("PROVIDER_CONSENT_REQUIRED", status=403)
-        if row["revision"] != revision:
-            raise EngineError("PROVIDER_CHANGED", status=409)
+        # Legacy allow_external is intentionally not an authorization source.
+        row = self.assert_authorized(identifier, revision)
         if (
             row["kind"] != "magpie"
             and row["auth_mode"] != "none"

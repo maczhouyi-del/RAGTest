@@ -180,3 +180,7 @@ TS/Vite、真实冻结引擎浏览器流程及15张三尺寸截图PASS；核查�
 最新用户授权按 A 快捷键 → B 多轮会话 → C Provider → D 自动元数据 → E 组合验收连续实施，每阶段测试和独立本地提交，不推送、不发布。检索与生成质量优化明确暂缓。详见 [MVP-02计划](docs/engineering/execplans/MVP-02-round-two.md)。原生/Windows/科研门禁保留，不自动标 PASS。
 
 MVP-02 A–E本地实现及最终自动化组合已完成：154 Python通过/7跳过，Rust3通过/3忽略，真实冻结组合39条检查通过；2篇公开PDF/424向量，模型切换无重嵌入，恢复重建424复用/0新增。最终新Mac开发app启动回收通过；原生完整操作/中文IME仍NOT EXECUTED，Windows/科研金标未通过，真实厂商付费API未授权。分阶段提交均留在main本地，未push/publish。详见[组合报告](docs/engineering/reports/MVP-02-E-2026-10-25.md)及[原生待测清单](docs/engineering/reports/MVP-02-native-checklist.md)。
+
+## 19. MVP-03 授权、意图与设置（2026-10-26）
+
+当前用户仅授权 Provider 配置级文献问答启用、系统信息问题确定性分流与当前run证据隔离、六分类设置。基线本地main39b13d7，优先于公开bd95619。按A/B/C独立测试和本地提交，不push/publish；不做检索相关性/章节权重/拒答质量优化。详见[MVP-03计划](docs/engineering/execplans/MVP-03-routing-settings.md)。原生/Windows/科研门禁不自动通过。

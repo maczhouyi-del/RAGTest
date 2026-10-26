@@ -74,7 +74,7 @@ class GenerationService:
 
     def require(self, provider_id=None) -> GenerationProvider:
         if provider_id is not None and provider_id != "local":
-            return self.providers.require(provider_id)
+            return self.providers.require(provider_id, for_documents=True)
         if self.generator is None:
             from pathlib import Path
 

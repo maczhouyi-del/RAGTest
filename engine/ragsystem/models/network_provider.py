@@ -92,10 +92,13 @@ class NetworkProvider:
         self._key = key
         self.fingerprint = definition(config)
         self.cancel_check = None
+        self.authorization_check = None
         self.gateway_version = None
         self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
     def request(self, path, body=None):
+        if self.authorization_check:
+            self.authorization_check()
         if self.cancel_check:
             self.cancel_check()
         headers = {"Content-Type": "application/json", "User-Agent": "RAGSystem/0.1"}
@@ -120,6 +123,8 @@ class NetworkProvider:
                 # read1 yields available bytes so a trickling server cannot keep
                 # a buffered read open indefinitely between deadline checks.
                 while chunk := response.read1(16384):
+                    if self.authorization_check:
+                        self.authorization_check()
                     if self.cancel_check:
                         self.cancel_check()
                     if time.monotonic() - started > 60:
@@ -127,6 +132,8 @@ class NetworkProvider:
                     output.extend(chunk)
                     if len(output) > 1024 * 1024:
                         raise EngineError("PROVIDER_RESPONSE_LIMIT")
+            if self.authorization_check:
+                self.authorization_check()
             if self.cancel_check:
                 self.cancel_check()
             value = json.loads(output)

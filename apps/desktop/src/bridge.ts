@@ -118,6 +118,7 @@ export async function updateMetadata(documentId: string, metadata: MetadataInput
 const errors: Record<string, string> = {
   MAGPIE_LOCAL_ONLY: "Magpie 连接目前仅支持本机地址，路径须为 /v1。",
   MAGPIE_IDENTITY_INVALID: "目标服务未通过 Magpie 身份检查，请核对地址与端口。",
+  PROVIDER_DOCUMENT_QA_DISABLED: "此模型服务尚未允许用于文献问答，请在设置中保存并启用；配置变更后需重新确认。",
   PROVIDER_CONSENT_REQUIRED: "请先确认允许向所选服务发送本次问题与检索片段。",
   PROVIDER_CHANGED: "模型连接已更新，请重新选择连接并确认本次发送范围。",
   PROVIDER_CREDENTIALS_REQUIRED: "当前引擎会话尚未配置此连接，请在设置中重新输入密钥并保存。",
@@ -291,9 +292,9 @@ export async function updateDocumentLifecycle(documentId:string,body:{expected_r
 export async function historyPage(kind:string,projectId:string|null,cursor:string):Promise<HistoryPage>{requireDesktop();return invoke("history_page",{kind,projectId,cursor});}
 export async function readResearchReport(reportId:string):Promise<Report>{requireDesktop();return invoke("read_research_report",{reportId});}
 
-export interface GenerationConnection {id:string; name:string; kind:"api"|"magpie"; base_url:string; model:string; revision:number; configured:boolean;saved:boolean;vendor:"custom"|"deepseek"|"openai"|"magpie";auth_mode:"bearer"|"none";output_mode:string;token_parameter:string;credential_available:boolean;connection_verified:boolean;generation_verified:boolean;last_error:string|null}
+export interface GenerationConnection {id:string; name:string; kind:"api"|"magpie"; base_url:string; model:string; revision:number; configured:boolean;can_answer:boolean;document_qa_enabled:boolean;authorization_revision:number|null;saved:boolean;vendor:"custom"|"deepseek"|"openai"|"magpie";auth_mode:"bearer"|"none";output_mode:string;token_parameter:string;credential_available:boolean;connection_verified:boolean;generation_verified:boolean;last_error:string|null}
 export async function generationConnections():Promise<{providers:GenerationConnection[]}>{requireDesktop();return invoke("list_generation_providers");}
-export async function saveGenerationConnection(body:{id:string|null;name:string;kind:string;base_url:string;model:string;expected_revision:number;api_key:string;vendor?:string;auth_mode?:string;output_mode?:string;token_parameter?:string;credential_token?:string|null}):Promise<GenerationConnection>{requireDesktop();return invoke("save_generation_provider",{body});}
+export async function saveGenerationConnection(body:{id:string|null;name:string;kind:string;base_url:string;model:string;expected_revision:number;api_key:string;vendor?:string;auth_mode?:string;output_mode?:string;token_parameter?:string;credential_token?:string|null;enable_for_documents?:boolean|null}):Promise<GenerationConnection>{requireDesktop();return invoke("save_generation_provider",{body});}
 export async function probeGenerationConnection(identifier:string):Promise<{models:{id:string;name:string}[]}>{requireDesktop();return invoke("probe_generation_provider",{identifier});}
 
 export async function previewGenerationConnection(body:{kind:string;base_url:string;api_key:string;auth_mode?:string}):Promise<{models:{id:string;name:string}[];credential_token:string;connection_verified:boolean;warning:string|null}>{requireDesktop();return invoke("preview_generation_provider",{body});}
@@ -301,3 +302,5 @@ export async function previewGenerationConnection(body:{kind:string;base_url:str
 export interface ConversationTurns {items:AnswerRun[];total:number;next_cursor:string|null;conversation:{id:string;title:string}}
 export async function createConversation():Promise<{id:string}>{requireDesktop();return invoke("create_conversation");}
 export async function conversationTurns(conversationId:string,cursor=""):Promise<ConversationTurns>{requireDesktop();return invoke("conversation_turns",{conversationId,cursor});}
+
+export async function authorizeGenerationConnection(identifier:string,expectedRevision:number,enabled:boolean):Promise<GenerationConnection>{requireDesktop();return invoke("authorize_generation_provider",{identifier,expectedRevision,enabled});}
