@@ -1,7 +1,7 @@
 /* MVP-03: real source/frozen engine and PDF, simulated Tauri dialogs, loopback API fixture. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {once}=require('node:events');
-module.exports=async function({page,rpc,evidence,errors,stage}){
+module.exports=async function({page,rpc,evidence,errors,stage,audit}){
  page.setDefaultTimeout(45000);
  const checks=[];const check=(ok,name)=>{if(!ok)throw Error(name);checks.push(name);};
  const wait=async test=>{for(let i=0;i<1200;i++){if(await test())return;await page.waitForTimeout(100);}throw Error('TEST_WAIT_TIMEOUT');};
@@ -64,7 +64,7 @@ module.exports=async function({page,rpc,evidence,errors,stage}){
   if(stage==='B'||stage==='C')await require('./browser_mvp03_routing.cjs')({page,rpc,nav,input,send,check,wait,calls,setDelay:value=>{delay=value;},setSupportStatus:value=>{supportStatus=value;},setPostFailure:value=>{postFailure=value;},stage,evidence});
   await page.evaluate(()=>globalThis.__testBroker('restart_engine'));await page.reload();await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
   provider=(await rpc('GET','/v0/generation-providers')).providers[0];check(provider.document_qa_enabled&&!provider.credential_available&&!provider.can_answer,'RESTART_GRANT_PERSISTS_SECRET_DOES_NOT');
-  if(stage==='C')await require('./browser_mvp03_settings.cjs')({page,rpc,nav,check,wait,evidence});
+  if(stage==='C')await require('./browser_mvp03_settings.cjs')({page,rpc,nav,check,wait,evidence,audit});
   check(!errors.length,'NO_BROWSER_ERRORS');
   fs.writeFileSync(path.join(evidence,'MVP03-'+stage+'-browser.json'),JSON.stringify({status:'PASS',checks,engine:'REAL PROCESS',transport:'SIMULATED TAURI',api:'LOOPBACK FIXTURE ONLY',native_full_workflow:'NOT_EXECUTED'},null,2));
  }finally{await new Promise(resolve=>server.close(resolve));}

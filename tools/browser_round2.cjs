@@ -3,6 +3,7 @@ const fs=require('node:fs'),path=require('node:path');
 module.exports=async function({page,rpc,evidence,errors,stage,audit}){
  page.setDefaultTimeout(45000);
  const combination={};
+ async function settingsCategory(name){const button=page.getByRole('navigation',{name:'设置分类'}).getByRole('button',{name,exact:true});if(await button.count())await button.click();}
  const checks=[];const check=(ok,name)=>{if(!ok)throw Error(name);checks.push(name);};
  const wait=async test=>{for(let i=0;i<2000;i++){if(await test())return;await page.waitForTimeout(150);}throw Error('ENGINE_WAIT_TIMEOUT');};
  await page.getByRole('button',{name:'导入文件',exact:true}).click();
@@ -12,9 +13,11 @@ module.exports=async function({page,rpc,evidence,errors,stage,audit}){
  if(stage==='E'){
   const nav=page.getByRole('navigation',{name:'主导航'});
   await nav.getByRole('button',{name:'设置',exact:true}).click();
+  await settingsCategory('检索与索引');
   await page.getByRole('button',{name:'选择 E5 目录并建立索引',exact:true}).click();
   await wait(async()=>(await rpc('GET','/v0/index')).ready);
   combination.beforeRestart=audit();check(combination.beforeRestart.vectors>0,'REAL_E5_PERSISTENT_VECTORS');
+  await settingsCategory('模型服务');
   await page.getByRole('button',{name:'选择本地生成模型目录',exact:true}).click();
   await wait(async()=>(await rpc('GET','/v0/generator')).configured);
   const original=(await rpc('GET','/v0/documents')).documents;
@@ -118,18 +121,20 @@ module.exports=async function({page,rpc,evidence,errors,stage,audit}){
   check(JSON.stringify(docs)===JSON.stringify((await rpc('GET','/v0/documents')).documents),'MANUAL_AND_PROVENANCE_SURVIVE_ENGINE_RESTART');
   check(!(await rpc('GET','/v0/generation-providers')).providers[0].credential_available,'RESTART_NO_API_SECRET');
   const nav=page.getByRole('navigation',{name:'主导航'});await nav.getByRole('button',{name:'设置',exact:true}).click();
+  await settingsCategory('备份与恢复');
   await page.getByRole('button',{name:'创建备份',exact:true}).click();await page.getByText('已完成备份',{exact:true}).waitFor();
   await page.getByRole('button',{name:'从备份恢复副本',exact:true}).click();await page.getByRole('button',{name:'使用此恢复副本',exact:true}).waitFor();
   await wait(async()=>!(await rpc('GET','/v0/jobs')).jobs.some(job=>['queued','running','retry_wait'].includes(job.status)));
   const restoreRecord=(await rpc('GET','/v0/backups')).records.find(item=>item.kind==='restored');
   const restoredTarget=await rpc('GET',`/v0/internal/restored-workspaces/${restoreRecord.id}`);
   await page.getByRole('button',{name:'使用此恢复副本',exact:true}).click();
-  await wait(async()=>await page.locator('#workspace-directory').inputValue()===restoredTarget.data_root);
+  await wait(async()=>{await settingsCategory('工作区与数据');return await page.locator('#workspace-directory').inputValue()===restoredTarget.data_root;});
   check(JSON.stringify(docs)===JSON.stringify((await rpc('GET','/v0/documents')).documents),'BACKUP_RESTORE_METADATA_AND_PROVENANCE');
   const restored=await rpc('GET',`/v0/conversations/${conversations[0].id}/turns`);
   check(JSON.stringify(turns)===JSON.stringify(restored),'BACKUP_RESTORE_ALL_TURNS_AND_CITATIONS');
   combination.afterRestore=audit();check(combination.afterRestore.vector_sha256===before.vector_sha256,'BACKUP_RESTORE_VECTOR_BYTES');
   check(!combination.afterRestore.secret_in_db,'NO_SESSION_SECRET_IN_BACKUP');
+  await settingsCategory('检索与索引');
   await page.getByRole('button',{name:'选择 E5 目录并建立索引',exact:true}).click();await wait(async()=>(await rpc('GET','/v0/index')).ready);
   combination.rebuilt=audit();check(combination.rebuilt.active_index.new_embeddings===0&&combination.rebuilt.active_index.reused_embeddings===before.vectors,'RESTORED_DERIVED_INDEX_REUSES_ALL_VECTORS');
   await nav.getByRole('button',{name:'问答',exact:true}).click();check(await page.getByLabel('生成模型',{exact:true}).inputValue()==='extractive','WORKSPACE_CHANGE_NO_EXTERNAL_AUTO_SELECTION');

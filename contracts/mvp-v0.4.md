@@ -13,3 +13,7 @@ SQLite schema18新增generation_provider_authorizations；历史Provider默认�
 GET /v0/health新增system_question_forms，前端仅据该白名单开放无文献/无生成配置的系统提问；后端仍独立严格匹配。POST /v0/answers的version_ids可缺省为空，但仅系统信息分支接受；普通文献问答继续要求有效冻结范围。系统信息run保存空scope，不经过检索、生成、外部授权检查或科学支持性判定；result.kind/intent=system_info，带system_topic、确定性text及非敏感configuration，没有claim/evidence。系统问答不进入后续论文检索的有界历史上下文。
 
 文献result增加intent=literature、retrieval_status=hits/no_hits，不改变引用真实性或支持性规则。前端新提交立即清除当前证据；selectedId未加载时不回退其他run。右侧仅展示当前run的evidence；拒答命中标记候选而非已支持结论，生成失败与无命中分别展示。既有run缺少新字段时仍可读取，按原status/result.kind保守显示。
+
+## 分类设置（C）
+
+主导航不变。设置内部使用组件本地分类状态，仅挂载当前分类：模型服务、检索与索引、文献解析、工作区与数据、备份与恢复、高级与诊断。已保存值从既有受控IPC/工作区快照读取，分类切换不写数据库、不改索引、不保存密钥。ModelSettings增加可选parsingOnly展示参数，缺省保留LegacyWorkspace原功能；其他组件接口与数据格式不变。宽屏内部导航200px、内容最大900px；窄屏折成分类网格并保留单内容区。

@@ -1,5 +1,6 @@
 """Stage a fresh local development .app without removing previous bundles."""
 
+import argparse
 import hashlib
 import json
 import shutil
@@ -7,13 +8,19 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--task-label", default="mvp02")
+parser.add_argument("--evidence-directory", default="docs/engineering/evidence/MVP-02-2026-10-25")
+args = parser.parse_args()
+if not args.task_label or any(char not in "abcdefghijklmnopqrstuvwxyz0123456789-" for char in args.task_label):
+    parser.error("task-label must contain lowercase letters, numbers or hyphens")
 root = Path(__file__).resolve().parents[1]
 base = root / "apps/desktop/src-tauri"
 template = base / "target/debug/bundle/macos/RAGSystem.app"
 output = (
     root
     / ".tools/build"
-    / ("macos-mvp02-" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ"))
+    / ("macos-" + args.task_label + "-" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ"))
     / "RAGSystem.app"
 )
 output.parent.mkdir(parents=True, exist_ok=False)
@@ -33,7 +40,7 @@ record = {
     "scope": "local development only; ad-hoc signed, no notarization/installer/publication",
     "previous_app_preserved": str(template),
 }
-evidence = root / "docs/engineering/evidence/MVP-02-2026-10-25"
+evidence = root / args.evidence_directory
 evidence.mkdir(parents=True, exist_ok=True)
 (evidence / "macos-development-app.json").write_text(
     json.dumps(record, indent=2) + "\n"

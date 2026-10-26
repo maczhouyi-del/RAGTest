@@ -15,7 +15,7 @@ def test_authorization_revocation_revisions_restart_and_no_boolean_bypass(tmp_pa
     Parser(db, root).parse(version, "parse")
     work = Workbench(db, root, HybridSearch(db, root))
     registry = work.generation.providers
-    with protocol_server() as (url, calls, state):
+    with protocol_server() as (url, calls, _state):
         config = registry.save(
             values(url, enable_for_documents=False), "session-secret-not-on-disk"
         )
@@ -101,7 +101,7 @@ def test_revoke_between_generation_and_support_sends_no_second_request(tmp_path)
     root, db, version = store(tmp_path)
     Parser(db, root).parse(version, "parse")
     work = Workbench(db, root, HybridSearch(db, root))
-    with protocol_server() as (url, calls, state):
+    with protocol_server() as (url, calls, _state):
         config = work.generation.providers.save(values(url), "key")
         real_require = work.generation.require
 

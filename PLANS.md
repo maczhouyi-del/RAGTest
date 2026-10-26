@@ -186,3 +186,5 @@ MVP-02 A–E本地实现及最终自动化组合已完成：154 Python通过/7�
 当前用户仅授权 Provider 配置级文献问答启用、系统信息问题确定性分流与当前run证据隔离、六分类设置。基线本地main39b13d7，优先于公开bd95619。按A/B/C独立测试和本地提交，不push/publish；不做检索相关性/章节权重/拒答质量优化。详见[MVP-03计划](docs/engineering/execplans/MVP-03-routing-settings.md)。原生/Windows/科研门禁不自动通过。
 
 MVP-03 A/B源码及定向/浏览器验证已完成：A配置修订绑定授权，B严格系统信息分流与当前run证据隔离；B全Python163 PASS/12 SKIP。失败、测试边界见A/B报告；C分类设置开始。未将模拟API、浏览器桥或工程功能标为真实厂商/原生完整/科研质量通过。
+
+MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统信息无检索/模型、当前run证据、六分类单面板。最终Python163 PASS/12 SKIP、冻结组合78检查、Rust复测3 PASS/3 ignored；新Mac开发包及真实原生启动回收PASS。并发冷启动首轮Rust失败日志保留，原生完整业务/真实付费API/Windows/科研质量不标通过。详见[MVP-03组合验收](docs/engineering/reports/MVP-03-acceptance-2026-10-26.md)。三个任务独立本地提交，未push/publish，任务结束后停止。

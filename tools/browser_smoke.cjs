@@ -204,14 +204,15 @@ async function main() {
     await page.exposeFunction('__testBroker',(command,args)=>{const result=brokerChain.then(()=>broker(command,args));brokerChain=result.catch(()=>undefined);return result;});
     await page.addInitScript(() => {globalThis.isTauri = true; globalThis.__TAURI_INTERNALS__ = {invoke: (command, args) => globalThis.__testBroker(command, args)};});
     await page.goto(base);
-    if(mvp){
-      await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
-      if(round3)await require('./browser_mvp03.cjs')({page,rpc,root,evidence,errors,stage:round3});
-      else if(round2)await require('./browser_round2.cjs')({page,rpc,root,evidence,errors,stage:round2,audit:()=>{const script=`import sqlite3,json,hashlib,sys
+    const audit=()=>{const script=`import sqlite3,json,hashlib,sys
 c=sqlite3.connect(sys.argv[1]); c.execute('BEGIN'); h=hashlib.sha256()
 for row in c.execute('SELECT id,vector_bytes FROM embedding_records ORDER BY id'): h.update(row[0].encode()); h.update(row[1])
 a=c.execute("SELECT value_json FROM app_settings WHERE key='active_index'").fetchone()
-print(json.dumps({'vector_sha256':h.hexdigest(),'vectors':c.execute('SELECT count(*) FROM embedding_records').fetchone()[0],'index_builds':c.execute("SELECT count(*) FROM jobs WHERE type='embed_batch'").fetchone()[0],'active_index':json.loads(a[0]) if a else None,'secret_in_db':any('local-protocol-fixture-key' in line for line in c.iterdump())}))`;const output=require('node:child_process').spawnSync(path.join(root,'engine/.venv/bin/python'),['-c',script,path.join(dataRoot,'data/research.db')],{encoding:'utf8'});if(output.status!==0)throw Error('SQLITE_AUDIT_FAILED');return JSON.parse(output.stdout);}});
+print(json.dumps({'vector_sha256':h.hexdigest(),'vectors':c.execute('SELECT count(*) FROM embedding_records').fetchone()[0],'index_builds':c.execute("SELECT count(*) FROM jobs WHERE type='embed_batch'").fetchone()[0],'active_index':json.loads(a[0]) if a else None,'secret_in_db':any(any(secret in line for secret in ['local-protocol-fixture-key','fixture-authorization-secret']) for line in c.iterdump())}))`;const output=require('node:child_process').spawnSync(path.join(root,'engine/.venv/bin/python'),['-c',script,path.join(dataRoot,'data/research.db')],{encoding:'utf8'});if(output.status!==0)throw Error('SQLITE_AUDIT_FAILED');return JSON.parse(output.stdout);};
+    if(mvp){
+      await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
+      if(round3)await require('./browser_mvp03.cjs')({page,rpc,root,evidence,errors,stage:round3,audit});
+      else if(round2)await require('./browser_round2.cjs')({page,rpc,root,evidence,errors,stage:round2,audit});
       else if(reference)await require('./browser_reference.cjs')({page,rpc,root,evidence,errors});
       else await require('./browser_mvp.cjs')({page,rpc,root,evidence,errors});
     }else{
