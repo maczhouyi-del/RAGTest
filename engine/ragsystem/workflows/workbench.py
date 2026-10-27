@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from contextlib import nullcontext
 from uuid import uuid4
 
@@ -14,7 +15,7 @@ from ragsystem.retrieval.source_search import Sources
 from ragsystem.retrieval.tokenizer import search_terms
 from ragsystem.storage.database import utc_now
 from ragsystem.verification.quotes import validate_quote
-from ragsystem.workflows.system_information import runtime_information, system_information_topic
+from ragsystem.workflows.system_information import question_parts, runtime_information
 
 
 def identifier():
@@ -171,7 +172,7 @@ class Workbench:
         # Strict character/UTF-8 bound (<= 6400 bytes), no new model calls.
         # Prior answers are non-evidence context, never added to the citation pool.
         rows = conn.execute(
-            "SELECT id,question,status FROM answer_runs WHERE conversation_id=? AND COALESCE(json_extract(result_json,'$.kind'),'') != 'system_info' ORDER BY created_at DESC,id DESC LIMIT 3",
+            "SELECT id,COALESCE(json_extract(result_json,'$.literature_question'),question) AS question,status FROM answer_runs WHERE conversation_id=? AND status IN ('completed','refused') AND COALESCE(json_extract(result_json,'$.kind'),'') != 'system_info' ORDER BY created_at DESC,id DESC LIMIT 3",
             (conversation_id,),
         ).fetchall()
         result, remaining = [], 1600
@@ -194,6 +195,24 @@ class Workbench:
             if remaining <= 0:
                 break
         return list(reversed(result))
+
+    @staticmethod
+    def retrieval_context(question, context):
+        reference = re.search(
+            r"它们?|上述|前述|二者|两者|那这个|那(?:个|么|些)|这个呢|这些呢|继续(?:比较|对比|分析)"
+            r"|\b(?:it|its|they|their|them|these|those|former|latter)\b",
+            question,
+            flags=re.I,
+        )
+        selected = context[-2:] if reference else []
+        query = "\n".join([question, *(item["question"] for item in selected)])
+        return selected, {
+            "version": "current-question-first-v2",
+            "strategy": "explicit_reference_last_two" if selected else "current_question_only",
+            "turns": len(selected),
+            "character_budget": 1600,
+            "retrieval_query": query,
+        }
 
     def create_answer(
         self,
@@ -237,7 +256,8 @@ class Workbench:
             )
         ):
             raise EngineError("RESEARCH_REQUIRED", status=409)
-        system_topic = system_information_topic(question)
+        system_topics, literature_question = question_parts(question)
+        system_topic = system_topics[0] if system_topics and not literature_question else None
         provider = None
         if not system_topic and mode == "generative" and provider_id not in {None, "local"}:
             provider = self.generation.providers.freeze(
@@ -284,6 +304,8 @@ class Workbench:
                 {
                     "run_id": run_id,
                     "system_topic": system_topic,
+                    "system_topics": system_topics,
+                    "literature_question": literature_question,
                     "selected_generation_model": (
                         "extractive" if mode == "extractive" else provider_id or "local"
                     ),
@@ -374,12 +396,27 @@ class Workbench:
         token = job["lease_token"]
         external_generators = []
         provider = None
+        result = None
+        stage = "retrieval"
         try:
             payload = json.loads(job["payload_json"])
             if payload.get("system_topic"):
+                stage = "system_info"
                 result = runtime_information(
-                    self, payload["system_topic"], payload["selected_generation_model"]
+                    self,
+                    payload["system_topic"],
+                    payload["selected_generation_model"],
+                    run["strategy"],
                 )
+                if len(payload.get("system_topics", [])) > 1:
+                    sections = [
+                        runtime_information(
+                            self, topic, payload["selected_generation_model"], run["strategy"]
+                        )
+                        for topic in payload["system_topics"]
+                    ]
+                    result["system_information"] = sections
+                    result["text"] = "\n".join(section["text"] for section in sections)
                 with self.db.transaction() as conn:
                     self.jobs.require_lease(conn, job["id"], token)
                     conn.execute(
@@ -406,63 +443,79 @@ class Workbench:
             for document in scope["versions"]:
                 if self.current_runs(document["doc_version_id"]) != document["parse_run_ids"]:
                     raise EngineError("SCOPE_STALE")
-            context = json.loads(job["payload_json"]).get("conversation_context", [])
-            retrieval_query = (
-                run["question"] + "\n" + "\n".join(item["question"] for item in context[-2:])
-                if context
-                else run["question"]
-            )
-            hits = self.search.search(
-                retrieval_query,
+            context = payload.get("conversation_context", [])
+            question = payload.get("literature_question", run["question"])
+            context, context_policy = self.retrieval_context(question, context)
+            result = {
+                "intent": "mixed" if payload.get("system_topics") else "literature",
+                "literature_question": question,
+                "context_policy": context_policy,
+                "retrieval_status": "not_completed",
+            }
+            retrieval = self.search.search(
+                context_policy["retrieval_query"],
                 versions,
                 8,
                 scope["project_id"],
                 run["strategy"].removesuffix("_review"),
                 json.loads(job["payload_json"]).get("per_paper_limit", 3),
-            )["results"]
-            ranking = None
-            if run["strategy"].endswith("_review") and hits:
-                reviewer = selected_generator()
-                self.record_model(job["id"], token, run_id, reviewer, stage="relevance")
-                reviewer.cancel_check = lambda: self.cancellation_check(job["id"], token)
-                hits, ranking = review_order(reviewer, run["question"], hits)
-            pool = {hit["chunk_id"]: hit["preview"] for hit in hits}
+            )
+            hits = retrieval["results"]
             result = {
                 "kind": "evidence_only",
-                "intent": "literature",
+                "intent": "mixed" if payload.get("system_topics") else "literature",
+                "literature_question": question,
+                "system_information": [
+                    runtime_information(
+                        self, topic, payload["selected_generation_model"], run["strategy"]
+                    )
+                    for topic in payload.get("system_topics", [])
+                ],
                 "retrieval_status": "hits" if hits else "no_hits",
-                "context_policy": {
-                    "version": "bounded-history-v1",
-                    "turns": len(context),
-                    "character_budget": 1600,
-                    "retrieval_query": retrieval_query,
-                },
-                "relevance_review": ranking,
+                "context_policy": context_policy,
+                "retrieval": {key: value for key, value in retrieval.items() if key != "results"},
                 "claims": [],
                 "evidence_ids": [],
                 "coverage": "Top-K local retrieval; not whole-library coverage",
             }
+            result["retrieval"]["hits"] = [
+                {key: value for key, value in hit.items() if key != "preview"} for hit in hits
+            ]
+            ranking = None
+            if run["strategy"].endswith("_review") and hits:
+                stage = "relevance_review"
+                # This experiment is local-only, even when answer generation uses
+                # an explicitly selected network provider. Never borrow its API.
+                reviewer = self.generation.require()
+                self.record_model(job["id"], token, run_id, reviewer, stage="relevance")
+                reviewer.cancel_check = lambda: self.cancellation_check(job["id"], token)
+                hits, ranking = review_order(reviewer, question, hits)
+            pool = {hit["chunk_id"]: hit["preview"] for hit in hits}
+            result["relevance_review"] = ranking
             raw_claims = []
             if run["mode"] == "generative" and hits:
+                stage = "generation"
                 generator = selected_generator()
                 self.record_model(job["id"], token, run_id, generator)
                 generator.cancel_check = lambda: self.jobs.heartbeat(job["id"], token, seconds=1800)
                 raw = generator.generate(
                     "answer",
                     {
-                        "question": run["question"],
+                        "question": question,
                         "conversation_context_not_evidence": context,
                         "chunks": [{"chunk_id": key, "text": value} for key, value in pool.items()],
                     },
                 )
-                raw_claims = raw.get("claims")
+                raw_claims = raw.get("claims") if isinstance(raw, dict) else None
                 if not isinstance(raw_claims, list) or len(raw_claims) > 6:
                     raise EngineError("MODEL_OUTPUT_INVALID")
                 result["kind"] = "generated_draft"
                 result["model_fingerprint"] = generator.fingerprint
                 result["model_context"] = raw.get("context_metadata")
             checked = []
+            stage = "citation_validation"
             for claim in raw_claims:
+                stage = "citation_validation"
                 if (
                     not isinstance(claim, dict)
                     or not isinstance(claim.get("text"), str)
@@ -476,16 +529,18 @@ class Workbench:
                         raise EngineError("MODEL_OUTPUT_INVALID")
                     validate_quote(pool, item.get("chunk_id"), item.get("quote"))
                 self.jobs.heartbeat(job["id"], token, seconds=1800)
+                stage = "support_check"
                 support = generator.generate(
                     "support",
                     {
-                        "question": run["question"],
+                        "question": question,
                         "claim": claim["text"],
                         "evidence": claim["evidence"],
                     },
                 )
                 if (
-                    support.get("status") not in {"supported", "contradicted", "uncertain"}
+                    not isinstance(support, dict)
+                    or support.get("status") not in {"supported", "contradicted", "uncertain"}
                     or not isinstance(support.get("reason"), str)
                     or len(support["reason"]) > 2000
                 ):
@@ -495,6 +550,7 @@ class Workbench:
                 self.generation.providers.mark_generation(provider["id"])
             result["support_checks"] = []
             result["claim_details"] = []
+            stage = "publication"
             self.jobs.heartbeat(job["id"], token, seconds=1800)
             with self.db.transaction() as conn:
                 self.jobs.require_lease(conn, job["id"], token)
@@ -563,12 +619,37 @@ class Workbench:
                     )
                     else "refused"
                 )
+                result["outcome"] = (
+                    "no_hits"
+                    if not hits
+                    else "insufficient_evidence"
+                    if status == "refused"
+                    else "answered"
+                    if run["mode"] == "generative"
+                    else "evidence_only"
+                )
+                if status == "refused":
+                    result["refusal_reason"] = (
+                        "当前文献范围没有检索命中，请调整问题或补充相关文献。"
+                        if not hits
+                        else "当前候选未形成可发布的获支持草稿。请补充能直接回答问题、包含必要实验条件和数据的原文；模型支持性意见仍需人工核对。"
+                    )
+                result["evidence_assessment"] = {
+                    "source_validation": "exact_current_chunk_quote",
+                    "model_support": "same_model_opinion_only",
+                    "scientific_quality": "NOT_EVALUATED",
+                    "human_review": "separate_persistent_records",
+                }
                 conn.execute(
                     "UPDATE answer_runs SET status=?,result_json=?,error_code=? WHERE id=?",
                     (
                         status,
                         json.dumps(result),
-                        None if status == "completed" else "INSUFFICIENT_EVIDENCE",
+                        None
+                        if status == "completed"
+                        else "NO_HITS"
+                        if not hits
+                        else "INSUFFICIENT_EVIDENCE",
                         run_id,
                     ),
                 )
@@ -578,14 +659,31 @@ class Workbench:
             if provider:
                 self.generation.providers.mark_error(provider["id"], code)
             self.jobs.fail(job["id"], token, code)
+            cancelled = self.jobs.get(job["id"])["status"] == "cancelled"
+            failure = (result or {"intent": "literature", "retrieval_status": "not_completed"}) | {
+                "kind": "error",
+                "outcome": "cancelled"
+                if cancelled
+                else "system_info_failed"
+                if stage == "system_info"
+                else "retrieval_failed"
+                if stage == "retrieval"
+                else "generation_failed",
+                "failure_stage": stage,
+                "error_code": code,
+                "claims": [],
+                "evidence_ids": [],
+                "support_checks": [],
+                "claim_details": [],
+                "coverage": "No answer published; diagnostic retrieval metadata only",
+            }
             with self.db.transaction() as conn:
                 conn.execute(
-                    "UPDATE answer_runs SET status=?,error_code=? WHERE id=?",
+                    "UPDATE answer_runs SET status=?,error_code=?,result_json=? WHERE id=?",
                     (
-                        "cancelled"
-                        if self.jobs.get(job["id"])["status"] == "cancelled"
-                        else "failed",
+                        "cancelled" if cancelled else "failed",
                         code,
+                        json.dumps(failure),
                         run_id,
                     ),
                 )

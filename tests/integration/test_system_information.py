@@ -17,6 +17,13 @@ from test_mvp_core import store
     "question,topic",
     [
         ("你是什么模型？", "generation"),
+        ("当前是什么模型", "generation"),
+        ("当前使用的是什么模型？", "generation"),
+        ("当前 Embedding 模型是什么？", "embedding"),
+        ("当前向量索引是否就绪？", "index"),
+        ("当前使用什么检索策略？", "retrieval"),
+        ("What retrieval strategy are you using?", "retrieval"),
+        ("  当前，是 什么 模型？！ ", "generation"),
         ("当前生成模型是什么？", "generation"),
         ("现在使用什么 Embedding 模型？", "embedding"),
         ("WHAT model are you?", "generation"),
@@ -24,15 +31,15 @@ from test_mvp_core import store
         ("论文中的模型是什么？", None),
         ("你是什么模型？并解释BERT", None),
         ("你好，请检索论文中的模型", None),
+        ("不同论文中的模型性能有什么区别？", None),
+        ("论文采用了什么研究方法？", None),
     ],
 )
 def test_exact_rule_routing(question, topic):
     assert system_information_topic(question) == topic
 
 
-def test_system_questions_read_real_saved_config_without_retrieval_or_model(
-    tmp_path, monkeypatch
-):
+def test_system_questions_read_real_saved_config_without_retrieval_or_model(tmp_path, monkeypatch):
     root, db, _version = store(tmp_path)
     work = Workbench(db, root, HybridSearch(db, root))
 
@@ -51,17 +58,10 @@ def test_system_questions_read_real_saved_config_without_retrieval_or_model(
         )
         work.run_answer(run["id"])
         answer = work.answers(run_id=run["id"])[0]
-        assert (
-            answer["status"] == "completed"
-            and answer["result"]["kind"] == "system_info"
-        )
+        assert answer["status"] == "completed" and answer["result"]["kind"] == "system_info"
         assert "actual-saved-fixture-model" in answer["result"]["text"]
         assert answer["result"]["configuration"]["credential_available"] is False
-        assert (
-            answer["claims"] == []
-            and answer["evidence"] == []
-            and answer["scope"] == []
-        )
+        assert answer["claims"] == [] and answer["evidence"] == [] and answer["scope"] == []
         assert calls == [] and work.generation.generator is None
     with db.transaction() as conn:
         conn.execute(
@@ -106,16 +106,12 @@ def test_system_questions_read_real_saved_config_without_retrieval_or_model(
         assert not answer["evidence"] and not answer["model_history"]
 
 
-def test_literature_still_retrieves_and_system_context_is_excluded(
-    tmp_path, monkeypatch
-):
+def test_literature_still_retrieves_and_system_context_is_excluded(tmp_path, monkeypatch):
     root, db, version = store(tmp_path)
     Parser(db, root).parse(version, "parse")
     work = Workbench(db, root, HybridSearch(db, root))
     conversation = work.create_conversation()["id"]
-    system = work.create_answer(
-        "你是什么模型？", [], None, "extractive", "keyword", conversation
-    )
+    system = work.create_answer("你是什么模型？", [], None, "extractive", "keyword", conversation)
     work.run_answer(system["id"])
     calls = []
     real_search = work.search.search
@@ -139,14 +135,10 @@ def test_literature_still_retrieves_and_system_context_is_excluded(
     assert answer["evidence"] and answer["result"]["intent"] == "literature"
     assert answer["result"]["retrieval_status"] == "hits"
     assert answer["result"]["context_policy"]["turns"] == 0
-    empty = work.create_answer(
-        "zzzz_unknown_94783562", [version], None, "extractive", "keyword"
-    )
+    empty = work.create_answer("zzzz_unknown_94783562", [version], None, "extractive", "keyword")
     work.run_answer(empty["id"])
     assert work.answers(run_id=empty["id"])[0]["evidence"] == []
-    assert (
-        work.answers(run_id=empty["id"])[0]["result"]["retrieval_status"] == "no_hits"
-    )
+    assert work.answers(run_id=empty["id"])[0]["result"]["retrieval_status"] == "no_hits"
 
 
 def test_system_api_allows_empty_scope_but_literature_does_not(tmp_path):
@@ -166,10 +158,75 @@ def test_system_api_allows_empty_scope_but_literature_does_not(tmp_path):
         answer = client.get("/v0/answers/" + run.json()["id"]).json()
         assert answer["result"]["kind"] == "system_info" and not answer["evidence"]
         assert (
-            client.post(
-                "/v0/answers", json={**body, "question": "BERT pretraining"}
-            ).json()["code"]
+            client.post("/v0/answers", json={**body, "question": "BERT pretraining"}).json()["code"]
             == "SCOPE_NOT_AVAILABLE"
         )
         health = client.get("/v0/health").json()
         assert health["api_revision"] == "0.5-local" and health["system_question_forms"]
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "当前是什么模型",
+        "你是什么模型",
+        "当前 Embedding 模型是什么",
+        "当前向量索引是否就绪",
+        "当前使用什么检索策略",
+    ],
+)
+def test_empty_library_system_route_has_zero_retrieval_inference_or_network(
+    tmp_path, monkeypatch, question
+):
+    import socket
+
+    from ragsystem.storage.database import Database
+
+    root = tmp_path / "empty"
+    db = Database(root / "data/research.db")
+    work = Workbench(db, root, HybridSearch(db, root))
+    calls = []
+
+    def forbidden(*args, **kwargs):
+        calls.append("forbidden")
+        raise AssertionError("unexpected retrieval, inference or network")
+
+    monkeypatch.setattr(work.search, "search", forbidden)
+    monkeypatch.setattr(work.sources, "search", forbidden)
+    monkeypatch.setattr(work.search.sources, "search", forbidden)
+    monkeypatch.setattr(work.search, "adapter", forbidden)
+    monkeypatch.setattr(work.generation, "require", forbidden)
+    monkeypatch.setattr(socket.socket, "connect", forbidden)
+    run = work.create_answer(question, [], None, "generative", "hybrid")
+    work.run_answer(run["id"])
+    answer = work.answers(run_id=run["id"])[0]
+    assert answer["status"] == "completed" and answer["result"]["kind"] == "system_info"
+    assert not answer["scope"] and not answer["evidence"] and not answer["claims"]
+    assert not answer["model_history"] and calls == []
+
+
+def test_mixed_question_preserves_system_and_scientific_parts(tmp_path, monkeypatch):
+    root, db, version = store(tmp_path)
+    Parser(db, root).parse(version, "parse")
+    work = Workbench(db, root, HybridSearch(db, root))
+    calls = []
+    original = work.search.search
+
+    def search(query, *args, **kwargs):
+        calls.append(query)
+        return original(query, *args, **kwargs)
+
+    monkeypatch.setattr(work.search, "search", search)
+    run = work.create_answer(
+        "你是什么模型？并解释 BERT 使用了哪些预训练任务？",
+        [version],
+        None,
+        "extractive",
+        "keyword",
+    )
+    work.run_answer(run["id"])
+    answer = work.answers(run_id=run["id"])[0]
+    assert calls == ["解释 BERT 使用了哪些预训练任务"]
+    assert answer["result"]["intent"] == "mixed" and answer["evidence"]
+    assert answer["result"]["system_information"][0]["system_topic"] == "generation"
+    assert answer["result"]["system_information"][0]["configuration"]["mode"] == "extractive"

@@ -44,6 +44,7 @@ def test_numbered_quote_selection_is_exact_and_rejects_fabrication():
     assert result["claims"][0]["evidence"] == [
         {"chunk_id": "known-id", "quote": "原文\nexact span"}
     ]
+    assert "explicitly describe the conflict" in value.model.kwargs["messages"][0]["content"]
     with pytest.raises(EngineError, match="MODEL_OUTPUT_INVALID"):
         generator({"claims": [{"text": "draft", "evidence": [{"citation_id": "E999"}]}]}).generate(
             "answer", {"chunks": [{"chunk_id": "id", "text": "source"}]}

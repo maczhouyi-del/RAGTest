@@ -9,6 +9,7 @@ from pathlib import Path
 
 from ragsystem.domain.errors import EngineError
 from ragsystem.parsing.process import run_worker
+from ragsystem.retrieval.evaluation import latency_summary, ranking_metrics
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -59,14 +60,22 @@ def score(cases, predictions, verify_source):
             blocked.append({"id": identifier, "reason": "PREDICTION_MISSING"})
             continue
         required = {(item["sha256"], item["page"]) for item in targets}
-        ranked = list(
-            dict.fromkeys(
-                (item["sha256"], item["page"]) for item in prediction.get("retrieved", [])[:10]
-            )
-        )
+        ranked = [(item["sha256"], item["page"]) for item in prediction.get("retrieved", [])[:10]]
         citations = prediction.get("citations", [])
         judgment = prediction.get("human_review", {})
         manual = reviewed(judgment)
+        retrieval = ranking_metrics(dict.fromkeys(required, 1), ranked)
+        total_claims = judgment.get("total_claims")
+        unsupported_claims = judgment.get("unsupported_claims")
+        unsupported_rate = (
+            unsupported_claims / total_claims
+            if manual
+            and type(total_claims) is int
+            and total_claims > 0
+            and type(unsupported_claims) is int
+            and 0 <= unsupported_claims <= total_claims
+            else None
+        )
         facts = gold.get("expected_facts", [])
 
         def canonical(fact):
@@ -84,7 +93,16 @@ def score(cases, predictions, verify_source):
                 "retrieval_recall_at_10": len(required & set(ranked)) / len(required)
                 if required
                 else None,
-                "citation_validity": average([bool(verify_source(item)) for item in citations]),
+                "retrieval_recall_at_5": retrieval["recall_at_5"],
+                "retrieval_mrr": retrieval["mrr"],
+                "retrieval_ndcg_at_10": retrieval["ndcg_at_10"],
+                "unsupported_conclusion_rate": unsupported_rate,
+                "citation_validity": average(
+                    [
+                        (item["sha256"], item["page"]) in ranked and bool(verify_source(item))
+                        for item in citations
+                    ]
+                ),
                 "fact_correct": judgment.get("fact_correct")
                 if manual and type(judgment.get("fact_correct")) is bool
                 else None,
@@ -100,6 +118,10 @@ def score(cases, predictions, verify_source):
         )
     keys = [
         "retrieval_recall_at_10",
+        "retrieval_recall_at_5",
+        "retrieval_mrr",
+        "retrieval_ndcg_at_10",
+        "unsupported_conclusion_rate",
         "citation_validity",
         "fact_correct",
         "semantic_support",
@@ -119,6 +141,16 @@ def score(cases, predictions, verify_source):
         "blocked": blocked,
         "coverage": sorted({row["category"] for row in observations}),
         "scored_cases": len(observations),
+        "latency_ms": {
+            key: latency_summary(
+                [
+                    value["latency_ms"][key]
+                    for value in predictions.values()
+                    if key in value.get("latency_ms", {})
+                ]
+            )
+            for key in ("retrieval", "end_to_end")
+        },
     }
 
 
@@ -194,6 +226,8 @@ def main():
         blockers.append("HUMAN_FACT_SUPPORT_REVIEW_MISSING")
     if any(value["cases"] == 0 for value in result["metrics"].values()):
         blockers.append("METRIC_COVERAGE_INCOMPLETE")
+    if any(value["samples"] == 0 for value in result["latency_ms"].values()):
+        blockers.append("LATENCY_MEASUREMENTS_MISSING")
     if len(result["observations"]) < approved.get("minimum_cases", 120):
         blockers.append("SAMPLE_SIZE_NOT_MET")
     if approved.get("approval_status") != "approved" or not approved.get("approved_by"):
@@ -210,12 +244,18 @@ def main():
             result["status"] = "BLOCKED"
             result["gate_blockers"].append("THRESHOLD_METRICS_MISSING")
         else:
+            maximum = approved.get("maximum", {})
             result["status"] = (
                 "PASS"
                 if all(
                     result["metrics"].get(key, {}).get("value") is not None
                     and result["metrics"][key]["value"] >= value
                     for key, value in thresholds.items()
+                )
+                and all(
+                    result["metrics"].get(key, {}).get("value") is not None
+                    and result["metrics"][key]["value"] <= value
+                    for key, value in maximum.items()
                 )
                 else "FAIL"
             )

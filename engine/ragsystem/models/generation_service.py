@@ -96,8 +96,11 @@ class GenerationService:
             # Only the explicitly versioned prompt upgrade is compatible; model,
             # runtime and weight fingerprints still must match exactly.
             compatible = dict(previous_fingerprint)
-            if compatible.get("prompt_version") == "evidence-json-v9":
-                compatible["prompt_version"] = "evidence-json-v10-history"
+            if compatible.get("prompt_version") in {
+                "evidence-json-v9",
+                "evidence-json-v10-history",
+            }:
+                compatible["prompt_version"] = "evidence-json-v11-conflicts"
             if generator.fingerprint != compatible:
                 generator.close()
                 raise EngineError("MODEL_FINGERPRINT_CHANGED")

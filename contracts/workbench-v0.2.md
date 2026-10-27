@@ -1,5 +1,7 @@
 # 本地证据与 Research 实现契约 v0.2
 
+2026-10-27问答意图、有限历史、结果诊断和提示版本的当前增量见[retrieval-answer-v0.6.md](retrieval-answer-v0.6.md)。本文件后续历史描述不覆盖该增量，Research边界继续有效。
+
 状态：本地开发实现子契约，增量扩展v0.1；不是P3/P4科研/平台验收通过。需求v1.1 §§4.5、6、7。保留既有`/v0`接口、0.1.0握手和SourceAnchor/EvidenceSpan草案字段；SQLite schema11向前迁移前保存快照，旧程序拒绝新schema。原始契约不改写为已批准标准。
 
 ## 范围与信任

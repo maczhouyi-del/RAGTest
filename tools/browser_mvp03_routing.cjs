@@ -4,17 +4,24 @@ module.exports=async function({page,rpc,nav,input,send,check,wait,calls,setDelay
  const provider=(await rpc('GET','/v0/generation-providers')).providers[0];
  await page.getByLabel('生成模型',{exact:true}).selectOption(provider.id);
  const before=calls.length;
- const system=await send('你是什么模型？');await page.getByText(system.result.text,{exact:true}).waitFor();
+ const system=await send('当前是什么模型？');await page.getByText(system.result.text,{exact:true}).waitFor();
  check(system.result.kind==='system_info'&&system.result.configuration.model==='fixture-two'&&!system.evidence.length,'SYSTEM_CURRENT_REAL_PROVIDER_CONFIG');
  check(calls.length===before,'SYSTEM_NO_EXTERNAL_MODEL_REQUEST');
  const right=page.locator('.chat-evidence');await wait(async()=>await right.getAttribute('data-answer-run')===system.id);
  check(await right.locator('.evidence-result').count()===0,'SYSTEM_NO_PAPER_CITATIONS');
  await page.screenshot({path:path.join(evidence,stage+'-system-info.png'),fullPage:true});
- const embedding=await send('现在使用什么 Embedding 模型？');
+ const embedding=await send('当前 Embedding 模型是什么？');
  check(embedding.result.kind==='system_info'&&embedding.evidence.length===0&&calls.length===before,'EMBEDDING_CONFIG_WITHOUT_RETRIEVAL');
+ for(const question of ['当前向量索引是否就绪？','当前使用什么检索策略？']){
+  const info=await send(question);check(info.result.kind==='system_info'&&!info.evidence.length&&calls.length===before,'INDEX_STRATEGY_NO_MODEL_REQUEST');
+ }
  const first=await send('BERT 使用了哪些预训练任务？');
  check(first.status==='completed'&&first.evidence.length>0&&first.result.intent==='literature','DOCUMENT_QUESTION_NORMAL_RAG');
  check(!first.result.context_policy.retrieval_query.includes('你是什么模型'),'SYSTEM_QUESTIONS_NOT_RETRIEVAL_CONTEXT');
+ check(first.result.retrieval.hits.length<=8&&first.result.retrieval.per_paper_limit===3,'DEFAULT_THREE_PER_PAPER_EIGHT_TOTAL');
+ const mixed=await send('你是什么模型？并解释 BERT 使用了哪些预训练任务？');
+ check(mixed.result.intent==='mixed'&&mixed.evidence.length>0&&mixed.result.system_information.length===1,'MIXED_BOTH_PARTS_PRESERVED');
+ await page.locator(`[data-run-id="${mixed.id}"] .system-answer`).waitFor();
  setDelay(700);
  const second=await send('BERT pre-training tasks evidence isolation',async()=>{
   check(await right.locator('.evidence-result').count()===0,'NEW_SUBMISSION_CLEARS_PREVIOUS_EVIDENCE');
@@ -25,16 +32,17 @@ module.exports=async function({page,rpc,nav,input,send,check,wait,calls,setDelay
  await page.getByRole('button',{name:'新会话',exact:true}).click();await page.getByRole('heading',{name:'从文献出发，找到有据可查的答案',exact:true}).waitFor();
  const nohit=await send('zzzz_unknown_94783562');await wait(async()=>await right.getAttribute('data-answer-run')===nohit.id);
  await right.getByText('本轮无检索结果，没有来源证据。',{exact:true}).waitFor();
- check(nohit.status==='refused'&&!nohit.evidence.length&&await right.locator('.evidence-result').count()===0,'NO_HIT_NO_OLD_OR_FIXED_EVIDENCE');
+ check(nohit.status==='refused'&&nohit.result.outcome==='no_hits'&&!nohit.evidence.length&&await right.locator('.evidence-result').count()===0,'NO_HIT_NO_OLD_OR_FIXED_EVIDENCE');
  setSupportStatus('uncertain');
  const candidate=await send('BERT pre-training candidate unsupported');await wait(async()=>await right.getAttribute('data-answer-run')===candidate.id);
- check(candidate.status==='refused'&&candidate.evidence.length>0,'UNSUPPORTED_CLAIM_STILL_REFUSED');
+ check(candidate.status==='refused'&&candidate.result.outcome==='insufficient_evidence'&&candidate.evidence.length>0,'UNSUPPORTED_CLAIM_STILL_REFUSED');
  await right.getByText('候选证据，尚不足以支持结论。',{exact:true}).waitFor();check(true,'CANDIDATE_WARNING_EXPLICIT');
+ await page.locator(`[data-run-id="${candidate.id}"]`).getByText(candidate.result.refusal_reason,{exact:true}).waitFor();check(true,'REFUSAL_REASON_AND_MISSING_EVIDENCE_VISIBLE');
  await page.screenshot({path:path.join(evidence,stage+'-candidate.png'),fullPage:true});
  setPostFailure(true);
  const failed=await send('BERT failure fixture');await wait(async()=>await right.getAttribute('data-answer-run')===failed.id);
  await page.locator(`[data-run-id="${failed.id}"]`).getByRole('alert').waitFor();
- check(failed.status==='failed'&&failed.error_code==='PROVIDER_HTTP_ERROR','GENERATION_FAILURE_DISTINCT');
+ check(failed.status==='failed'&&failed.result.outcome==='generation_failed'&&failed.result.retrieval_status==='hits'&&failed.error_code==='PROVIDER_HTTP_ERROR','GENERATION_FAILURE_DISTINCT');
  check(await right.locator('.evidence-result').count()===0,'GENERATION_FAILURE_NO_PREVIOUS_CANDIDATES');
  setSupportStatus('supported');setPostFailure(false);
 };

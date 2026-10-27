@@ -83,3 +83,5 @@ SQLite schema18（由storage/database.py的SCHEMA_VERSION及实际PRAGMA user_ve
 OCR完整候选能力当前只在本机macOS26.2 arm64实测；tesserocr轮子平台标签macOS15 arm64，不能推断旧Mac/Intel支持。真实Rust传输回归显式包含三个候选试验后为6项通过（默认cargo test会跳过依赖模型的3项）；Windows仍未执行。最终可复现命令与产物hash统一见本轮报告。
 
 HARDEN-01（2026-10-27）：健康接口报告实际schema及engine/database/keyword/vector/generation/OCR分项；未配置向量或生成能力时为degraded，连接成功不代表科研质量或所有功能就绪。设置内部六分类；引擎“重新连接”只恢复退出进程，仍存活但不健康时保留进程，明确主动重启另行操作。加固进度见docs/engineering/reports/HARDEN-01-2026-10-27.md。本轮不提交、不推送或发布。
+
+RAG-01（2026-10-27）：系统配置问题直接读取本机状态；复合问题保留系统信息与论文子问题。RRF保留原始通道排名，普通问答默认每逻辑论文3片段、总计最多8；独立问题不再自动拼接历史检索词，失败和拒答状态分别记录。增量协议见[retrieval-answer-v0.6](contracts/retrieval-answer-v0.6.md)，可运行比较工具/人工金标流程见[评估规范](docs/evaluation/goldset-protocol.md)，实际验证与限制见[工程报告](docs/engineering/reports/RAG-01-2026-10-27.md)。用户本轮已授权修改后推送RAGTest源码；此前“不推送”是历史任务边界，发布与科研/平台门禁保持独立。

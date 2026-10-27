@@ -56,3 +56,19 @@
 执行：`PYTHONPATH=engine engine/.venv/bin/python tools/evaluate_scientific_quality.py --gold <人工JSONL> --predictions <本地预测JSONL> --manifest <合法语料manifest> --thresholds docs/evaluation/thresholds.proposed.json --output <本机目录>`。不运行生成模型/不联网，只离线评分。分别统计检索Recall@10、原文引用有效性、人工事实正确/语义支持、金标可回答性对应的拒答、数值单位条件结构化精确匹配；显示样本数与分组，不把缺数据当满分。量纲换算或容忍度必须先经人工注册，默认精确匹配。
 
 thresholds.proposed.json提出初始建议值（来源有效性100%，Recall@10≥90%，其余≥95%），**全部待PI批准**，不是已批准标准。类别缺失、人工标注/输出审查不足、没有批准人或阈值时exit2/BLOCKED，即使局部指标为1也不算科研门禁PASS。还需批准样本量、交叉分组和统计口径；不根据本轮模型表现降低标准。失败样例保留在本地评价JSON，不上传私有文本。
+
+## RAG-01 同范围策略比较与新增指标
+
+`retrieval-cases.template.jsonl`是待填写模板，空问题/范围不会运行实验。用真实本地版本ID、问题、可选项目/filters替换；从冻结SQLite中标注relevance[{chunk_id,grade:0..3}]，至少两人独立审查并裁定annotation.status=adjudicated、reviewers和pool_complete=true。需要标注各策略候选并集和漏检相关片段；返回但未标注的候选不得自动当作相关性0，工具将该行指标留空。覆盖精确术语、短语、同义/跨语言、方法/参数/单位、多论文、冲突、无答案、全库问题；全库须另外检查Research逐篇清单。
+
+```sh
+engine/.venv/bin/python tools/compare_retrieval.py --workspace <本地工作区> --cases <本地JSONL> --output <新的实验目录> --strategies keyword,vector_exact,hybrid --repeats 10
+```
+
+工具只读备份原库和核对后复制派生索引，保留输出快照，不清理原库。三个策略使用同一问题/Chunk/范围/筛选及k=10，无论文配额；词法/向量候选各50，记录原始rank、世代、范围指纹及逐次耗时。`--strategies keyword,vector_exact,hybrid,hybrid_review --include-local-review`仅调用已配置的本地候选，不使用网络Provider。索引损坏或模型缺失的策略记录BLOCKED，不能假装混合已执行。MEASURED只表示实验运行完成。
+
+Chunk级指标Recall@5/10、MRR、分级nDCG@10；相同ID重复不重复得分，但仍占用排名。无正例时Recall/MRR/nDCG为空，不伪填1。未裁定数据可以测量耗时，scientific_quality保持BLOCKED。P50为中位数，P95为nearest-rank；记录冷启动顺序/重复次数，工具计时包含查询Embedding与候选关联，不可直接与“不含查询Embedding”的P95≤1s建议目标比较。
+
+现有科学预测JSONL可另填`latency_ms:{retrieval:<实测毫秒>,end_to_end:<实测毫秒>}`；人工审查增加`total_claims`和`unsupported_claims`（必须实际审阅本轮输出），评分器计算无支持论断比例，不读取模型自评分。同时新增页级Recall@5/MRR/nDCG（无分级标签时二元），保留原Recall@10。引用有效性要求来源验证且属于本轮retrieved页，语义正确仍由独立人工判断。minimum阈值方向为≥；可选maximum方向为≤，例如无支持比例，数值须另经批准，本轮不修改既有建议阈值或样本量。
+
+检索/回答时延缺失、人工无支持审查缺失均登记缺口。索引构建耗时/磁盘/内存用既有`capacity_benchmark.py`，真实与synthetic分开；真实样本数不足时exit2/BLOCKED。无法用少数查询、合成1000页或模型自审宣布科研/1000篇容量合格。

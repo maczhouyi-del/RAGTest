@@ -1,5 +1,7 @@
 # 本地检索实现子契约 v0.2
 
+2026-10-27当前排名、实际分词版本、内容多样性和问答配额的增量以[retrieval-answer-v0.6.md](retrieval-answer-v0.6.md)为准；以下保留此前实现记录，不把历史候选配置当当前验收结论。
+
 需求v1.1 §§3、4.3–4.5、9；新增策略为可选实验能力，不改变后端/Embedding最终选型。协议仍0.1.0，API`/v0`。向量/模型候选版本不当作已批准性能结论。
 
 `POST /v0/search`：query、authorized_doc_version_ids、k(1–100)、可选project_id、strategy=fts_only|keyword|vector_exact|hybrid。SQLite可见性/项目关联先过滤；不可用范围拒绝，不悄悄扩大到全库。向量结果再关联当前SQLite可见Chunk，拒绝孤儿命中。

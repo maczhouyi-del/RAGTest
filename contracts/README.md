@@ -40,3 +40,4 @@
 - [layout-tables-v0.2.md](layout-tables-v0.2.md)：已授权Docling离线候选、schema11表格/单元格与原文映射、分页核对/复核历史及证据引用；科学质量未验收。
 
 - [mvp-v0.3.md](mvp-v0.3.md)：三入口MVP、自动准备、schema13/14、FTS词频/中文、重叠切分/溢出拒绝、索引清单及显式Provider/API/Magpie。旧握手与端点兼容。
+- [retrieval-answer-v0.6.md](retrieval-answer-v0.6.md)：RAG-01系统信息/复合意图、原始排名RRF、内容多样性、默认每篇3段、当前问题优先、失败诊断及离线同范围评估；schema18不迁移，科研与平台门禁仍独立。

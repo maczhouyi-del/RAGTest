@@ -213,6 +213,7 @@ const errors: Record<string, string> = {
   LIFECYCLE_CONFLICT: "文献状态或版本已有变化，请刷新后重新核对。",
   INVALID_LIFECYCLE: "请选择有效状态并填写变更原因。",
   SCOPE_IDENTITY_CHANGED: "冻结后文献身份已变化，请重新核对文件版本并新建研究计划。",
+  NO_HITS: "本轮在所选文献范围没有检索命中，可调整问题或范围。",
   INSUFFICIENT_EVIDENCE: "本轮证据不足以形成受支持的回答。可补充文献、调整范围，或进入逐篇研究。",
   MODEL_WORKER_FAILED: "本地生成进程异常退出，资料和检查点已保留。可重试或使用摘录模式。",
   MODEL_TIMEOUT: "本地生成超时，进程已停止；资料和检查点已保留。",
@@ -260,7 +261,7 @@ export interface ScopeDocument {document_id?: string; doc_version_id: string; fi
 export interface Evidence {table_candidates?:{table_id:string;cell_id:string;row_start:number;column_start:number}[];text_origin?:string;id: string; source_anchor_id: string; quote: string; anchor_json: string; human_status: string; review_note: string; reviews?: {id:string;status:string;note:string;created_at:string}[]; current_source_status: string}
 export interface Claim {id: string; text: string; evidence_ids: string[]; source_status: string; model_support: string; comparability: string; human_status: string}
 export interface ModelAttempt {job_id: string; created_at: string; fingerprint: Record<string,unknown>}
-export interface AnswerRun {model_history?: ModelAttempt[];id: string; conversation_id: string; question: string; status: string; mode: string; strategy: string; error_code: string | null; scope: ScopeDocument[]; claims: Claim[]; evidence: Evidence[]; result: {intent?:string;retrieval_status?:string;text?:string;system_topic?:string;configuration?:Record<string,unknown>;relevance_review?:Record<string,unknown>|null; kind: string; coverage: string; support_checks?: {claim_id: string; status: string; reason: string}[]} | null}
+export interface AnswerRun {model_history?: ModelAttempt[];id: string; conversation_id: string; question: string; status: string; mode: string; strategy: string; error_code: string | null; scope: ScopeDocument[]; claims: Claim[]; evidence: Evidence[]; result: {refusal_reason?:string;outcome?:string;failure_stage?:string;system_information?:{system_topic:string;text:string;configuration:Record<string,unknown>}[];intent?:string;retrieval_status?:string;text?:string;system_topic?:string;configuration?:Record<string,unknown>;relevance_review?:Record<string,unknown>|null; kind: string; coverage: string; support_checks?: {claim_id: string; status: string; reason: string}[]} | null}
 export interface Observation {model_fingerprint?: Record<string,unknown> | null;field: string; value: string; unit: string; evidence_id: string; experiment_id: string; conditions_status: string; meaning_status: string; value_origin: string; conditions: Record<string,string>; revision: number}
 export interface ResearchItem {observation_count?:number;observation_offset?:number;observation_next_offset?:number|null;field_counts?:Record<string,number>;doc_version_id: string; status: string; processed_chunks: number; total_chunks: number; error_code: string | null; observations: Observation[]}
 export interface Report {source_warnings?:{doc_version_id:string;state:string;parse_changed?:boolean}[];id: string; revision: number; body: string; created_at: string}

@@ -160,9 +160,7 @@ class HybridSearch:
             )
 
     def paper_quota(self, hits, k, quota):
-        if quota is None:
-            return hits[:k]
-        if type(quota) is not int or not 1 <= quota <= 10:
+        if quota is not None and (type(quota) is not int or not 1 <= quota <= 10):
             raise EngineError("INVALID_SEARCH")
         if not hits:
             return []
@@ -177,30 +175,95 @@ class HybridSearch:
                     versions,
                 )
             }
-        counts, chosen = {}, []
+        # First spend context on distinct content; keep every source association,
+        # and use deferred duplicate occurrences if the remaining slots allow it.
+        unique, repeated, groups = [], [], {}
+        seen_chunks = set()
         for hit in hits:
+            if hit["chunk_id"] in seen_chunks:
+                continue
+            seen_chunks.add(hit["chunk_id"])
+            digest = hit.get("content_sha256", hit["chunk_id"])
+            (repeated if digest in groups else unique).append(hit)
+            groups.setdefault(digest, []).append(
+                {
+                    key: hit[key]
+                    for key in ("chunk_id", "doc_version_id", "source_anchor_id", "page_number")
+                    if key in hit
+                }
+            )
+        counts, chosen = {}, []
+        for hit in unique + repeated:
             paper = papers.get(hit["doc_version_id"])
-            if paper is None or counts.get(paper, 0) >= quota:
+            if paper is None or (quota is not None and counts.get(paper, 0) >= quota):
                 continue
             counts[paper] = counts.get(paper, 0) + 1
-            chosen.append(hit)
+            chosen.append(
+                hit | {"content_sources": groups[hit.get("content_sha256", hit["chunk_id"])]}
+            )
             if len(chosen) == k:
                 break
         return chosen
 
+    @staticmethod
+    def fuse(lexical, vector):
+        items, ranks = {}, {}
+        for channel, group in (("lexical_rank", lexical), ("vector_rank", vector)):
+            for hit in group:
+                key = hit["chunk_id"]
+                rank = hit[channel]
+                items[key] = items.get(key, {}) | hit
+                previous = ranks.setdefault(key, {}).get(channel)
+                ranks[key][channel] = min(previous, rank) if previous else rank
+        scores = {
+            key: sum(1 / (60 + rank) for rank in values.values()) for key, values in ranks.items()
+        }
+        return [
+            items[key] | ranks[key] | {"rrf_score": scores[key]}
+            for key in sorted(scores, key=lambda key: (-scores[key], key))
+        ]
+
     def search(self, query, versions, k, project_id, strategy, paper_quota=None, filters=None):
-        require_metadata_scope(self.db, versions, filters)
+        if (
+            type(k) is not int
+            or not 1 <= k <= 100
+            or not isinstance(query, str)
+            or not query.strip()
+            or len(query) > 20000
+            or not 1 <= len(versions) <= 1000
+            or strategy not in {"fts_only", "keyword", "vector_exact", "hybrid"}
+        ):
+            raise EngineError("INVALID_SEARCH")
+        versions = list(dict.fromkeys(versions))
         if strategy in {"vector_exact", "hybrid"} and not self.config():
             raise EngineError("EMBEDDING_NOT_CONFIGURED", status=409)
-        lexical = self.sources.search(
-            query, versions, max(k, 50), project_id=project_id, terms=strategy != "fts_only"
+        with self.db.connection() as conn:
+            self.sources.require_scope(conn, versions, project_id)
+        require_metadata_scope(self.db, versions, filters)
+        candidate_limit = max(k, 50)
+        lexical = (
+            self.sources.search(
+                query,
+                versions,
+                candidate_limit,
+                project_id=project_id,
+                terms=strategy != "fts_only",
+            )
+            if strategy != "vector_exact"
+            else []
         )
+        lexical = [hit | {"lexical_rank": hit["rank"]} for hit in lexical]
         if strategy in {"fts_only", "keyword"}:
             require_metadata_scope(self.db, versions, filters)
             return {
-                "results": self.paper_quota(lexical, k, paper_quota),
+                "results": [
+                    hit | {"rank": index + 1}
+                    for index, hit in enumerate(self.paper_quota(lexical, k, paper_quota))
+                ],
                 "per_paper_limit": paper_quota,
                 "strategy": strategy,
+                "candidate_limit_per_channel": candidate_limit,
+                "candidate_counts": {"lexical": len(lexical), "vector_embeddings": 0},
                 "tokenizer_version": TOKENIZER_VERSION
                 if strategy == "keyword"
                 else "unicode61-literal",
@@ -228,7 +291,7 @@ class HybridSearch:
             config["space_id"],
             self.encoder.dimension,
         )
-        hits = adapter.search_exact(query_vector, eligible, max(k, 50))
+        hits = adapter.search_exact(query_vector, eligible, candidate_limit)
         vector_hits = []
         with self.db.connection() as conn:
             conn.execute("BEGIN")
@@ -245,13 +308,19 @@ class HybridSearch:
                 }
                 if not set(versions).issubset(actual):
                     raise EngineError("SCOPE_NOT_AVAILABLE", status=409)
-            for hit in hits:
+            for vector_rank, hit in enumerate(hits, 1):
+                if hit["embedding_id"] not in eligible:
+                    raise EngineError("INDEX_INCOMPLETE", status=409)
                 rows = conn.execute(
                     f"""SELECT c.* FROM chunks c JOIN chunk_embedding_links l ON l.chunk_id=c.id
-                    JOIN document_versions v ON v.id=c.doc_version_id WHERE l.embedding_id=? AND c.visible=1
+                    JOIN embedding_records e ON e.id=l.embedding_id
+                    JOIN document_versions v ON v.id=c.doc_version_id WHERE l.embedding_id=? AND e.space_id=?
+                    AND e.content_sha256=c.content_sha256 AND c.visible=1
                     AND v.visibility='visible' AND v.id IN ({",".join("?" for _ in versions)}) ORDER BY c.id""",
-                    [hit["embedding_id"], *versions],
+                    [hit["embedding_id"], config["space_id"], *versions],
                 ).fetchall()
+                if not rows:
+                    raise EngineError("INDEX_INCOMPLETE", status=409)
                 for row in rows:
                     vector_hits.append(
                         {
@@ -260,27 +329,21 @@ class HybridSearch:
                             "source_anchor_id": row["id"],
                             "page_number": row["page_number"],
                             "preview": row["clean_text"],
-                            "rank": len(vector_hits) + 1,
+                            "rank": vector_rank,
+                            "vector_rank": vector_rank,
+                            "content_sha256": row["content_sha256"],
                             "location_confidence": "unknown",
                             "distance": hit["distance"],
                         }
                     )
         if strategy == "vector_exact":
-            results = vector_hits
+            results = sorted(vector_hits, key=lambda hit: (hit["vector_rank"], hit["chunk_id"]))
         else:
-            scores, items = {}, {}
-            for group in [lexical, vector_hits]:
-                for rank, hit in enumerate(group):
-                    identifier = hit["chunk_id"]
-                    scores[identifier] = scores.get(identifier, 0) + 1 / (60 + rank + 1)
-                    items[identifier] = hit
-            results = [
-                items[identifier] | {"rrf_score": scores[identifier]}
-                for identifier in sorted(scores, key=lambda i: (-scores[i], i))
-            ]
+            results = self.fuse(lexical, vector_hits)
         require_metadata_scope(self.db, versions, filters)
         with self.db.connection() as conn:
             conn.execute("BEGIN")
+            self.sources.require_scope(conn, versions, project_id)
             visible = {
                 row[0]
                 for row in conn.execute(
@@ -308,6 +371,12 @@ class HybridSearch:
             "per_paper_limit": paper_quota,
             "results": [hit | {"rank": index + 1} for index, hit in enumerate(results)],
             "strategy": strategy,
+            "candidate_limit_per_channel": candidate_limit,
+            "candidate_counts": {
+                "lexical": len(lexical),
+                "vector_embeddings": len(hits),
+                "vector_chunks": len(vector_hits),
+            },
             "query_embedding_ms": encoding_ms,
             "generation": config["generation"],
             "scientific_quality": "NOT_EVALUATED",

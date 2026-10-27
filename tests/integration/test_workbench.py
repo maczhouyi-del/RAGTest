@@ -389,7 +389,10 @@ def test_research_model_provenance_survives_failed_attempt_resume_and_human_edit
     run = work.create_answer("BERT", [one], None, "generative", "keyword")
     work.run_answer(run["id"])
     failed = work.answers()[0]
-    assert failed["status"] == "failed" and failed["result"] is None
+    assert failed["status"] == "failed" and failed["result"]["kind"] == "error"
+    assert failed["result"]["outcome"] == "generation_failed"
+    assert failed["result"]["claims"] == [] and failed["result"]["evidence_ids"] == []
+    assert failed["claims"] == [] and failed["evidence"] == []
     assert failed["model_history"][0]["fingerprint"]["prompt_version"] == "first"
 
 

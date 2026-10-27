@@ -153,8 +153,9 @@ def test_explicit_parameter_profiles_no_fallback(output, tokens):
         assert len(calls) == before + 1
 
 
+@pytest.mark.parametrize("old_prompt", ["evidence-json-v9", "evidence-json-v10-history"])
 def test_existing_local_model_prompt_upgrade_checks_all_other_fingerprints(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, old_prompt
 ):
     import json
 
@@ -167,9 +168,9 @@ def test_existing_local_model_prompt_upgrade_checks_all_other_fingerprints(
         "model": "explicit runtime fixture",
         "runtime": "fixture",
         "weight_sha256": "fixed",
-        "prompt_version": "evidence-json-v9",
+        "prompt_version": old_prompt,
     }
-    new = {**old, "prompt_version": "evidence-json-v10-history"}
+    new = {**old, "prompt_version": "evidence-json-v11-conflicts"}
 
     class RuntimeFixture:
         fingerprint = new

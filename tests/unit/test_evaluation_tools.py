@@ -82,3 +82,24 @@ def test_correct_refusal_requires_gold_unanswerability():
     value = module.score([gold], {"fixture": {"status": "refused"}}, lambda target: True)
     assert value["metrics"]["refusal_correct"]["value"] == 1
     assert value["metrics"]["citation_validity"]["value"] is None
+
+
+def test_additional_retrieval_and_human_unsupported_metrics_and_real_timing_fields():
+    gold = case()
+    prediction = {
+        "status": "completed",
+        "retrieved": [{"sha256": "a" * 64, "page": 1}],
+        "human_review": {
+            "status": "adjudicated",
+            "reviewers": ["fixture-a", "fixture-b"],
+            "total_claims": 4,
+            "unsupported_claims": 1,
+        },
+        "latency_ms": {"retrieval": 15, "end_to_end": 150},
+    }
+    result = evaluator().score([gold], {"fixture": prediction}, lambda target: True)
+    assert result["metrics"]["retrieval_recall_at_5"]["value"] == 1
+    assert result["metrics"]["retrieval_mrr"]["value"] == 1
+    assert result["metrics"]["retrieval_ndcg_at_10"]["value"] == 1
+    assert result["metrics"]["unsupported_conclusion_rate"]["value"] == 0.25
+    assert result["latency_ms"]["end_to_end"]["p95"] == 150

@@ -10,11 +10,33 @@ class Sources:
     def __init__(self, db: Database, root: Path):
         self.db, self.root = db, Path(root)
 
+    @staticmethod
+    def require_scope(conn, allowed_versions, project_id=None):
+        placeholders = ",".join("?" for _ in allowed_versions)
+        project_filter, project_params = "", []
+        if project_id is not None:
+            if conn.execute("SELECT 1 FROM projects WHERE id=?", (project_id,)).fetchone() is None:
+                raise EngineError("PROJECT_NOT_FOUND", status=404)
+            project_filter = " AND EXISTS(SELECT 1 FROM project_documents pd WHERE pd.document_id=document_versions.document_id AND pd.project_id=? AND pd.linked=1)"
+            project_params = [project_id]
+        authorized = [
+            row[0]
+            for row in conn.execute(
+                f"SELECT id FROM document_versions WHERE visibility='visible' AND id IN ({placeholders})"
+                + project_filter,
+                [*allowed_versions, *project_params],
+            )
+        ]
+        if set(authorized) != set(allowed_versions):
+            raise EngineError("SCOPE_NOT_AVAILABLE", status=409 if project_id is not None else 403)
+        return authorized
+
     def search(
         self, query: str, allowed_versions: list[str], k: int, *, project_id=None, terms=False
     ):
         if (
-            not 1 <= k <= 100
+            type(k) is not int
+            or not 1 <= k <= 100
             or not query.strip()
             or len(query) > 20000
             or not 1 <= len(allowed_versions) <= 1000
@@ -36,28 +58,7 @@ class Sources:
             # Scope validation and FTS read share one read snapshot, including
             # project membership. A concurrent edit cannot split their meaning.
             conn.execute("BEGIN")
-            project_filter = ""
-            project_params = []
-            if project_id is not None:
-                if (
-                    conn.execute("SELECT 1 FROM projects WHERE id=?", (project_id,)).fetchone()
-                    is None
-                ):
-                    raise EngineError("PROJECT_NOT_FOUND", status=404)
-                project_filter = " AND EXISTS(SELECT 1 FROM project_documents pd WHERE pd.document_id=document_versions.document_id AND pd.project_id=? AND pd.linked=1)"
-                project_params = [project_id]
-            authorized = [
-                row[0]
-                for row in conn.execute(
-                    f"SELECT id FROM document_versions WHERE visibility='visible' AND id IN ({placeholders})"
-                    + project_filter,
-                    [*allowed_versions, *project_params],
-                )
-            ]
-            if len(authorized) != len(allowed_versions):
-                raise EngineError(
-                    "SCOPE_NOT_AVAILABLE", status=409 if project_id is not None else 403
-                )
+            authorized = self.require_scope(conn, allowed_versions, project_id)
             rows = conn.execute(
                 f"""SELECT c.*,bm25({table}) AS score FROM {table}
                 JOIN chunks c ON c.id={table}.chunk_id
@@ -75,6 +76,9 @@ class Sources:
                     "page_number": row["page_number"],
                     "preview": row["clean_text"],
                     "rank": rank + 1,
+                    "lexical_rank": rank + 1,
+                    "content_sha256": row["content_sha256"],
+                    "bm25_score": row["score"],
                     "location_confidence": "unknown",
                 }
                 for rank, row in enumerate(rows)

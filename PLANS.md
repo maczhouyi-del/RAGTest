@@ -2,7 +2,7 @@
 
 > 本文件是本项目的**工作规划约定**。用户在P0-00后授权继续开发，并最新要求标记、延期不阻断开发的测试后继续功能。按ADR-009及用户连续开发指令推进独立P1–P4本地实现；P0正式验收仍BLOCKED，未把未测项标PASS。功能状态见§14；新增指定GitHub仓库源码上传授权见§15。
 
-最新任务：MVP-02第二轮四项功能，按用户 A→E 顺序本地开发与独立提交；禁止本轮推送/发布，见§18。
+最新任务：RAG-01检索到回答核心链路，用户批准附件阶段0–8连续实施并要求本地修改后推送指定RAGTest；见§25。MVP-02/HARDEN历史禁止推送记录保留其当时语义，不覆盖本轮明确同步授权。
 
 既有UI任务：UI-01按用户五张参考图重构视觉和布局；范围、风险与验收见[UI计划](docs/engineering/execplans/UI-01-reference-redesign.md)。原MVP功能和安全机制复用，禁止假数据/假连接/假高亮。
 
@@ -214,3 +214,11 @@ MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统�
 ## 24. HARDEN-01 提交与推送授权（2026-10-27）
 
 用户在加固完成后明确要求“提交并推送”，覆盖§23仅针对commit/push的原限制。本次允许将HARDEN-01代码、测试、契约、CI和必要工程文档提交并正常同步既有RAGTest origin/main；不包含模型、论文、用户库、密钥、原始日志、安装包、Release、强推或合并。开工main5da3c11，fetch确认与远端一致；既有本机230项Python/6项Rust通过及3项Rust未执行记录保留，91项冻结源码输入未变。发布NO-GO与未完成P1不因源码同步解除。详见[GH-03计划](docs/engineering/execplans/GH-03-hardening-source-upload.md)。
+
+## 25. RAG-01 检索到回答核心链路及同步授权（2026-10-27）
+
+本轮用户附件明确批准阶段0–8连续本地实施，最新消息要求修改后推送`https://github.com/maczhouyi-del/RAGTest.git`；覆盖附件旧的禁止提交/推送条款。沿用本仓库main同步方式，基线12cb91f69daea0cd1f84f92d648e321120f4a31b，工作区干净、origin/main一致。仅源码/测试/契约/工程报告，无模型/论文/用户库/凭据或安装包上传，不发布、不改历史。
+
+已完成确定性系统问法与复合子问题保留、原始通道rank的RRF、重复内容来源关联与多样性、UI默认每逻辑论文3/总8、独立问题优先与有界指代历史、no_hits/insufficient_evidence/generation_failed诊断、精确引用/范围发布验证、本地复核默认关闭及同范围离线评估。SQLite仍schema18，三个依赖锁不变；E5/FTS/向量适配器架构不变，无模型下载或真实外部API调用。提示和模型自检不等同科学事实验证。
+
+计划：[RAG-01](docs/engineering/execplans/RAG-01-retrieval-answer.md)；当前契约：[v0.6](contracts/retrieval-answer-v0.6.md)；测试/失败/质量缺口与正式结论以[本轮报告](docs/engineering/reports/RAG-01-2026-10-27.md)及验证清单为准。P0/P2/P3平台/容量/科研正式门禁仍未批准通过；Windows、真实1000篇、独立人工金标、签名/发行继续BLOCKED或NOT EXECUTED，不借源码推送解除。
