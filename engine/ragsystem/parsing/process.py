@@ -22,7 +22,39 @@ def run_worker(request, *, timeout=40, check=None, log_directory=None):
     payload = json.dumps(request).encode()
     if len(payload) > 16384:
         raise EngineError("PAYLOAD_TOO_LARGE")
-    environment = {**os.environ, "OMP_THREAD_LIMIT": "2", "OMP_NUM_THREADS": "2"}
+    environment = {
+        name: os.environ[name]
+        for name in (
+            "PATH",
+            "HOME",
+            "SYSTEMROOT",
+            "WINDIR",
+            "LOCALAPPDATA",
+            "APPDATA",
+            "USERPROFILE",
+            "TMPDIR",
+            "TMP",
+            "TEMP",
+            "LANG",
+            "LC_ALL",
+            "LC_CTYPE",
+        )
+        if name in os.environ
+    }
+    environment.update(OMP_THREAD_LIMIT="2", OMP_NUM_THREADS="2")
+    if getattr(sys, "frozen", False):
+        # Preserve only bootloader-owned handoff state for this same executable.
+        # Dropping it inserts another onefile parent and breaks watch_parent.
+        for name in (
+            "_PYI_ARCHIVE_FILE",
+            "_PYI_PARENT_PROCESS_LEVEL",
+            "_PYI_APPLICATION_HOME_DIR",
+            "_PYI_LINUX_PROCESS_NAME",
+        ):
+            if name in os.environ:
+                environment[name] = os.environ[name]
+    else:
+        environment["PYTHONPATH"] = str(Path(__file__).resolve().parents[2])
     if request.get("docling_directory"):
         environment.update(
             HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", HF_HUB_DISABLE_TELEMETRY="1"
@@ -62,6 +94,9 @@ def run_worker(request, *, timeout=40, check=None, log_directory=None):
                     "OCR_MODEL_NOT_AVAILABLE",
                     "OCR_FINGERPRINT_CHANGED",
                     "PAGE_LIMIT",
+                    "PAGE_GEOMETRY_LIMIT",
+                    "DOCUMENT_TEXT_LIMIT",
+                    "OUTPUT_LIMIT",
                     "PAGE_TEXT_LIMIT",
                     "SOURCE_PAGE_INVALID",
                     "INVALID_PARSE_PAGES",

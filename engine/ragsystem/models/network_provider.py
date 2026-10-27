@@ -3,12 +3,14 @@
 import hashlib
 import ipaddress
 import json
+import socket
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
 from ragsystem.domain.errors import EngineError
+from ragsystem.models.provider_errors import classify_http_error
 
 
 def endpoint(value):
@@ -141,17 +143,26 @@ class NetworkProvider:
                 raise ValueError()
             return value
         except urllib.error.HTTPError as exc:
-            code = (
-                "PROVIDER_AUTH_FAILED"
-                if exc.code in {401, 403}
-                else "PROVIDER_CATALOG_UNSUPPORTED"
-                if path == "/models" and exc.code in {404, 405, 501}
-                else "PROVIDER_PARAMETER_UNSUPPORTED"
-                if body is not None and exc.code in {400, 422}
-                else "PROVIDER_HTTP_ERROR"
-            )
+
+            def check_error():
+                if self.authorization_check:
+                    self.authorization_check()
+                if self.cancel_check:
+                    self.cancel_check()
+                if time.monotonic() - started > 60:
+                    raise EngineError("PROVIDER_TIMEOUT")
+
+            with exc:
+                try:
+                    code = classify_http_error(exc, path, body is not None, check_error)
+                except (TimeoutError, socket.timeout):
+                    raise EngineError("PROVIDER_TIMEOUT") from None
             raise EngineError(code) from None
-        except (TimeoutError, urllib.error.URLError):
+        except (TimeoutError, socket.timeout):
+            raise EngineError("PROVIDER_TIMEOUT") from None
+        except urllib.error.URLError as exc:
+            if isinstance(exc.reason, (TimeoutError, socket.timeout)):
+                raise EngineError("PROVIDER_TIMEOUT") from None
             raise EngineError("PROVIDER_UNAVAILABLE") from None
         except (ValueError, UnicodeError):
             raise EngineError("PROVIDER_RESPONSE_INVALID") from None

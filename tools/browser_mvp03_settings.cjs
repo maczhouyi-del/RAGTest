@@ -50,7 +50,7 @@ module.exports=async function({page,rpc,nav,check,wait,evidence,audit}){
  const docs=(await rpc('GET','/v0/documents')).documents;
  const conversations=(await rpc('GET','/v0/history/conversations')).items;
  const turns=await Promise.all(conversations.map(c=>rpc('GET',`/v0/conversations/${c.id}/turns`)));
- await page.evaluate(()=>globalThis.__testBroker('restart_engine'));await page.reload();await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
+ await page.evaluate(()=>globalThis.__testBroker('restart_engine'));await page.reload();await page.locator('.connection').filter({hasText:/本地引擎(?:已连接|部分可用)/}).waitFor();
  check((await rpc('GET','/v0/index')).ready&&audit().vector_sha256===indexed.vector_sha256,'RESTART_INDEX_PERSISTS');
  check(JSON.stringify(docs)===JSON.stringify((await rpc('GET','/v0/documents')).documents),'RESTART_METADATA_PERSISTS');
  await nav.getByRole('button',{name:'设置',exact:true}).click();await category('备份与恢复');

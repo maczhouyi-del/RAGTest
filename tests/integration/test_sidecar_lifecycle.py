@@ -212,3 +212,29 @@ def test_actual_http_annotation_then_index_releases_worker_slot(tmp_path):
     finally:
         client.close()
         stop_sidecar(process)
+
+
+def test_crashed_engine_fences_old_task_and_preserves_original(tmp_path):
+    from ragsystem.jobs.repository import Jobs
+    from ragsystem.storage.database import Database
+
+    process, client, token = start_sidecar(tmp_path)
+    root = tmp_path / "中文 空格"
+    db = Database(root / "data/research.db")
+    jobs = Jobs(db)
+    queued = jobs.enqueue("parse_page", "crash-active-task", {"doc_version_id": "test-only"})
+    claimed = jobs.claim(queued["id"])
+    assert claimed["status"] == "running"
+    client.close()
+    process.kill()
+    process.wait(timeout=5)
+    next_process, next_client, next_token = start_sidecar(tmp_path)
+    try:
+        row = next_client.get("/v0/jobs/" + queued["id"], headers={"X-RAG-Session": next_token}).json()
+        assert row["status"] == "retry_wait"
+        assert row["error_code"] == "ENGINE_RESTARTED"
+        assert jobs.get(queued["id"])["lease_token"] is None
+        assert next_client.get("/v0/health", headers={"X-RAG-Session": token}).status_code == 401
+    finally:
+        next_client.close()
+        stop_sidecar(next_process)

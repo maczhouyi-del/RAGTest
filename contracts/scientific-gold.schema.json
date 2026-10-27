@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Human scientific gold case v0.1 (no real labels supplied)",
+  "type":"object",
+  "required":["id","data_kind","category","question","answerable","targets","annotation"],
+  "properties":{
+    "id":{"type":"string","minLength":1},
+    "data_kind":{"enum":["human_gold","synthetic_unit_fixture"]},
+    "category":{"enum":["methods","results","numeric_units","tables","cross_document","multi_turn","insufficient_evidence"]},
+    "question":{"type":"string","minLength":1},
+    "answerable":{"type":"boolean"},
+    "targets":{"type":"array","items":{"type":"object","required":["sha256","page","quote"],"properties":{"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"page":{"type":"integer","minimum":1},"quote":{"type":"string","minLength":1}}}},
+    "expected_facts":{"type":"array","items":{"type":"object","required":["field","value","unit","conditions"]}},
+    "annotation":{"type":"object","required":["status","reviewers"],"properties":{"status":{"enum":["unreviewed","adjudicated"]},"reviewers":{"type":"array","uniqueItems":true,"items":{"type":"string","minLength":1}}}}
+  }
+}

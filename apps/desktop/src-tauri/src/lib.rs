@@ -6,6 +6,7 @@ use sidecar::Sidecar;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
@@ -14,6 +15,8 @@ struct Bridge {
     root: Mutex<PathBuf>,
     preference: PathBuf,
     warning: String,
+    recovering: AtomicBool,
+    start_allowed: AtomicBool,
 }
 
 impl Bridge {
@@ -28,10 +31,42 @@ impl Bridge {
         action: impl FnOnce(&Sidecar) -> Result<T, String>,
     ) -> Result<T, String> {
         let mut engine = self.engine.lock().map_err(|_| "ENGINE_LOCK_FAILED")?;
+        if let Some(current) = engine.as_mut() {
+            if !current.is_running()? {
+                engine.take();
+                self.start_allowed.store(false, Ordering::SeqCst);
+                return Err("ENGINE_EXITED".into());
+            }
+        }
         if engine.is_none() {
-            *engine = Some(Sidecar::start(&self.current_root()?)?);
+            if !self.start_allowed.load(Ordering::SeqCst) { return Err("ENGINE_UNAVAILABLE".into()); }
+            match Sidecar::start(&self.current_root()?) {
+                Ok(current) => *engine = Some(current),
+                Err(error) => {self.start_allowed.store(false, Ordering::SeqCst); return Err(error);}
+            }
         }
         action(engine.as_ref().ok_or("ENGINE_UNAVAILABLE")?)
+    }
+
+    fn recover_engine(&self, force: bool) -> Result<(), String> {
+        if self.recovering.swap(true, Ordering::SeqCst) {return Err("ENGINE_RECOVERING".into());}
+        let result = (|| {
+            let mut engine = self.engine.lock().map_err(|_| "ENGINE_LOCK_FAILED")?;
+            if let Some(current) = engine.as_mut() {
+                if current.is_running()? && !force {
+                    // A live but unhealthy process may be completing work. Never kill on a health timeout.
+                    current.request("GET", "/v0/health", None).map_err(|_| "ENGINE_HEALTH_FAILED")?;
+                    return Ok(());
+                }
+            }
+            if let Some(mut old) = engine.take() {old.stop();}
+            self.start_allowed.store(false, Ordering::SeqCst);
+            *engine = Some(Sidecar::start(&self.current_root()?)?);
+            self.start_allowed.store(true, Ordering::SeqCst);
+            Ok(())
+        })();
+        self.recovering.store(false, Ordering::SeqCst);
+        result
     }
 }
 
@@ -73,33 +108,37 @@ async fn choose_pdf_and_import(
         if files.len() > 32 || files.is_empty() {return Err("BATCH_LIMIT".into());}
         bridge.with_engine(|engine| {
             if bridge.current_root()? != selected_root {return Err("WORKSPACE_CHANGED".into());}
-            let mut grants = Vec::new();
-            for file in files {
-                let path = file.into_path().map_err(|_|"FILE_NOT_ALLOWED")?;
-                let grant = engine.request("POST", "/v0/internal/file-grants", Some(json!({"path":path})))?;
-                grants.push(grant["file_grant_id"].clone());
-            }
-            if grants.len() == 1 {
-                Ok(Some(engine.request("POST", "/v0/imports", Some(json!({"file_grant_id":grants[0],"idempotency_key":random_key()?,"project_id":project_id})))?))
-            } else {
-                Ok(Some(engine.request("POST", "/v0/import-batches", Some(json!({"file_grant_ids":grants,"idempotency_key":random_key()?,"project_id":project_id})))?))
-            }
+            let paths = files.into_iter().map(|file| file.into_path().map_err(|_| "FILE_NOT_ALLOWED".to_string())).collect::<Result<Vec<_>, _>>()?;
+            import_selected_paths(paths, project_id, |path, body| engine.request("POST", path, Some(body))).map(Some)
         })
     })
     .await
     .map_err(|_| "ENGINE_TASK_FAILED")?
 }
 
+fn import_selected_paths(paths: Vec<PathBuf>, project_id: Option<String>, mut request: impl FnMut(&str, Value) -> Result<Value, String>) -> Result<Value, String> {
+    let batch = request("/v0/internal/file-grants/batch", json!({"paths": paths}))?;
+    let grants = batch["grants"].as_array().ok_or("ENGINE_PROTOCOL_MISMATCH")?.iter().map(|row| row["file_grant_id"].clone()).collect::<Vec<_>>();
+    if grants.len() != paths.len() || grants.iter().any(|id| id.as_str().is_none_or(|id| id.is_empty())) {return Err("ENGINE_PROTOCOL_MISMATCH".into());}
+    let result = (|| {
+        if grants.len() == 1 {
+            request("/v0/imports", json!({"file_grant_id":grants[0],"idempotency_key":random_key()?,"project_id":project_id}))
+        } else {
+            request("/v0/import-batches", json!({"file_grant_ids":grants,"idempotency_key":random_key()?,"project_id":project_id}))
+        }
+    })();
+    if result.is_err() {
+        // The engine ignores already-consumed grants; never touch task-owned descriptors.
+        request("/v0/internal/file-grants/revoke", json!({"file_grant_ids":grants})).map_err(|_| "GRANT_CLEANUP_FAILED")?;
+    }
+    result
+}
+
 #[tauri::command]
-async fn restart_engine(state: State<'_, Arc<Bridge>>) -> Result<(), String> {
+async fn restart_engine(force: Option<bool>, state: State<'_, Arc<Bridge>>) -> Result<(), String> {
     let bridge = Arc::clone(state.inner());
     tauri::async_runtime::spawn_blocking(move || {
-        let mut engine = bridge.engine.lock().map_err(|_| "ENGINE_LOCK_FAILED")?;
-        if let Some(mut old) = engine.take() {
-            old.stop();
-        }
-        *engine = Some(Sidecar::start(&bridge.current_root()?)?);
-        Ok(())
+        bridge.recover_engine(force.unwrap_or(false))
     })
     .await
     .map_err(|_| "ENGINE_TASK_FAILED")?
@@ -1174,6 +1213,8 @@ pub fn run() {
                 root: Mutex::new(root),
                 preference,
                 warning,
+                recovering: AtomicBool::new(false),
+                start_allowed: AtomicBool::new(true),
             }));
             Ok(())
         })
@@ -1245,8 +1286,77 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{valid_job_id, verified_pdf_bytes};
+    use super::*;
     use sha2::{Digest, Sha256};
+    fn test_bridge(root: PathBuf) -> Bridge {
+        Bridge { engine: Mutex::new(None), root: Mutex::new(root.clone()), preference: root.join("test-preference.json"), warning: String::new(), recovering: AtomicBool::new(false), start_allowed: AtomicBool::new(true) }
+    }
+
+    #[test]
+    fn recovery_preserves_live_process_replaces_crashed_process_and_data() {
+        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).ancestors().nth(3).unwrap().join(".tools/test-data").join(format!("recovery-中文 空格-{stamp}"));
+        let bridge = test_bridge(root);
+        bridge.with_engine(|engine| engine.request("POST", "/v0/projects", Some(json!({"name":"Recovery persistence"})))).unwrap();
+        let (pid, base, token) = bridge.engine.lock().unwrap().as_ref().unwrap().test_identity();
+        bridge.recover_engine(false).unwrap();
+        bridge.engine.lock().unwrap().as_mut().unwrap().test_set_base("http://127.0.0.1:1".into());
+        assert_eq!(bridge.recover_engine(false).unwrap_err(), "ENGINE_HEALTH_FAILED");
+        bridge.engine.lock().unwrap().as_mut().unwrap().test_set_base(base.clone());
+        assert_eq!(pid, bridge.engine.lock().unwrap().as_ref().unwrap().test_identity().0);
+        bridge.recovering.store(true, Ordering::SeqCst);
+        assert_eq!(bridge.recover_engine(false).unwrap_err(), "ENGINE_RECOVERING");
+        bridge.recovering.store(false, Ordering::SeqCst);
+        bridge.engine.lock().unwrap().as_mut().unwrap().test_crash();
+        assert_eq!(bridge.with_engine(|_| Ok(())).unwrap_err(), "ENGINE_EXITED");
+        bridge.recover_engine(false).unwrap();
+        let (_, next_base, _) = bridge.engine.lock().unwrap().as_ref().unwrap().test_identity();
+        let response = reqwest::blocking::Client::builder().no_proxy().build().unwrap().get(format!("{next_base}/v0/health")).header("X-RAG-Session", token).send().unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::UNAUTHORIZED);
+        let projects = bridge.with_engine(|engine| engine.request("GET", "/v0/projects", None)).unwrap();
+        assert!(projects["projects"].as_array().unwrap().iter().any(|row| row["name"] == "Recovery persistence"));
+        assert!(!base.is_empty());
+        bridge.recover_engine(false).unwrap();
+        bridge.engine.lock().unwrap().take().unwrap().stop();
+    }
+
+    #[test]
+    fn recovery_start_failure_is_retryable_without_rebuilding_database() {
+        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let root = std::env::temp_dir().join(format!("ragsystem-start-failure-{stamp}"));
+        std::fs::create_dir(&root).unwrap();
+        let blocked = root.join("blocked"); std::fs::write(&blocked, b"keep").unwrap();
+        let bridge = test_bridge(blocked.clone());
+        assert!(bridge.recover_engine(false).is_err());
+        assert!(bridge.engine.lock().unwrap().is_none());
+        assert!(!bridge.start_allowed.load(Ordering::SeqCst));
+        assert_eq!(std::fs::read(&blocked).unwrap(), b"keep");
+        *bridge.root.lock().unwrap() = root.join("new-test-workspace");
+        bridge.recover_engine(false).unwrap();
+        bridge.engine.lock().unwrap().take().unwrap().stop();
+    }
+
+    #[test]
+    fn batch_import_failure_revokes_only_grants_returned_for_this_selection() {
+        let mut calls = Vec::new();
+        let result = import_selected_paths(vec![PathBuf::from("/test/a.pdf"), PathBuf::from("/test/b.pdf")], None, |path, body| {
+            calls.push((path.to_string(), body.clone()));
+            match path {
+                "/v0/internal/file-grants/batch" => Ok(json!({"grants":[{"file_grant_id":"first"},{"file_grant_id":"second"}]})),
+                "/v0/import-batches" => Err("WORKER_BUSY".into()),
+                "/v0/internal/file-grants/revoke" => Ok(json!({"revoked":2})),
+                _ => panic!("unexpected endpoint"),
+            }
+        });
+        assert_eq!(result.unwrap_err(), "WORKER_BUSY");
+        assert_eq!(calls.len(), 3);
+        assert_eq!(calls[2].1["file_grant_ids"], json!(["first", "second"]));
+        let mut calls = 0;
+        let failed = import_selected_paths(vec![PathBuf::from("/test/a.pdf")], None, |_, _| {calls += 1; Err("NOT_PDF".into())});
+        assert_eq!(failed.unwrap_err(), "NOT_PDF");
+        assert_eq!(calls, 1);
+    }
+
     #[test]
     fn rejects_route_injection() {
         assert!(valid_job_id("12345678-1234-4321-1234-123456789abc"));

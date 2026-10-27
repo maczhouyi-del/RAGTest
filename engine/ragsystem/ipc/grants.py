@@ -43,7 +43,7 @@ class Grants:
 
     def issue(self, path: Path) -> FileGrant:
         path = Path(path)
-        if not path.is_absolute() or str(path).startswith(("\\\\", "//")):
+        if not path.is_absolute() or ".." in path.parts or str(path).startswith(("\\\\", "//")):
             raise EngineError("FILE_NOT_ALLOWED", status=403)
         # Refuse symlinks/reparse points before opening. The held descriptor, not
         # the path string, is used for the import; its hash is checked again.
@@ -52,12 +52,19 @@ class Grants:
                 raise EngineError("FILE_NOT_ALLOWED", status=403)
         flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
         try:
+            identities = [(part, part.stat().st_dev, part.stat().st_ino) for part in path.parents]
             fd = os.open(path, flags)
             source = os.fdopen(fd, "rb")
         except OSError as exc:
             raise EngineError("FILE_NOT_ALLOWED", status=403) from exc
         try:
             info = os.fstat(source.fileno())
+            current = path.stat(follow_symlinks=False)
+            if (info.st_dev, info.st_ino) != (current.st_dev, current.st_ino) or any(
+                part.is_symlink() or part.stat().st_dev != device or part.stat().st_ino != inode
+                for part, device, inode in identities
+            ):
+                raise EngineError("FILE_NOT_ALLOWED", status=403)
             if not stat.S_ISREG(info.st_mode):
                 raise EngineError("FILE_NOT_ALLOWED", status=403)
             if info.st_size > MAX_PDF_BYTES:
@@ -77,6 +84,9 @@ class Grants:
                     raise EngineError("GRANT_LIMIT", status=429)
                 self._grants[grant.id] = grant
             return grant
+        except OSError as exc:
+            source.close()
+            raise EngineError("FILE_NOT_ALLOWED", status=403) from exc
         except BaseException:
             source.close()
             raise
@@ -90,6 +100,29 @@ class Grants:
             grant.source.close()
             raise EngineError("GRANT_EXPIRED", status=403)
         return grant
+
+    def revoke(self, identifiers):
+        """Only close grants still owned by this pool; consumed descriptors belong to tasks."""
+        count = 0
+        with self._lock:
+            for identifier in identifiers:
+                grant = self._grants.pop(identifier, None)
+                if grant is not None:
+                    grant.source.close()
+                    count += 1
+        return count
+
+    def issue_batch(self, paths):
+        if not 1 <= len(paths) <= 32:
+            raise EngineError("BATCH_LIMIT")
+        issued = []
+        try:
+            for path in paths:
+                issued.append(self.issue(path))
+            return issued
+        except BaseException:
+            self.revoke([grant.id for grant in issued])
+            raise
 
     def close(self):
         with self._lock:

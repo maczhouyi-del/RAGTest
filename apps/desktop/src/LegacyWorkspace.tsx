@@ -74,7 +74,7 @@ export default function App() {
     </aside>
     <main>
       <header><div><p className="eyebrow">研究资料 / {projectName}</p><h1>{tab === "library" ? "文献库" : tab === "search" ? "来源检索" : tab === "settings" ? "设置与备份" : tab === "ask" ? "证据问答" : tab === "research" ? "Research 工作台" : "任务与恢复"}</h1><p className="subtitle">{tab === "library" ? "保存论文原件，整理项目与元数据，随时阅读。" : tab === "search" ? "在当前项目文献中查找片段，回到真实 PDF 页面。" : "任务状态持久保存，失败原因与恢复状态可查。"}</p></div><button className="primary" disabled={busy || disconnected} onClick={() => void perform(importCurrentProject)}>{busy ? "正在处理…" : "+ 导入 PDF"}</button></header>
-      {connectionError && <section role="alert" className="notice error"><div><strong>本地引擎连接失败</strong><p>{connectionError}</p></div><button disabled={busy} onClick={() => void perform(restartEngine)}>重启引擎</button></section>}
+      {connectionError && <section role="alert" className="notice error"><div><strong>本地引擎连接失败</strong><p>{connectionError}</p></div><button disabled={busy} onClick={() => void perform(()=>restartEngine(true))}>重启引擎</button></section>}
       {operationError && <section role="alert" className="notice error"><p>{operationError}</p><button onClick={() => setOperationError("")}>收起</button></section>}
       {!data && !connectionError && <p role="status" className="empty">正在连接本地引擎…</p>}
       {data && <>

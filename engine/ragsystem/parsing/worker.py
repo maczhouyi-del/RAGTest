@@ -6,6 +6,9 @@ import time
 from contextlib import ExitStack, closing, redirect_stdout
 from pathlib import Path
 
+from ragsystem.domain.errors import EngineError
+from ragsystem.parsing.limits import apply_process_limits, validate_page_geometry
+
 
 def watch_parent(parent_pid: int):
     """End the bounded worker if its supervisor dies, including a forced kill."""
@@ -45,14 +48,7 @@ def main():
     try:
         request = json.loads(sys.stdin.buffer.readline(16384))
         watch_parent(request["parent_pid"])
-        if sys.platform != "win32":
-            import resource
-
-            resource.setrlimit(resource.RLIMIT_CPU, (240, 240))
-            # macOS RLIMIT_AS is not an effective sandbox; record its limitations.
-            if sys.platform == "linux":
-                limit = (4 if request.get("docling_directory") else 1) * 1024**3
-                resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+        apply_process_limits(docling=bool(request.get("docling_directory")))
         if request.get("docling_directory"):
             # Defence in depth for this fixed candidate worker; not an OS sandbox.
             import socket
@@ -80,7 +76,7 @@ def main():
                     raise ValueError("OPERATION_INVALID")
             encoded = json.dumps(result, ensure_ascii=False).encode()
             if len(encoded) > 8 * 1024 * 1024:
-                raise ValueError("OUTPUT_LIMIT")
+                raise EngineError("OUTPUT_LIMIT")
             sys.stdout.buffer.write(encoded)
             sys.stdout.buffer.flush()
             return 0
@@ -97,14 +93,12 @@ def main():
                     sys.stdout.write(json.dumps({"ocr_fingerprint": fingerprint}))
                     return 0
                 if request.get("ocr_fingerprint") != fingerprint:
-                    from ragsystem.domain.errors import EngineError
-
                     raise EngineError("OCR_FINGERPRINT_CHANGED")
             path = Path(request["pdf_path"])
             pages, total_chars, ocr_pages = [], 0, 0
             document = resources.enter_context(pdfium.PdfDocument(path))
             if not 0 < len(document) <= 500:
-                raise ValueError("PAGE_LIMIT")
+                raise EngineError("PAGE_LIMIT")
             document_page_count = len(document)
             if request.get("operation") == "metadata":
                 attributes = {
@@ -114,9 +108,10 @@ def main():
                 }
                 for index in range(min(2, len(document))):
                     with closing(document[index]) as page:
+                        validate_page_geometry(page)
                         with closing(page.get_textpage()) as textpage:
                             if textpage.count_chars() > 50000:
-                                raise ValueError("PAGE_TEXT_LIMIT")
+                                raise EngineError("PAGE_TEXT_LIMIT")
                             pages.append(
                                 {"page_number": index + 1, "text": textpage.get_text_range()}
                             )
@@ -132,12 +127,33 @@ def main():
 
             selection = validate_selection(request.get("page_numbers"))
             if selection and max(selection) > len(document):
-                from ragsystem.domain.errors import EngineError
-
                 raise EngineError("SOURCE_PAGE_INVALID")
             for index in [n - 1 for n in selection] if selection else range(len(document)):
                 try:
                     with closing(document[index]) as page:
+                        try:
+                            validate_page_geometry(page)
+                        except EngineError as exc:
+                            if ocr is None or exc.code != "PAGE_GEOMETRY_LIMIT":
+                                raise
+                            # Preserve bounded OCR's page-level failure contract without
+                            # entering text extraction or allocating a bitmap for this page.
+                            ocr_pages += 1
+                            pages.append(
+                                {
+                                    "page_number": index + 1,
+                                    "text": "",
+                                    "error_code": (
+                                        "OCR_PAGE_LIMIT"
+                                        if ocr_pages > POLICY["max_ocr_pages"]
+                                        else "OCR_PIXEL_LIMIT"
+                                    ),
+                                    "rotation": 0,
+                                    "method": "ocr",
+                                    "mean_confidence": None,
+                                }
+                            )
+                            continue
                         rotation = page.get_rotation()
                         with closing(page.get_textpage()) as textpage:
                             if textpage.count_chars() > 50000:
@@ -164,7 +180,7 @@ def main():
                                     text, error, confidence = recognize(page, ocr)
                             total_chars += len(text)
                             if total_chars > 1500000:
-                                raise ValueError("DOCUMENT_TEXT_LIMIT")
+                                raise EngineError("DOCUMENT_TEXT_LIMIT")
                             pages.append(
                                 {
                                     "page_number": index + 1,
@@ -198,15 +214,13 @@ def main():
         }
         encoded = json.dumps(result, ensure_ascii=False).encode()
         if len(encoded) > 8 * 1024 * 1024:
-            raise ValueError("OUTPUT_LIMIT")
+            raise EngineError("OUTPUT_LIMIT")
         sys.stdout.buffer.write(encoded)
         sys.stdout.buffer.flush()
         return 0
     except Exception as exc:
         # Only typed internal codes cross IPC; PDF metadata/exception text are untrusted.
         import traceback
-
-        from ragsystem.domain.errors import EngineError
 
         traceback.print_exc(file=sys.stderr)
 

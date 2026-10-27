@@ -37,3 +37,18 @@
 - 命名管道 vs loopback+token（待 D04）；token 生成/注入方式和进程隔离的细节应在 P0 威胁评估里具体定义。
 - 原生 Windows 是否可合理限制 PDFium/Docling 子进程的文件系统/网络：须通过实测明确能做/不能做，不得写虚假的“沙箱已实现”。
 - 若 PDF.js 通过特殊应用协议显示本机 PDF，必须验证 URL 授权、缓存及页面越权；不可暴露不受控的 `file://` 阅读路径。
+
+## HARDEN-01 实现威胁边界（2026-10-27）
+
+不可信PDF可触发PDFium/本地OCR/Docling原生库缺陷；取得句柄/哈希仅绑定输入，不约束解析器被攻破后的系统权限。当前固定私有管道、500页/每页50000字符/全文150万字符/8MiB输出/受监督超时、父进程退出回收与本地模型资源指纹；新增页几何上限（单边20000pt、面积1亿pt²）及worker环境白名单，不继承任意API Key/代理变量。
+
+| 边界 | macOS当前主机 | Windows | Linux |
+|---|---|---|---|
+| CPU | RLIMIT_CPU，可单独实测；监督墙钟超时另算 | 未实现Job Object CPU限额，P1 BLOCKED | 配置RLIMIT_CPU，需目标环境实测 |
+| 地址空间/物理内存 | 没有有效地址空间硬限制，不把RLIMIT_AS当可用；P1 BLOCKED | 无已验证Job Object内存限制；P1 BLOCKED | 配置RLIMIT_AS，不能等同物理RAM/完整容器，尚需实测 |
+| 文件权限 | 无OS级最小文件权限沙箱，解析器与当前用户同权；P1 BLOCKED | 无已验证AppContainer/低权限token，重解析点矩阵待测 | 无已验证namespace/seccomp沙箱，P1 BLOCKED |
+| 网络 | Docling Python socket禁连仅纵深防御，原生代码可绕过，非OS网络隔离 | 同左，未证明OS阻断 | 同左，未证明OS阻断 |
+
+本轮不引入未经实测的伪沙箱。解除P1至少需：Windows11普通账户实机Job Object/受限权限与重解析点实测；支持Mac版本的维护方案、原生越权/联网尝试与内存耗尽测试；代表性恶意/压缩炸弹语料在隔离测试机验证。当前测试使用本地合成异常和许可公开PDF，不运行会破坏主机的真实exploit。父路径前后身份校验会缩小TOCTOU窗口，但不是OS隔离或全平台原子路径解析证明。
+
+冻结运行时环境白名单例外仅限PyInstaller的四个指定进程交接变量（_PYI_ARCHIVE_FILE、_PYI_PARENT_PROCESS_LEVEL、_PYI_APPLICATION_HOME_DIR、_PYI_LINUX_PROCESS_NAME），仅sys.frozen时原值传递；不按_PYI_前缀批量继承，不继承Key/代理/任意Python路径。全部剥离会令onefile再次创建父进程，触发已有watch_parent身份检查，实际冻结回归已复现；不以关闭该检查解决兼容。交接语义核对[PyInstaller 6.22.3官方说明](https://pyinstaller.org/en/stable/advanced-topics.html#private-environment-variables)。这不提供额外的OS权限隔离保证。

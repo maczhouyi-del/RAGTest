@@ -25,6 +25,12 @@ pub struct Sidecar {
 }
 
 fn executable_path() -> Result<PathBuf, String> {
+    #[cfg(test)]
+    if let Some(path) = std::env::var_os("RAGSYSTEM_TEST_SIDECAR") {
+        let path = PathBuf::from(path);
+        if path.is_absolute() && path.is_file() {return Ok(path);}
+        return Err("SIDECAR_NOT_PACKAGED".into());
+    }
     let extension = if cfg!(windows) { ".exe" } else { "" };
     let packaged = std::env::current_exe()
         .map_err(|_| "ENGINE_START_FAILED")?
@@ -52,6 +58,24 @@ fn executable_path() -> Result<PathBuf, String> {
 }
 
 impl Sidecar {
+    pub fn is_running(&mut self) -> Result<bool, String> {
+        self.child.try_wait().map(|status| status.is_none()).map_err(|_| "ENGINE_PROCESS_STATUS_FAILED".into())
+    }
+
+    #[cfg(test)]
+    pub fn test_identity(&self) -> (u32, String, String) {
+        (self.child.id(), self.base.clone(), self.token.clone())
+    }
+
+    #[cfg(test)]
+    pub fn test_crash(&mut self) {
+        self.child.kill().unwrap();
+        self.child.wait().unwrap();
+    }
+
+    #[cfg(test)]
+    pub fn test_set_base(&mut self, base: String) { self.base = base; }
+
     pub fn start(root: &Path) -> Result<Self, String> {
         std::fs::create_dir_all(root.join("logs")).map_err(|_| "DATA_ROOT_UNAVAILABLE")?;
         let mut entropy = [0u8; 32];
@@ -250,7 +274,10 @@ mod tests {
             .join(format!("rust-中文 空格-{stamp}"));
         let mut engine = Sidecar::start(&root).expect("actual bundled sidecar must start");
         let health = engine.request("GET", "/v0/health", None).unwrap();
-        assert_eq!(health["status"], "ready");
+        assert_eq!(health["components"]["engine"]["available"], true);
+        assert_eq!(health["components"]["database"]["available"], true);
+        assert_eq!(health["status"], "degraded"); // No model/index configured in the new workspace.
+        assert_eq!(health["schema_version"], health["components"]["database"]["schema_version"].to_string());
         assert!(!health.to_string().contains(&engine.token));
         assert!(
             engine

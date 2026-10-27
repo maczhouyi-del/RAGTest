@@ -2,6 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 
 export interface Health {
   system_question_forms?:Record<string,string[]>;
+  components?:Record<string,Record<string,unknown>>;
   status: "starting" | "ready" | "degraded";
   sidecar_version: string;
   schema_version: string;
@@ -61,7 +62,7 @@ export interface Snapshot {
 export interface IndexStatus {configured: boolean; ready: boolean; visible_chunks: number; indexed_chunks: number; backend: string | null; model: string | null; generation: string | null; candidate_only: boolean}
 export async function chooseEmbeddingModel(backend: string): Promise<{job_id: string} | null> {requireDesktop(); return invoke("choose_embedding_model", {backend});}
 export interface BackupRecord {id: string; kind: "backup" | "restored"; label: string; document_count: number; embedding_count: number; manifest_sha256: string; created_at: string}
-export async function listBackups(): Promise<{records: BackupRecord[]}> {requireDesktop(); return invoke("list_backups");}
+export async function listBackups(): Promise<{records: BackupRecord[];incomplete?:{id:string;kind:string;state:string;error_code:string|null}[]}> {requireDesktop(); return invoke("list_backups");}
 export async function createBackup(): Promise<{job_id: string} | null> {requireDesktop(); return invoke("choose_backup_directory");}
 export async function restoreBackup(): Promise<{job_id: string} | null> {requireDesktop(); return invoke("choose_restore_directories");}
 export async function activateRestoredWorkspace(identifier: string): Promise<void> {requireDesktop(); return invoke("activate_restored_workspace", {identifier});}
@@ -81,9 +82,9 @@ export async function importPdf(projectId: string | null = null): Promise<{ job_
 
 export async function prepareMvp(versionIds:string[]):Promise<{job_id:string}>{requireDesktop();return invoke("prepare_mvp",{versionIds});}
 export async function readMvpAnswer(answerId:string):Promise<AnswerRun>{requireDesktop();return invoke("read_mvp_answer",{answerId});}
-export async function restartEngine(): Promise<void> {
+export async function restartEngine(force = false): Promise<void> {
   requireDesktop();
-  return invoke("restart_engine");
+  return invoke("restart_engine", {force});
 }
 export async function cancelJob(jobId: string): Promise<void> {
   requireDesktop();
@@ -133,6 +134,10 @@ const errors: Record<string, string> = {
   CONVERSATION_BUSY: "当前会话已有问答正在执行，请等待完成。",
   PROVIDER_KEY_INVALID: "密钥格式无效，请检查是否包含换行。",
   PROVIDER_AUTH_FAILED: "模型服务拒绝了认证，请核对当前会话密钥。",
+  PROVIDER_QUOTA_EXCEEDED: "模型服务额度或余额不足，请检查账户配额及仅免费额度限制。当前会话密钥已保留。",
+  PROVIDER_PERMISSION_DENIED: "当前账户无权访问该模型或资源，请检查服务权限。当前会话密钥已保留。",
+  PROVIDER_RATE_LIMITED: "模型服务请求受限，请稍后手动重试；系统不会自动重试或切换服务。",
+  PROVIDER_SERVER_ERROR: "模型服务端暂时异常，请稍后手动重试。当前会话密钥已保留。",
   PROVIDER_UNAVAILABLE: "无法连接模型服务，请确认地址与服务状态后重试。",
   PROVIDER_TIMEOUT: "模型服务响应超时，请稍后重试。",
   PROVIDER_HTTP_ERROR: "模型服务返回错误，请检查服务端状态和接口兼容性。",
@@ -147,11 +152,18 @@ const errors: Record<string, string> = {
   SIDECAR_NOT_PACKAGED: "本地引擎尚未打包，请先按开发说明构建 Sidecar。",
   ENGINE_TIMEOUT: "本地组件加载或查询超时。任务记录仍保留，请稍后查看任务状态；无需直接重启。",
   ENGINE_UNAVAILABLE: "本地引擎没有响应。你可以重启引擎后重试。",
+  ENGINE_EXITED: "本地引擎已退出，请点击重新连接。文献和任务记录仍保留。",
+  ENGINE_RECOVERING: "引擎正在恢复，请等待本次操作完成。",
+  ENGINE_HEALTH_FAILED: "引擎进程仍在运行但健康检查失败，未自动终止它。请稍后刷新或在高级设置中主动重启。",
+  ENGINE_PROCESS_STATUS_FAILED: "无法确认引擎进程状态，已停止自动恢复。",
   ENGINE_START_FAILED: "本地引擎启动失败，请检查本轮构建与诊断记录。",
   ENGINE_PROTOCOL_MISMATCH: "桌面端与本地引擎协议版本不一致。",
   FILE_NOT_ALLOWED: "无法授权这个文件，请选择本机的普通 PDF 文件。",
   NOT_PDF: "所选文件没有有效的 PDF 文件头。",
   PDF_TOO_LARGE: "PDF 超过当前单文件 64 MiB 的处理上限。",
+  GRANT_CLEANUP_FAILED: "批次未能提交且授权回收未确认，请重新连接后重试。未消费授权仍有有效期限制。",
+  BACKUP_INCOMPLETE: "此副本尚未完整发布，不能用于恢复。",
+  BACKUP_RECOVERY_REQUIRED: "失败副本无法安全隔离，请在备份页核对残留记录；原资料库仍保留。",
   SOURCE_CHANGED: "授权后文件内容发生变化，请重新选择文件。",
   OBJECT_CORRUPT: "已保存原件的校验不通过，导入已停止并保留诊断信息。",
   WORKER_BUSY: "已有任务正在处理，请稍后重试。",

@@ -4,11 +4,11 @@ import re
 import shutil
 import sqlite3
 from pathlib import Path
-from uuid import uuid4
 
 from ragsystem import __version__
 from ragsystem.domain.errors import EngineError
 from ragsystem.ipc.directories import directory_identity
+from ragsystem.storage.backup_operations import MARKER, BackupOperations
 from ragsystem.storage.database import SCHEMA_VERSION, Database, utc_now
 
 
@@ -29,13 +29,25 @@ class Backups:
     def __init__(self, db: Database, root: Path):
         self.db, self.root = db, Path(root)
 
-    def create(self, destination: Path, *, progress=lambda current, total: None):
-        """Trusted operator or purpose-bound broker directory grant only."""
+    def create(self, destination: Path, *, progress=lambda current, total: None, operation=None):
+        """Trusted operator or purpose-bound broker grant; failures are retained, not deleted."""
         destination = Path(destination)
         destination.mkdir(parents=True, exist_ok=True)
-        directory_identity(destination)
-        snapshot = destination / ("ragsystem-backup-" + str(uuid4()))
-        (snapshot / "data").mkdir(parents=True)
+        operations, value = operation or (BackupOperations(self.db, self.root), None)
+        value = value or operations.begin("backup", destination)
+        try:
+            snapshot = operations.prepare(value)
+            result = self._create(snapshot, progress)
+            if operation is None:
+                operations.complete(value)
+            return result
+        except BaseException:
+            if operation is None:
+                operations.quarantine(value, "BACKUP_IO_FAILED")
+            raise
+
+    def _create(self, snapshot, progress):
+        (snapshot / "data").mkdir()
         (snapshot / "papers").mkdir()
         target_db = snapshot / "data/research.db"
         progress(0, 1)
@@ -83,11 +95,20 @@ class Backups:
         return snapshot
 
     @staticmethod
-    def inspect(snapshot: Path, *, progress=lambda current, total: None):
+    def inspect(snapshot: Path, *, progress=lambda current, total: None, allow_incomplete=False):
         snapshot = Path(snapshot)
         directory_identity(snapshot)
         manifest_path = snapshot / "manifest.json"
         try:
+            marker = snapshot / MARKER
+            if marker.exists() and not allow_incomplete:
+                if (
+                    marker.is_symlink()
+                    or marker.stat().st_size > 4096
+                    or json.loads(marker.read_text()).get("state") != "complete"
+                ):
+                    raise EngineError("BACKUP_INCOMPLETE", status=409)
+
             if manifest_path.is_symlink() or manifest_path.stat().st_size > 4 * 1024 * 1024:
                 raise ValueError("invalid manifest")
             manifest = json.loads(manifest_path.read_text())
@@ -163,13 +184,70 @@ class Backups:
             raise EngineError("BACKUP_MANIFEST_INVALID") from exc
 
     @staticmethod
-    def restore(snapshot: Path, target: Path, *, progress=lambda current, total: None):
+    def restore(
+        snapshot: Path, target: Path, *, progress=lambda current, total: None, operation=None
+    ):
+        if operation is not None:
+            return Backups._restore(snapshot, target, progress=progress, operation=operation)
+        from uuid import uuid4
+
+        from ragsystem.storage.backup_operations import write_marker
+
+        target = Path(target)
+        if target.exists():
+            raise EngineError("RESTORE_TARGET_EXISTS", status=409)
+        identity = {}
+        identifier = str(uuid4())
+        parent_identity = directory_identity(target.parent)
+
+        def created():
+            identity["target"] = directory_identity(target)
+            write_marker(
+                target, {"id": identifier, "owner_root": str(target.parent), "state": "incomplete"}
+            )
+
+        try:
+            result = Backups._restore(snapshot, target, progress=progress, on_create=created)
+            write_marker(
+                target, {"id": identifier, "owner_root": str(target.parent), "state": "complete"}
+            )
+            return result
+        except BaseException:
+            if identity:
+                try:
+                    marker = target / MARKER
+                    if (
+                        directory_identity(target.parent) != parent_identity
+                        or directory_identity(target) != identity["target"]
+                        or marker.is_symlink()
+                        or json.loads(marker.read_text()).get("id") != identifier
+                        or (target / "data/.engine.lock").exists()
+                    ):
+                        raise EngineError("BACKUP_OWNERSHIP_UNVERIFIED")
+                    target.rename(target.with_name(target.name + ".incomplete-" + identifier))
+                except (OSError, EngineError, ValueError):
+                    raise EngineError("BACKUP_RECOVERY_REQUIRED") from None
+            raise
+
+    @staticmethod
+    def _restore(
+        snapshot: Path,
+        target: Path,
+        *,
+        progress=lambda current, total: None,
+        operation=None,
+        on_create=lambda: None,
+    ):
         snapshot, target = Path(snapshot), Path(target)
         if target.exists():
             raise EngineError("RESTORE_TARGET_EXISTS", status=409)
         manifest = Backups.inspect(snapshot, progress=progress)["manifest"]
         directory_identity(target.parent)
-        target.mkdir(exist_ok=False)
+        if operation is not None:
+            operation[0].prepare(operation[1])
+        else:
+            target.mkdir(exist_ok=False)
+        on_create()
         (target / "restore-status.json").write_text('{"status":"incomplete"}\n')
         for index, record in enumerate(manifest["files"]):
             progress(index, len(manifest["files"]))

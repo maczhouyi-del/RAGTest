@@ -22,7 +22,7 @@ module.exports=async function({page,rpc,evidence,errors,stage,audit}){
   await wait(async()=>(await rpc('GET','/v0/generator')).configured);
   const original=(await rpc('GET','/v0/documents')).documents;
   await page.evaluate(()=>globalThis.__testBroker('restart_engine'));await page.reload();
-  await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
+  await page.locator('.connection').filter({hasText:/本地引擎(?:已连接|部分可用)/}).waitFor();
   const reopened=(await rpc('GET','/v0/documents')).documents;
   combination.afterRestart=audit();check(combination.beforeRestart.vector_sha256===combination.afterRestart.vector_sha256&&combination.beforeRestart.index_builds===combination.afterRestart.index_builds,'PROCESS_RESTART_INDEX_UNCHANGED');
   check(JSON.stringify(original)===JSON.stringify(reopened),'PROCESS_RESTART_METADATA_UNCHANGED');
@@ -114,7 +114,7 @@ module.exports=async function({page,rpc,evidence,errors,stage,audit}){
   const turns=await rpc('GET',`/v0/conversations/${conversations[0].id}/turns`);
   const before=audit();
   await page.evaluate(()=>globalThis.__testBroker('restart_engine'));await page.reload();
-  await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
+  await page.locator('.connection').filter({hasText:/本地引擎(?:已连接|部分可用)/}).waitFor();
   const restarted=await rpc('GET',`/v0/conversations/${conversations[0].id}/turns`);
   fs.writeFileSync(path.join(evidence,'E-restart-comparison-'+Date.now()+'.json'),JSON.stringify({turns,restarted,combination},null,2));
   check(JSON.stringify(turns)===JSON.stringify(restarted),'ENGINE_RESTART_ALL_TURNS_PERSIST');

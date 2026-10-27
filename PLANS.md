@@ -204,3 +204,13 @@ MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统�
 ## 22. 最新代码GitHub同步授权（2026-10-26）
 
 用户明确要求将最新代码推送GitHub，授权本次既有RAGTest origin/main正常同步，覆盖§18–21历史任务的“不自动push”限制。开工main fb73712且干净，fetch确认远端无独有提交、本地领先11。仅代码/测试/项目文档；论文、模型、用户库、凭据、原始日志和安装包不外发，不强推/合并/发Release。详见[GH-02计划](docs/engineering/execplans/GH-02-latest-source-upload.md)，实际远端核对与报告保留本机忽略证据目录。
+
+## 23. HARDEN-01 全面技术加固（2026-10-27）
+
+用户粘贴任务明确授权阶段0–11连续本地加固、故障注入、回归和发布门禁准备，缺环境补测登记后继续；覆盖旧门禁逐阶段等待限制。**本轮禁止commit/push/发布/正式发行包、真实收费API、用户论文、新模型/账户变更**，先前单次推送/API授权不能复用。main5da3c11开工干净，旧数据不动；批量删除限制继续有效，失败目录采用隔离/登记。详见[HARDEN-01计划](docs/engineering/execplans/HARDEN-01-2026-10-27.md)，阶段记录和最终门禁报告连续更新。
+
+§23实际结果：阶段0–11本机可执行加固与交互审查完成，Python最终230 PASS/0 FAIL/0 SKIP（已批准E5/OCR/Docling与当前冻结侧车）、Rust6 PASS/3 ignored、TS/Ruff/Clippy、浏览器既有78+恢复11检查通过。API错误/死引擎恢复/批量grant回收/失败备份归属隔离/关键词读调度/真实健康版本已修复，SQLite仍18、锁文件不变；失败回归与证据全保留。合成阶梯至1000单页实测，不作真实论文性能结论。OS隔离与平台、OSV网络及发行许可、真实1000篇、人工科研金标仍P1 BLOCKED，**暂不建议正式发布**。见[完整报告与命令索引](docs/engineering/reports/HARDEN-01-2026-10-27.md)。本轮没有commit/stage/push/正式安装包/真实付费API，main HEAD保持5da3c11。
+
+## 24. HARDEN-01 提交与推送授权（2026-10-27）
+
+用户在加固完成后明确要求“提交并推送”，覆盖§23仅针对commit/push的原限制。本次允许将HARDEN-01代码、测试、契约、CI和必要工程文档提交并正常同步既有RAGTest origin/main；不包含模型、论文、用户库、密钥、原始日志、安装包、Release、强推或合并。开工main5da3c11，fetch确认与远端一致；既有本机230项Python/6项Rust通过及3项Rust未执行记录保留，91项冻结源码输入未变。发布NO-GO与未完成P1不因源码同步解除。详见[GH-03计划](docs/engineering/execplans/GH-03-hardening-source-upload.md)。

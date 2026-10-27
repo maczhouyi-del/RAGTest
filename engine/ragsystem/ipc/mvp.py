@@ -69,7 +69,7 @@ def register_mvp(app, db, root, search, work, jobs, slot):
         if any(ord(c) < 32 for c in body.name + body.model):
             raise EngineError("INVALID_REQUEST")
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             return work.generation.providers.save(
                 body.model_dump(exclude={"api_key"}), body.api_key
@@ -100,7 +100,7 @@ def register_mvp(app, db, root, search, work, jobs, slot):
         with db.connection() as conn:
             work.require_scope(conn, {"project_id": None}, body.version_ids)
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             row = jobs.enqueue(
                 "verify",

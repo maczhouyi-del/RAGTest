@@ -172,4 +172,4 @@ def test_system_api_allows_empty_scope_but_literature_does_not(tmp_path):
             == "SCOPE_NOT_AVAILABLE"
         )
         health = client.get("/v0/health").json()
-        assert health["api_revision"] == "0.4-local" and health["system_question_forms"]
+        assert health["api_revision"] == "0.5-local" and health["system_question_forms"]

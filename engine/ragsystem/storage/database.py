@@ -96,3 +96,7 @@ class Database:
                     tuple(row) for row in conn.execute("PRAGMA foreign_key_check")
                 ],
             }
+
+    def schema_version(self) -> int:
+        with self.connection() as conn:
+            return conn.execute("PRAGMA user_version").fetchone()[0]

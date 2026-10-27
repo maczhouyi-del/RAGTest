@@ -62,7 +62,7 @@ module.exports=async function({page,rpc,evidence,errors,stage,audit}){
   check(!await page.evaluate(()=>[...Object.values(localStorage),...Object.values(sessionStorage)].join('').includes('fixture-authorization-secret')),'NO_SECRET_IN_FRONTEND_STORAGE');
   await page.screenshot({path:path.join(evidence,'A-provider.png'),fullPage:true});
   if(stage==='B'||stage==='C')await require('./browser_mvp03_routing.cjs')({page,rpc,nav,input,send,check,wait,calls,setDelay:value=>{delay=value;},setSupportStatus:value=>{supportStatus=value;},setPostFailure:value=>{postFailure=value;},stage,evidence});
-  await page.evaluate(()=>globalThis.__testBroker('restart_engine'));await page.reload();await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
+  await page.evaluate(()=>globalThis.__testBroker('restart_engine'));await page.reload();await page.locator('.connection').filter({hasText:/本地引擎(?:已连接|部分可用)/}).waitFor();
   provider=(await rpc('GET','/v0/generation-providers')).providers[0];check(provider.document_qa_enabled&&!provider.credential_available&&!provider.can_answer,'RESTART_GRANT_PERSISTS_SECRET_DOES_NOT');
   if(stage==='C')await require('./browser_mvp03_settings.cjs')({page,rpc,nav,check,wait,evidence,audit});
   check(!errors.length,'NO_BROWSER_ERRORS');

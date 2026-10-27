@@ -3,11 +3,12 @@ import { activateRestoredWorkspace, createBackup, errorMessage, listBackups, res
 
 export default function BackupSettings({workspace, onChange, onRecords}: {onRecords?:(rows:BackupRecord[])=>void; workspace?: {label: string; warning: string}; onChange: () => Promise<unknown>}) {
   const [records, setRecords] = useState<BackupRecord[]>([]);
+  const [incomplete,setIncomplete]=useState(0);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const refresh = useCallback(async () => {
-    try {const rows=(await listBackups()).records;setRecords(rows);onRecords?.(rows);}
+    try {const result=await listBackups();const rows=result.records;setIncomplete(result.incomplete?.length??0);setRecords(rows);onRecords?.(rows);}
     catch (err) {setError(errorMessage(err));}
   }, [onRecords]);
   useEffect(() => {void refresh(); const timer = window.setInterval(() => void refresh(), 3000); return () => window.clearInterval(timer);}, [refresh]);
@@ -19,6 +20,7 @@ export default function BackupSettings({workspace, onChange, onRecords}: {onReco
   }
   return <section className="panel"><div className="panel-head"><h2>备份与恢复</h2><span>当前工作区：{workspace?.label ?? "RAGSystem"}</span></div>
     <div className="settings-content"><p>备份包含原件、文献与项目、任务和持久向量。恢复会先校验文件，再创建全新副本。</p>
+      {incomplete>0&&<p role="status">发现 {incomplete} 个已隔离或需人工核对的不完整产物。原资料未删除；请保留诊断记录并核对本地备份任务。</p>}
       {workspace?.warning && <p role="alert">{workspace.warning}</p>}
       <div className="settings-actions"><button disabled={busy} onClick={() => void run(createBackup, "备份任务已提交。请在文献页查看任务进度。")}>创建备份</button><button disabled={busy} onClick={() => void run(restoreBackup, "恢复任务已提交。校验成功后，可在下面使用恢复副本。")}>从备份恢复副本</button></div>
       {error && <p role="alert" className="job-error">{error}</p>}{message && <p role="status">{message}</p>}

@@ -7,12 +7,14 @@ from ragsystem.domain.errors import EngineError
 from ragsystem.ipc.directories import directory_identity
 from ragsystem.jobs.repository import Jobs
 from ragsystem.storage.backup import Backups
+from ragsystem.storage.backup_operations import MARKER, BackupOperations
 from ragsystem.storage.database import utc_now
 
 
 class BackupService:
     def __init__(self, db, root):
         self.db, self.root, self.jobs = db, Path(root), Jobs(db)
+        self.operations = BackupOperations(db, root)
 
     def records(self):
         with self.db.connection() as conn:
@@ -52,19 +54,28 @@ class BackupService:
                 self.jobs.heartbeat(job_id, token, seconds=1800)
                 last_beat = time.monotonic()
 
+        operation = None
         try:
+            operation = self.operations.begin(
+                "restored" if source else "backup", parent.path, job_id, identifier
+            )
             if source:
                 path = parent.path / ("ragsystem-restored-" + identifier)
                 inspected = Backups.inspect(source.path, progress=progress)
-                Backups.restore(source.path, path, progress=progress)
+                Backups.restore(
+                    source.path, path, progress=progress, operation=(self.operations, operation)
+                )
                 (path / "workspace-identity.json").write_text(
                     json.dumps({"restore_id": identifier}) + "\n"
                 )
                 kind = "restored"
             else:
-                path = Backups(self.db, self.root).create(parent.path, progress=progress)
-                inspected = Backups.inspect(path, progress=progress)
+                path = Backups(self.db, self.root).create(
+                    parent.path, progress=progress, operation=(self.operations, operation)
+                )
+                inspected = Backups.inspect(path, progress=progress, allow_incomplete=True)
                 kind = "backup"
+            self.operations.complete(operation)
             with self.db.transaction() as conn:
                 self.jobs.require_lease(conn, job_id, token)
                 conn.execute(
@@ -81,9 +92,12 @@ class BackupService:
                 )
                 self.jobs.complete(job_id, token, "backup_record:" + identifier, connection=conn)
         except Exception as exc:
-            self.jobs.fail(
-                job_id, token, exc.code if isinstance(exc, EngineError) else "BACKUP_IO_FAILED"
-            )
+            code = exc.code if isinstance(exc, EngineError) else "BACKUP_IO_FAILED"
+            if operation is not None:
+                operation["state"] = "active"
+                if not self.operations.quarantine(operation, code):
+                    code = "BACKUP_RECOVERY_REQUIRED"
+            self.jobs.fail(job_id, token, code)
 
     def restored_path(self, identifier):
         with self.db.connection() as conn:
@@ -105,6 +119,13 @@ class BackupService:
                 for name in ("workspace-identity.json", "restore-status.json", "data/research.db")
             ):
                 raise ValueError("untrusted restored path")
+            marker = path / MARKER
+            if marker.exists() and (
+                marker.is_symlink()
+                or marker.stat().st_size > 4096
+                or json.loads(marker.read_text()).get("state") != "complete"
+            ):
+                raise ValueError("operation incomplete")
             identity = json.loads((path / "workspace-identity.json").read_text())
             status = json.loads((path / "restore-status.json").read_text())
             if identity != {"restore_id": identifier} or status != {"status": "complete"}:

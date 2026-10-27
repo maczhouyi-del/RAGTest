@@ -28,7 +28,7 @@ from ragsystem.parsing.tables import Tables
 from ragsystem.retrieval.hybrid import HybridSearch
 from ragsystem.retrieval.source_search import Sources
 from ragsystem.storage.backup_service import BackupService
-from ragsystem.storage.database import Database
+from ragsystem.storage.database import SCHEMA_VERSION, Database
 from ragsystem.workflows.history import History
 from ragsystem.workflows.workbench import Workbench
 
@@ -40,6 +40,7 @@ SCOPE_ENDPOINTS = {
     "/v0/research",
     "/v0/document-merges",
     "/v0/mvp/prepare",
+    "/v0/internal/file-grants/batch",
 }
 
 
@@ -103,6 +104,14 @@ class StrictModel(BaseModel):
 
 class GrantRequest(StrictModel):
     path: str = Field(min_length=1, max_length=4096)
+
+
+class BatchGrantRequest(StrictModel):
+    paths: list[str] = Field(min_length=1, max_length=32)
+
+
+class RevokeGrantsRequest(StrictModel):
+    file_grant_ids: list[str] = Field(min_length=1, max_length=32)
 
 
 class ImportRequest(StrictModel):
@@ -274,6 +283,7 @@ def create_app(token: str, data_root: Path):
     hybrid = HybridSearch(db, data_root)
     workbench = Workbench(db, data_root, hybrid)
     slot = BoundedSemaphore(1)
+    read_slot = BoundedSemaphore(2)
     from ragsystem.library.metadata import MetadataExtraction
 
     metadata = MetadataExtraction(db, data_root)
@@ -288,6 +298,7 @@ def create_app(token: str, data_root: Path):
     @asynccontextmanager
     async def lifespan(app):
         # Published immutable objects may safely finish expired import intents.
+        backups.operations.reconcile()
         importer.recover_published_imports()
         metadata.ensure_missing()
         pump = asyncio.create_task(metadata_pump())
@@ -329,14 +340,61 @@ def create_app(token: str, data_root: Path):
 
     @app.get("/v0/health")
     def health():
+        import sqlite3
+
         from ragsystem.workflows.system_information import system_question_forms
 
+        reasons = []
+        try:
+            schema = db.schema_version()
+            database_ready = schema == SCHEMA_VERSION
+        except sqlite3.Error:
+            schema, database_ready = None, False
+        if not database_ready:
+            reasons.append("DATABASE_UNAVAILABLE_OR_SCHEMA_MISMATCH")
+        try:
+            index = hybrid.status() if database_ready else {"ready": False, "configured": False}
+            generation = workbench.generation.status() if database_ready else {"configured": False}
+            connections = workbench.generation.providers.list() if database_ready else []
+            ocr_configured = OcrService(db).status()["configured"] if database_ready else False
+        except (sqlite3.Error, EngineError, ValueError, KeyError):
+            index, generation, connections, ocr_configured = (
+                {"ready": False, "configured": False},
+                {"configured": False},
+                [],
+                False,
+            )
+            reasons.append("COMPONENT_STATUS_UNAVAILABLE")
+        eligible = generation["configured"] or any(value["can_answer"] for value in connections)
+        if not index["ready"]:
+            reasons.append(index.get("reason") or "EMBEDDING_NOT_CONFIGURED")
+        if not eligible:
+            reasons.append("GENERATOR_NOT_CONFIGURED_OR_NOT_ENABLED")
+        if not ocr_configured:
+            reasons.append("OCR_NOT_CONFIGURED")
+        components = {
+            "engine": {"available": True},
+            "database": {
+                "available": database_ready,
+                "schema_version": schema,
+                "expected_schema": SCHEMA_VERSION,
+            },
+            "keyword_search": {"available": database_ready},
+            "vector_search": {"available": index["ready"], "configured": index["configured"]},
+            "generation": {
+                "configured": generation["configured"] or bool(connections),
+                "eligible": eligible,
+                "remote_health_checked": False,
+            },
+            "ocr": {"configured": ocr_configured},
+        }
         return {
-            "status": "ready",
+            "status": "ready" if database_ready and index["ready"] and eligible else "degraded",
             "sidecar_version": __version__,
-            "api_revision": "0.4-local",
+            "api_revision": "0.5-local",
             "system_question_forms": system_question_forms(),
-            "schema_version": "0.1-draft",
+            "schema_version": str(schema) if schema is not None else "unavailable",
+            "components": components,
             "capabilities": [
                 "pdf_storage",
                 "durable_jobs",
@@ -356,15 +414,32 @@ def create_app(token: str, data_root: Path):
                 "reading_notes",
                 "document_versions",
             ],
-            "disabled_reasons": ["OCR_NOT_CONFIGURED", "WINDOWS_NOT_VERIFIED"]
-            + ([] if hybrid.status()["ready"] else ["EMBEDDING_NOT_CONFIGURED"])
-            + ([] if workbench.generation.status()["configured"] else ["GENERATOR_NOT_CONFIGURED"]),
+            "disabled_reasons": reasons,
+            "acceptance": {"windows": "NOT_EXECUTED", "scientific_gold": "NOT_EVALUATED"},
         }
 
     @app.post("/v0/internal/file-grants")
     def issue_grant(body: GrantRequest):
         grant = grants.issue(Path(body.path))
         return {"file_grant_id": grant.id, "sha256": grant.sha256, "size_bytes": grant.size}
+
+    @app.post("/v0/internal/file-grants/batch")
+    def issue_batch_grants(body: BatchGrantRequest):
+        if any(not 1 <= len(path) <= 4096 for path in body.paths):
+            raise EngineError("INVALID_REQUEST")
+        issued = grants.issue_batch([Path(path) for path in body.paths])
+        return {
+            "grants": [
+                {"file_grant_id": grant.id, "sha256": grant.sha256, "size_bytes": grant.size}
+                for grant in issued
+            ]
+        }
+
+    @app.post("/v0/internal/file-grants/revoke")
+    def revoke_grants(body: RevokeGrantsRequest):
+        if any(not 1 <= len(identifier) <= 100 for identifier in body.file_grant_ids):
+            raise EngineError("INVALID_REQUEST")
+        return {"revoked": grants.revoke(body.file_grant_ids)}
 
     def run_import(job, grant):
         try:
@@ -446,7 +521,7 @@ def create_app(token: str, data_root: Path):
         if len(set(body.file_grant_ids)) != len(body.file_grant_ids):
             raise EngineError("INVALID_REQUEST")
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         items, output = [], []
         try:
             if body.project_id is not None:
@@ -604,8 +679,9 @@ def create_app(token: str, data_root: Path):
 
     @app.post("/v0/search")
     def source_search(body: SearchRequest):
-        if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+        gate = read_slot if body.strategy in {"fts_only", "keyword"} else slot
+        if not gate.acquire(blocking=False):
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             return hybrid.search(
                 body.query,
@@ -616,7 +692,7 @@ def create_app(token: str, data_root: Path):
                 filters=body.filters.model_dump() if body.filters else None,
             )
         finally:
-            slot.release()
+            gate.release()
 
     @app.get("/v0/index")
     def index_status():
@@ -636,7 +712,7 @@ def create_app(token: str, data_root: Path):
             row = jobs.enqueue("embed_batch", body.idempotency_key, payload)
             return {"job_id": row["id"], "status": row["status"]}
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             model = directories.take(body.model_grant_id, "embedding")
             row = jobs.enqueue(
@@ -661,7 +737,7 @@ def create_app(token: str, data_root: Path):
 
     @app.get("/v0/backups")
     def backup_records():
-        return {"records": backups.records()}
+        return {"records": backups.records(), "incomplete": backups.operations.issues()}
 
     def run_backup(job_id, parent, source):
         try:
@@ -677,7 +753,7 @@ def create_app(token: str, data_root: Path):
             row = jobs.enqueue("backup", body.idempotency_key, payload)
             return {"job_id": row["id"], "status": row["status"]}
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             source = (
                 directories.take(body.source_grant_id, "snapshot") if body.source_grant_id else None
@@ -752,7 +828,7 @@ def create_app(token: str, data_root: Path):
         else:
             raise EngineError("REAUTHORIZE_REQUIRED", status=409)
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             row = jobs.retry(job_id)
             background.add_task(run_retry, row)
@@ -768,7 +844,7 @@ def create_app(token: str, data_root: Path):
     @app.post("/v0/document-merges", status_code=201)
     def merge_documents(body: MergeRequest):
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             return Identity(db).merge(body.source_id, body.target_id, body.expected_version_ids)
         finally:
@@ -777,7 +853,7 @@ def create_app(token: str, data_root: Path):
     @app.post("/v0/document-merges/{merge_id}/undo")
     def undo_merge(merge_id: str):
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             return Identity(db).undo(merge_id)
         finally:
@@ -790,7 +866,7 @@ def create_app(token: str, data_root: Path):
     @app.post("/v0/documents/{version_id}/annotations")
     def save_annotation(version_id: str, body: AnnotationRequest):
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             return Annotations(db, data_root).save(version_id, body)
         finally:
@@ -821,7 +897,7 @@ def create_app(token: str, data_root: Path):
         if jobs.find_key("verify", body.idempotency_key):
             return public_job(jobs.enqueue("verify", body.idempotency_key, payload))
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             grant = directories.take(body.model_grant_id, "docling")
             row = jobs.enqueue("verify", body.idempotency_key, payload)
@@ -856,7 +932,7 @@ def create_app(token: str, data_root: Path):
         if jobs.find_key("verify", body.idempotency_key):
             return public_job(jobs.enqueue("verify", body.idempotency_key, payload))
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             grant = directories.take(body.model_grant_id, "ocr")
             row = jobs.enqueue("verify", body.idempotency_key, payload)
@@ -891,7 +967,7 @@ def create_app(token: str, data_root: Path):
         if jobs.find_key("verify", body.idempotency_key):
             return public_job(jobs.enqueue("verify", body.idempotency_key, payload))
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             grant = directories.take(body.model_grant_id, "generator")
             row = jobs.enqueue("verify", body.idempotency_key, payload)
@@ -949,7 +1025,7 @@ def create_app(token: str, data_root: Path):
     @app.post("/v0/answers", status_code=202)
     def ask(body: AnswerRequest, background: BackgroundTasks):
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             row = workbench.create_answer(
                 body.question,
@@ -986,7 +1062,7 @@ def create_app(token: str, data_root: Path):
     @app.post("/v0/research/{plan_id}/run", status_code=202)
     def run_research(plan_id: str, background: BackgroundTasks):
         if not slot.acquire(blocking=False):
-            raise EngineError("WORKER_BUSY", status=429)
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
             with db.transaction() as conn:
                 plan = conn.execute(
@@ -995,7 +1071,7 @@ def create_app(token: str, data_root: Path):
                 if not plan:
                     raise EngineError("NOT_FOUND", status=404)
                 if plan["status"] == "running":
-                    raise EngineError("WORKER_BUSY", status=429)
+                    raise EngineError("WORKER_BUSY", status=429, retriable=True)
                 row = jobs.enqueue(
                     "research_extract",
                     str(__import__("uuid").uuid4()),

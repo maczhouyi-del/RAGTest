@@ -32,7 +32,7 @@ MVP-02新开发应用另存于 `.tools/build/macos-mvp02-<构建时间>/RAGSyste
 
 首次使用：导入PDF→自动保存/解析→设置中选择E5目录建立本地索引→问答中选择原文摘录或本地Qwen→输入问题→点击引用打开对应PDF页及证据摘录。原件SHA去重，不虚构区域高亮。未配置E5时可先用关键词检索；退出时未衔接的准备步骤可在文献页“准备问答 / 更新索引”恢复。
 
-设置支持显式添加OpenAI兼容API/本地服务或可选Magpie，先“获取模型列表”再选模型。API密钥仅本次引擎会话内存，重启后需重输；API或网关每次生成都需勾选允许发送当前问题、有界历史上下文与本轮检索片段，不自动转云。Magpie须用户自行启动，网关可能转发云；不读取订阅凭据。更换生成模型不会重新Embedding。接口须支持Chat Completions；可显式选择JSON模式或提示词JSON及预算参数。返回内容仍须通过引用和支持性校验；不支持参数会明确报错，不自动换模型。
+设置支持显式添加OpenAI兼容API/本地服务或可选Magpie，先“获取模型列表”再选模型。API密钥仅本次引擎会话内存，重启后需重输；API或网关在设置中“保存并启用”后才允许发送当前问题、最近最多三轮有界历史与本轮检索片段；可关闭授权，关键配置变更需重新启用，不自动转云。Magpie须用户自行启动，网关可能转发云；不读取订阅凭据。更换生成模型不会重新Embedding。接口须支持Chat Completions；可显式选择JSON模式或提示词JSON及预算参数。返回内容仍须通过引用和支持性校验；不支持参数会明确报错，不自动换模型。
 
 旧库如因长Chunk无法建立新索引，可在文献详情展开“高级解析与表格核对”，取消“只更新指定页”，选择“仅提取原生文本”重新解析，再更新索引；旧引用可能因解析变化失效。旧索引若缺少完整性清单需要更新；新增溢出拒绝策略纳入E5指纹，旧指纹空间保留，新规则首次构建可能重算，后续复用。设置页提供备份/全新恢复副本及本地资料目录显示，高级设置保留其他候选后端/解析/资料生命周期。
 
@@ -74,10 +74,12 @@ cargo test --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
 
 当前源码与冻结版本的回归记录见本轮报告，TS/Vite构建通过；真实GGUF另有原始试验日志，工程处理完成不能当科研质量合格。浏览器端到端使用真实冻结引擎和模拟Tauri桥；原生WebView/Rust启动回收另测，不能代替真实原生对话框/Windows安装。详细最新结果见报告。
 
-SQLite schema17；每次本工程旧schema升级前自动保留OnlineBackup，事务失败回滚，旧程序拒绝高版本。跨工作区恢复不覆盖原库；本工程迁移机制不授权访问旧RAGSystem库。
+SQLite schema18（由storage/database.py的SCHEMA_VERSION及实际PRAGMA user_version核对）；每次本工程旧schema升级前自动保留OnlineBackup，事务失败回滚，旧程序拒绝高版本。跨工作区恢复不覆盖原库；本工程迁移机制不授权访问旧RAGSystem库。
 
 ## 文档
 
 `specs/`保留原v1.1 DOCX、提取文本和来源优先序；`contracts/`保存原草案与已实现子契约；`docs/engineering/execplans/`、`reports/`及本机保留的`evidence/`记录任务、命令、结果及未通过门禁；`docs/legal/`和`THIRD_PARTY_NOTICES.md`是许可清单草案，完整二进制再分发审查仍待做。原始MANIFEST与历史报告保留，早期无Git记录的变更用本地source-snapshot审计；后续指定仓库源码同步见GH-01计划，历史报告描述的是各自执行时的状态。
 
 OCR完整候选能力当前只在本机macOS26.2 arm64实测；tesserocr轮子平台标签macOS15 arm64，不能推断旧Mac/Intel支持。真实Rust传输回归显式包含三个候选试验后为6项通过（默认cargo test会跳过依赖模型的3项）；Windows仍未执行。最终可复现命令与产物hash统一见本轮报告。
+
+HARDEN-01（2026-10-27）：健康接口报告实际schema及engine/database/keyword/vector/generation/OCR分项；未配置向量或生成能力时为degraded，连接成功不代表科研质量或所有功能就绪。设置内部六分类；引擎“重新连接”只恢复退出进程，仍存活但不健康时保留进程，明确主动重启另行操作。加固进度见docs/engineering/reports/HARDEN-01-2026-10-27.md。本轮不提交、不推送或发布。

@@ -15,6 +15,7 @@ async function main() {
   const evidence = path.join(root, process.env.RAGSYSTEM_EVIDENCE_DIR || 'docs/engineering/evidence/P0-implementation-2026-10-24');
   const p1 = process.env.RAGSYSTEM_P1_SMOKE === '1';
   const round3 = process.env.RAGSYSTEM_MVP03_STAGE;
+  const hardening = process.env.RAGSYSTEM_HARDEN_SMOKE === "1";
   const round2 = process.env.RAGSYSTEM_MVP_ROUND2_STAGE;
   const reference = process.env.RAGSYSTEM_UI_REFERENCE_SMOKE === '1';
   const mvp = process.env.RAGSYSTEM_MVP_SMOKE === '1' || reference || !!round2 || !!round3;
@@ -67,10 +68,20 @@ async function main() {
     await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
     page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
+    let recoveryCalls=0, failNextRecovery=false;
     const broker = async (command, args = {}) => {
       fs.appendFileSync(path.join(evidence,'browser-commands-'+path.basename(dataRoot)+'.jsonl'),JSON.stringify({command,time:new Date().toISOString()})+'\n');
+      if (command === 'test_crash_engine') {child.kill();await once(child,'exit');return;}
+      if (command === 'test_fail_next_recovery') {failNextRecovery=true;return;}
+      if (command === 'test_recovery_count') return recoveryCalls;
+      if (command === 'test_engine_identity') return {pid:child.pid,alive:child.exitCode===null&&child.signalCode===null};
       if (command === 'restart_engine') {
-        child.stdin.end();await once(child,'exit');
+        if(hardening&&args.force===false){
+          recoveryCalls++;
+          if(failNextRecovery){failNextRecovery=false;throw Error('ENGINE_START_FAILED');}
+          if(child.exitCode===null&&child.signalCode===null){await rpc('GET','/v0/health');return;}
+        }
+        if(child.exitCode===null&&child.signalCode===null){child.stdin.end();await once(child,'exit');}
         token=crypto.randomBytes(32).toString('hex');child=startEngine();
         const readiness=once(readline.createInterface({input:child.stdout}),'line');
         child.stdin.write(JSON.stringify({protocol_version:'0.1.0',token,data_root:dataRoot})+'\n');
@@ -210,13 +221,13 @@ for row in c.execute('SELECT id,vector_bytes FROM embedding_records ORDER BY id'
 a=c.execute("SELECT value_json FROM app_settings WHERE key='active_index'").fetchone()
 print(json.dumps({'vector_sha256':h.hexdigest(),'vectors':c.execute('SELECT count(*) FROM embedding_records').fetchone()[0],'index_builds':c.execute("SELECT count(*) FROM jobs WHERE type='embed_batch'").fetchone()[0],'active_index':json.loads(a[0]) if a else None,'secret_in_db':any(any(secret in line for secret in ['local-protocol-fixture-key','fixture-authorization-secret']) for line in c.iterdump())}))`;const output=require('node:child_process').spawnSync(path.join(root,'engine/.venv/bin/python'),['-c',script,path.join(dataRoot,'data/research.db')],{encoding:'utf8'});if(output.status!==0)throw Error('SQLITE_AUDIT_FAILED');return JSON.parse(output.stdout);};
     if(mvp){
-      await page.locator('.connection').filter({hasText:'本地引擎已连接'}).waitFor();
-      if(round3)await require('./browser_mvp03.cjs')({page,rpc,root,evidence,errors,stage:round3,audit});
+      await page.locator('.connection').filter({hasText:/本地引擎(?:已连接|部分可用)/}).waitFor();
+      if(round3){await require('./browser_mvp03.cjs')({page,rpc,root,evidence,errors,stage:round3,audit});if(hardening)await require('./browser_hardening.cjs')({page,rpc,evidence,errors});}
       else if(round2)await require('./browser_round2.cjs')({page,rpc,root,evidence,errors,stage:round2,audit});
       else if(reference)await require('./browser_reference.cjs')({page,rpc,root,evidence,errors});
       else await require('./browser_mvp.cjs')({page,rpc,root,evidence,errors});
     }else{
-    await page.locator('.sidebar-note').filter({hasText: '本地引擎已连接'}).waitFor();
+    await page.locator('.sidebar-note').filter({hasText: /本地引擎(?:已连接|部分可用)/}).waitFor();
     async function createProject(name) {
       await page.getByRole('button', {name: '新建项目', exact: true}).click();
       await page.getByLabel('项目名称', {exact: true}).fill(name);

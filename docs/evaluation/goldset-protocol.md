@@ -46,3 +46,13 @@
 ## 科研测量门槛决议
 
 在未观察分布前，v1.1 没有给出所有解析与语义质量百分比硬阈值。本包**不自行编造**准确率 KPI。P0-00 确定目标和人工复核流程，注册评测指标/抽样方法；真实测量后在 ADR 中决定下一阶段推进方式。未达到用户批准的指标时明确 FAIL/CONDITIONAL 而非隐藏失败集。
+
+## HARDEN-01 可执行离线格式
+
+`contracts/scientific-gold.schema.json`为JSONL金标行格式。空`gold-cases.template.jsonl`/`predictions.template.jsonl`没有虚构问题或页码；人工逐项填写id、category、question、answerable、实际PDF SHA/page/quote目标、expected_facts（field/value/unit/conditions）、至少两名独立reviewers和adjudicated状态。category覆盖methods/results/numeric_units/tables/cross_document/multi_turn/insufficient_evidence；多轮样例可另附conversation/context字段，不把历史回答当targets。
+
+预测行包含同id、status、retrieved[{sha256,page}]、citations[{sha256,page,quote}]、facts，以及人工对**这次模型输出**的human_review{status,reviewers,fact_correct,semantic_support}。模型自审的supported或自评分不计作人工评分。工具监督解析原件并验证SHA/页/摘录，不虚构框；扫描/表格复杂布局需人工金标及额外诊断，自动文本匹配失败不强行当对。
+
+执行：`PYTHONPATH=engine engine/.venv/bin/python tools/evaluate_scientific_quality.py --gold <人工JSONL> --predictions <本地预测JSONL> --manifest <合法语料manifest> --thresholds docs/evaluation/thresholds.proposed.json --output <本机目录>`。不运行生成模型/不联网，只离线评分。分别统计检索Recall@10、原文引用有效性、人工事实正确/语义支持、金标可回答性对应的拒答、数值单位条件结构化精确匹配；显示样本数与分组，不把缺数据当满分。量纲换算或容忍度必须先经人工注册，默认精确匹配。
+
+thresholds.proposed.json提出初始建议值（来源有效性100%，Recall@10≥90%，其余≥95%），**全部待PI批准**，不是已批准标准。类别缺失、人工标注/输出审查不足、没有批准人或阈值时exit2/BLOCKED，即使局部指标为1也不算科研门禁PASS。还需批准样本量、交叉分组和统计口径；不根据本轮模型表现降低标准。失败样例保留在本地评价JSON，不上传私有文本。

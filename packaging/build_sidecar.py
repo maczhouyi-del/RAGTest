@@ -17,6 +17,7 @@ def main():
     parser.add_argument("--include-generation-lab", action="store_true")
     parser.add_argument("--include-ocr-lab", action="store_true")
     parser.add_argument("--include-docling-lab", action="store_true")
+    parser.add_argument("--output-directory", default="apps/desktop/src-tauri/binaries", help="Use a fresh project-local directory for isolated source-build testing")
     parser.add_argument(
         "--evidence-directory", default="docs/engineering/evidence/P0-implementation-2026-10-24"
     )
@@ -158,14 +159,10 @@ def main():
             "SOURCE_CHANGED_DURING_BUILD: preserved build; previous binary unchanged"
         )
     binary = work / "dist" / ("ragsystem-engine" + extension)
-    destination = (
-        root
-        / "apps"
-        / "desktop"
-        / "src-tauri"
-        / "binaries"
-        / ("ragsystem-engine-" + target + extension)
-    )
+    output_directory = (root / args.output_directory).absolute()
+    if not output_directory.is_relative_to(root):
+        raise RuntimeError("BUILD_OUTPUT_MUST_BE_PROJECT_LOCAL")
+    destination = output_directory / ("ragsystem-engine-" + target + extension)
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(binary, destination)
     sha = hashlib.sha256(destination.read_bytes()).hexdigest()
