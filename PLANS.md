@@ -2,7 +2,7 @@
 
 > 本文件是本项目的**工作规划约定**。用户在P0-00后授权继续开发，并最新要求标记、延期不阻断开发的测试后继续功能。按ADR-009及用户连续开发指令推进独立P1–P4本地实现；P0正式验收仍BLOCKED，未把未测项标PASS。功能状态见§14；新增指定GitHub仓库源码上传授权见§15。
 
-最新任务：RAG-01检索到回答核心链路，用户批准附件阶段0–8连续实施并要求本地修改后推送指定RAGTest；见§25。MVP-02/HARDEN历史禁止推送记录保留其当时语义，不覆盖本轮明确同步授权。
+最新任务：用户于2026-10-29明确要求提交推送RAG-02，执行§27的GH-04源码同步授权。RAG-02开发与验证见§26；RAG-01已同步b47fa87，§25及更早记录保留当时语义。
 
 既有UI任务：UI-01按用户五张参考图重构视觉和布局；范围、风险与验收见[UI计划](docs/engineering/execplans/UI-01-reference-redesign.md)。原MVP功能和安全机制复用，禁止假数据/假连接/假高亮。
 
@@ -222,3 +222,17 @@ MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统�
 已完成确定性系统问法与复合子问题保留、原始通道rank的RRF、重复内容来源关联与多样性、UI默认每逻辑论文3/总8、独立问题优先与有界指代历史、no_hits/insufficient_evidence/generation_failed诊断、精确引用/范围发布验证、本地复核默认关闭及同范围离线评估。SQLite仍schema18，三个依赖锁不变；E5/FTS/向量适配器架构不变，无模型下载或真实外部API调用。提示和模型自检不等同科学事实验证。
 
 计划：[RAG-01](docs/engineering/execplans/RAG-01-retrieval-answer.md)；当前契约：[v0.6](contracts/retrieval-answer-v0.6.md)；测试/失败/质量缺口与正式结论以[本轮报告](docs/engineering/reports/RAG-01-2026-10-27.md)及验证清单为准。P0/P2/P3平台/容量/科研正式门禁仍未批准通过；Windows、真实1000篇、独立人工金标、签名/发行继续BLOCKED或NOT EXECUTED，不借源码推送解除。
+
+## 26. RAG-02 企业/开源对照与API问答全链路（2026-10-27—28）
+
+用户要求结合当前工程检查、优化意图识别/查询构造/召回/融合/重排/API生成，并补充参考其他企业或GitHub项目。基线main/b47fa877fb6c7b07f3e95fdfa0ebd5bcf9df996b、工作区干净。本轮本地实施和验证，未获新增收费API、真实用户资料外发、安装/模型下载或发布授权；未提交/推送。
+
+对照Dify、RAGFlow、Haystack官方文档及LlamaIndex官方源码，按项目本地SQLite/E5/精确向量/RRF边界修复科研子句误拆、跨范围历史混入、来源失效后仍发下一模型请求、重排晚于截断及实际模型输入审计缺口；显式短语优先、候选池/上下文分离、来源分组/页码/部分截取记录、阶段诊断已落地。默认不增加LLM改写/翻译或模型重排。锁、schema与科研/平台门禁不变。
+
+计划：[RAG-02](docs/engineering/execplans/RAG-02-reference-pipeline.md)，契约：[v0.7](contracts/retrieval-answer-v0.7.md)，结论与命令/原始证据见[本轮报告](docs/engineering/reports/RAG-02-2026-10-28.md)。正式P0/P2/P3、Windows/千篇/人工金标及发行不自动通过。
+
+## 27. GH-04 RAG-02提交与推送授权（2026-10-29）
+
+用户明确要求“提交推送至GitHub”，允许将已完成RAG-02的源码、测试、契约及工程文档正常提交并同步既有RAGTest origin/main，覆盖§26本地开发结束时的未提交/未推送边界。fetch确认基线b47fa877fb6c7b07f3e95fdfa0ebd5bcf9df996b与远端一致，31项原有改动吻合交付清单。历史报告与验证JSON的未提交字段描述当时状态，本次同步单独登记。
+
+范围不含论文、模型、数据库、凭据、原始日志或安装包，不强推、不合并、不发布Release，不新增付费API授权。无生产源码变动，不重复既有完整回归；检查差异、测试证据哈希、提交清单与敏感内容后提交，推送后核对远端完整SHA和工作区。计划：[GH-04](docs/engineering/execplans/GH-04-rag02-source-upload.md)；报告：[GH-04](docs/engineering/reports/GH-04-2026-10-29.md)。平台/科研/千篇及发布门禁保持原状态。

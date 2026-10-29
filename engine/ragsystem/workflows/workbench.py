@@ -10,11 +10,12 @@ from ragsystem.library.lifecycle import Lifecycle
 from ragsystem.library.repository import Library
 from ragsystem.models.generation_service import GenerationService
 from ragsystem.parsing.tables import matching_cells
-from ragsystem.retrieval.reranking import review_order
+from ragsystem.retrieval.reranking import REVIEW_POOL_LIMIT, review_order, review_pool
 from ragsystem.retrieval.source_search import Sources
 from ragsystem.retrieval.tokenizer import search_terms
 from ragsystem.storage.database import utc_now
 from ragsystem.verification.quotes import validate_quote
+from ragsystem.workflows.diagnostics import PipelineTrace
 from ragsystem.workflows.system_information import question_parts, runtime_information
 
 
@@ -168,15 +169,34 @@ class Workbench:
             )
         return {"id": value, "title": title[:80], "created_at": stamp}
 
-    def conversation_context(self, conn, conversation_id):
+    def conversation_context(self, conn, conversation_id, scope=None):
         # Strict character/UTF-8 bound (<= 6400 bytes), no new model calls.
         # Prior answers are non-evidence context, never added to the citation pool.
         rows = conn.execute(
-            "SELECT id,COALESCE(json_extract(result_json,'$.literature_question'),question) AS question,status FROM answer_runs WHERE conversation_id=? AND status IN ('completed','refused') AND COALESCE(json_extract(result_json,'$.kind'),'') != 'system_info' ORDER BY created_at DESC,id DESC LIMIT 3",
+            "SELECT a.id,COALESCE(json_extract(a.result_json,'$.literature_question'),a.question) AS question,a.status,s.versions_json,s.project_id FROM answer_runs a JOIN scope_snapshots s ON s.id=a.scope_id WHERE a.conversation_id=? AND a.status IN ('completed','refused') AND COALESCE(json_extract(a.result_json,'$.kind'),'') != 'system_info' ORDER BY a.created_at DESC,a.id DESC LIMIT 3",
             (conversation_id,),
         ).fetchall()
         result, remaining = [], 1600
+
+        def scope_key(versions):
+            return sorted(
+                (
+                    item["doc_version_id"],
+                    item.get("document_id"),
+                    item.get("file_sha256"),
+                    tuple(item.get("parse_run_ids", [])),
+                )
+                for item in versions
+            )
+
         for row in rows:
+            if scope is not None and (
+                row["project_id"] != scope["project_id"]
+                or scope_key(json.loads(row["versions_json"])) != scope_key(scope["versions"])
+            ):
+                # A range switch breaks the reference chain; don't skip backwards
+                # to an older matching range and export unrelated intervening turns.
+                break
             question = row["question"][: min(500, remaining)]
             remaining -= len(question)
             claims = conn.execute(
@@ -198,16 +218,22 @@ class Workbench:
 
     @staticmethod
     def retrieval_context(question, context):
+        reference_text = re.sub(
+            r"\b(?:is|was|would|could) it (?:be )?(?:possible|necessary|important|true|known|reasonable)\b",
+            "",
+            question,
+            flags=re.I,
+        )
         reference = re.search(
             r"它们?|上述|前述|二者|两者|那这个|那(?:个|么|些)|这个呢|这些呢|继续(?:比较|对比|分析)"
             r"|\b(?:it|its|they|their|them|these|those|former|latter)\b",
-            question,
+            reference_text,
             flags=re.I,
         )
         selected = context[-2:] if reference else []
         query = "\n".join([question, *(item["question"] for item in selected)])
         return selected, {
-            "version": "current-question-first-v2",
+            "version": "current-question-first-v3-scope",
             "strategy": "explicit_reference_last_two" if selected else "current_question_only",
             "turns": len(selected),
             "character_budget": 1600,
@@ -293,7 +319,11 @@ class Workbench:
                     "INSERT INTO conversations(id,title,project_id,created_at,updated_at) VALUES(?,?,?,?,?)",
                     (conversation_id, question[:80], project_id, utc_now(), utc_now()),
                 )
-            context = self.conversation_context(conn, conversation_id)
+            context = (
+                []
+                if system_topic
+                else self.conversation_context(conn, conversation_id, self.scope(scope_id))
+            )
             conn.execute(
                 "UPDATE conversations SET updated_at=?,title=CASE WHEN NOT EXISTS(SELECT 1 FROM answer_runs WHERE conversation_id=?) THEN ? ELSE title END WHERE id=?",
                 (utc_now(), conversation_id, question[:80], conversation_id),
@@ -398,10 +428,12 @@ class Workbench:
         provider = None
         result = None
         stage = "retrieval"
+        trace = PipelineTrace()
         try:
             payload = json.loads(job["payload_json"])
             if payload.get("system_topic"):
                 stage = "system_info"
+                trace.start(stage)
                 result = runtime_information(
                     self,
                     payload["system_topic"],
@@ -417,6 +449,8 @@ class Workbench:
                     ]
                     result["system_information"] = sections
                     result["text"] = "\n".join(section["text"] for section in sections)
+                trace.finish(output_count=1)
+                result["pipeline_trace"] = trace.data
                 with self.db.transaction() as conn:
                     self.jobs.require_lease(conn, job["id"], token)
                     conn.execute(
@@ -426,7 +460,13 @@ class Workbench:
                     self.jobs.complete(job["id"], token, "answer_run:" + run_id, connection=conn)
                 return
             scope = self.scope(run["scope_id"])
+            trace.start("scope_validation")
             provider = json.loads(job["payload_json"]).get("generation_provider")
+
+            def scope_gate():
+                with self.db.connection() as conn:
+                    self.jobs.require_lease(conn, job["id"], token)
+                    self.require_scope(conn, scope)
 
             def selected_generator():
                 if provider:
@@ -435,6 +475,14 @@ class Workbench:
                     if definition(self.generation.providers.get(provider["id"])) != provider:
                         raise EngineError("PROVIDER_CHANGED", status=409)
                     selected = self.generation.require(provider["id"])
+                    authorize = getattr(selected, "authorization_check", None)
+
+                    def authorize_current_scope():
+                        if authorize:
+                            authorize()
+                        scope_gate()
+
+                    selected.authorization_check = authorize_current_scope
                     external_generators.append(selected)
                     return selected
                 return self.generation.require()
@@ -445,13 +493,16 @@ class Workbench:
                     raise EngineError("SCOPE_STALE")
             context = payload.get("conversation_context", [])
             question = payload.get("literature_question", run["question"])
+            trace.start("query_construction", len(context) + 1)
             context, context_policy = self.retrieval_context(question, context)
             result = {
                 "intent": "mixed" if payload.get("system_topics") else "literature",
                 "literature_question": question,
                 "context_policy": context_policy,
                 "retrieval_status": "not_completed",
+                "pipeline_trace": trace.data,
             }
+            trace.start("retrieval", 1)
             retrieval = self.search.search(
                 context_policy["retrieval_query"],
                 versions,
@@ -459,6 +510,7 @@ class Workbench:
                 scope["project_id"],
                 run["strategy"].removesuffix("_review"),
                 json.loads(job["payload_json"]).get("per_paper_limit", 3),
+                **({"include_candidates": True} if run["strategy"].endswith("_review") else {}),
             )
             hits = retrieval["results"]
             result = {
@@ -473,7 +525,12 @@ class Workbench:
                 ],
                 "retrieval_status": "hits" if hits else "no_hits",
                 "context_policy": context_policy,
-                "retrieval": {key: value for key, value in retrieval.items() if key != "results"},
+                "retrieval": {
+                    key: value
+                    for key, value in retrieval.items()
+                    if key not in {"results", "candidates"}
+                },
+                "pipeline_trace": trace.data,
                 "claims": [],
                 "evidence_ids": [],
                 "coverage": "Top-K local retrieval; not whole-library coverage",
@@ -484,26 +541,73 @@ class Workbench:
             ranking = None
             if run["strategy"].endswith("_review") and hits:
                 stage = "relevance_review"
+                baseline = hits
+                hits = review_pool(baseline, retrieval.get("candidates", baseline))
+                trace.start(stage, len(hits))
+                scope_gate()
                 # This experiment is local-only, even when answer generation uses
                 # an explicitly selected network provider. Never borrow its API.
                 reviewer = self.generation.require()
                 self.record_model(job["id"], token, run_id, reviewer, stage="relevance")
-                reviewer.cancel_check = lambda: self.cancellation_check(job["id"], token)
-                hits, ranking = review_order(reviewer, question, hits)
+                reviewer.cancel_check = scope_gate
+
+                def before_review():
+                    scope_gate()
+                    trace.model_attempt("relevance")
+
+                hits, ranking = review_order(
+                    reviewer,
+                    question,
+                    hits,
+                    max_candidates=REVIEW_POOL_LIMIT,
+                    before_call=before_review,
+                )
+                trace.start("context_selection", len(hits))
+                hits = self.search.paper_quota(hits, 8, payload.get("per_paper_limit", 3))
+                hits = [hit | {"rank": index + 1} for index, hit in enumerate(hits)]
+                ranking["original_context_chunk_ids"] = [hit["chunk_id"] for hit in baseline]
+                ranking["final_context_chunk_ids"] = [hit["chunk_id"] for hit in hits]
+                result["retrieval"]["hits"] = [
+                    {key: value for key, value in hit.items() if key != "preview"} for hit in hits
+                ]
             pool = {hit["chunk_id"]: hit["preview"] for hit in hits}
             result["relevance_review"] = ranking
             raw_claims = []
             if run["mode"] == "generative" and hits:
+                stage = "source_validation"
+                trace.start("source_validation", len(hits))
+                scope_gate()
+                documents = {item["doc_version_id"]: item for item in scope["versions"]}
+                papers = list(dict.fromkeys(item["document_id"] for item in scope["versions"]))
+                input_chunks = []
+                for hit in hits:
+                    anchor = self.sources.anchor(hit["chunk_id"])
+                    document = documents[anchor["doc_version_id"]]
+                    input_chunks.append(
+                        {
+                            "chunk_id": hit["chunk_id"],
+                            "text": hit["preview"],
+                            "source": {
+                                "document_label": f"P{papers.index(document['document_id']) + 1}",
+                                "version_label": f"V{versions.index(anchor['doc_version_id']) + 1}",
+                                "title": document["title"],
+                                "page_number": anchor["page_number"],
+                            },
+                        }
+                    )
+                trace.start("answer_generation", len(hits))
                 stage = "generation"
+                scope_gate()
                 generator = selected_generator()
                 self.record_model(job["id"], token, run_id, generator)
                 generator.cancel_check = lambda: self.jobs.heartbeat(job["id"], token, seconds=1800)
+                trace.model_attempt("answer")
                 raw = generator.generate(
                     "answer",
                     {
                         "question": question,
                         "conversation_context_not_evidence": context,
-                        "chunks": [{"chunk_id": key, "text": value} for key, value in pool.items()],
+                        "chunks": input_chunks,
                     },
                 )
                 raw_claims = raw.get("claims") if isinstance(raw, dict) else None
@@ -512,10 +616,56 @@ class Workbench:
                 result["kind"] = "generated_draft"
                 result["model_fingerprint"] = generator.fingerprint
                 result["model_context"] = raw.get("context_metadata")
+                if (
+                    isinstance(result["model_context"], dict)
+                    and "included_chunk_ids" in result["model_context"]
+                ):
+                    included = result["model_context"]["included_chunk_ids"]
+                    if (
+                        not isinstance(included, list)
+                        or any(not isinstance(key, str) or key not in pool for key in included)
+                        or len(set(included)) != len(included)
+                    ):
+                        raise EngineError("MODEL_OUTPUT_INVALID")
+                    quote_pool = {key: pool[key] for key in included}
+                    lengths = result["model_context"].get("excerpt_lengths")
+                    if lengths is not None:
+                        if not isinstance(lengths, list):
+                            raise EngineError("MODEL_OUTPUT_INVALID")
+                        measured = {}
+                        for item in lengths:
+                            if (
+                                not isinstance(item, dict)
+                                or not isinstance(item.get("chunk_id"), str)
+                                or item["chunk_id"] not in quote_pool
+                                or item["chunk_id"] in measured
+                                or type(item.get("included_characters")) is not int
+                                or not 0
+                                <= item["included_characters"]
+                                <= len(pool[item["chunk_id"]])
+                                or item.get("original_characters") != len(pool[item["chunk_id"]])
+                            ):
+                                raise EngineError("MODEL_OUTPUT_INVALID")
+                            measured[item["chunk_id"]] = pool[item["chunk_id"]][
+                                : item["included_characters"]
+                            ]
+                        if set(measured) != set(included):
+                            raise EngineError("MODEL_OUTPUT_INVALID")
+                        quote_pool = measured
+                else:
+                    quote_pool = pool
+            else:
+                quote_pool = pool
             checked = []
             stage = "citation_validation"
             for claim in raw_claims:
                 stage = "citation_validation"
+                trace.start(
+                    "quote_validation",
+                    len(claim.get("evidence", []))
+                    if isinstance(claim, dict) and isinstance(claim.get("evidence"), list)
+                    else 0,
+                )
                 if (
                     not isinstance(claim, dict)
                     or not isinstance(claim.get("text"), str)
@@ -527,9 +677,12 @@ class Workbench:
                 for item in claim["evidence"]:
                     if not isinstance(item, dict):
                         raise EngineError("MODEL_OUTPUT_INVALID")
-                    validate_quote(pool, item.get("chunk_id"), item.get("quote"))
+                    validate_quote(quote_pool, item.get("chunk_id"), item.get("quote"))
                 self.jobs.heartbeat(job["id"], token, seconds=1800)
                 stage = "support_check"
+                trace.start(stage, len(claim["evidence"]))
+                scope_gate()
+                trace.model_attempt("support")
                 support = generator.generate(
                     "support",
                     {
@@ -551,6 +704,7 @@ class Workbench:
             result["support_checks"] = []
             result["claim_details"] = []
             stage = "publication"
+            trace.start("publication_validation", len(hits))
             self.jobs.heartbeat(job["id"], token, seconds=1800)
             with self.db.transaction() as conn:
                 self.jobs.require_lease(conn, job["id"], token)
@@ -640,6 +794,7 @@ class Workbench:
                     "scientific_quality": "NOT_EVALUATED",
                     "human_review": "separate_persistent_records",
                 }
+                trace.finish(output_count=len(result["claims"]) + len(result["evidence_ids"]))
                 conn.execute(
                     "UPDATE answer_runs SET status=?,result_json=?,error_code=? WHERE id=?",
                     (
@@ -655,6 +810,7 @@ class Workbench:
                 )
                 self.jobs.complete(job["id"], token, "answer_run:" + run_id, connection=conn)
         except Exception as exc:
+            trace.finish("failed")
             code = exc.code if isinstance(exc, EngineError) else "ANSWER_FAILED"
             if provider:
                 self.generation.providers.mark_error(provider["id"], code)
@@ -662,6 +818,7 @@ class Workbench:
             cancelled = self.jobs.get(job["id"])["status"] == "cancelled"
             failure = (result or {"intent": "literature", "retrieval_status": "not_completed"}) | {
                 "kind": "error",
+                "pipeline_trace": trace.data,
                 "outcome": "cancelled"
                 if cancelled
                 else "system_info_failed"

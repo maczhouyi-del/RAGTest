@@ -18,7 +18,7 @@ from ragsystem.indexing.integrity import checked_path, manifest
 from ragsystem.models.generation_service import GenerationService
 from ragsystem.retrieval.evaluation import latency_summary, ranking_metrics
 from ragsystem.retrieval.hybrid import HybridSearch
-from ragsystem.retrieval.reranking import review_order
+from ragsystem.retrieval.reranking import REVIEW_POOL_LIMIT, review_order, review_pool
 from ragsystem.storage.database import Database
 
 STRATEGIES = {"keyword", "fts_only", "vector_exact", "hybrid", "keyword_review", "hybrid_review"}
@@ -157,12 +157,17 @@ def compare(workspace, output, cases, strategies, repeats=1, include_local_revie
                                 scope.get("project_id"),
                                 strategy.removesuffix("_review"),
                                 filters=scope.get("filters"),
+                                include_candidates=strategy.endswith("_review"),
                             )
                             hits = result["results"]
                             if strategy.endswith("_review") and hits:
                                 hits, review = review_order(
-                                    generation.require(), case["question"], hits
+                                    generation.require(),
+                                    case["question"],
+                                    review_pool(hits[:8], result.get("candidates", hits)),
+                                    max_candidates=REVIEW_POOL_LIMIT,
                                 )
+                                hits = hits[:10]
                                 row["local_review"] = review
                             row.update(
                                 status="MEASURED",
@@ -172,6 +177,7 @@ def compare(workspace, output, cases, strategies, repeats=1, include_local_revie
                                 ],
                                 query_embedding_ms=result.get("query_embedding_ms", 0),
                                 index_generation=result.get("generation"),
+                                timings_ms=result.get("timings_ms"),
                             )
                             complete = labels is not None and all(
                                 hit["chunk_id"] in labels for hit in hits

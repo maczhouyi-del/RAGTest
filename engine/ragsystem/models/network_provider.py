@@ -10,7 +10,12 @@ import urllib.parse
 import urllib.request
 
 from ragsystem.domain.errors import EngineError
-from ragsystem.models.provider import EVIDENCE_ANSWER_RULES
+from ragsystem.models.provider import (
+    EVIDENCE_ANSWER_RULES,
+    excerpt_audit,
+    model_usage,
+    numbered_excerpts,
+)
 from ragsystem.models.provider_errors import classify_http_error
 
 
@@ -60,7 +65,7 @@ def definition(row):
         json.dumps(value, sort_keys=True).encode()
     ).hexdigest()
     value["server_model_version"] = "not_independently_verified"
-    value["prompt_version"] = "numbered-evidence-network-v3-conflicts"
+    value["prompt_version"] = "numbered-evidence-network-v4-sources"
     return value
 
 
@@ -208,21 +213,15 @@ class NetworkProvider:
         if self.config["kind"] == "magpie" and self.gateway_version is None:
             self.hello()
         citations = {}
+        excerpts = []
         if task in {"answer", "research"}:
-            for index, chunk in enumerate(data.get("chunks", [])):
-                citations[f"E{index + 1}"] = {
-                    "chunk_id": chunk["chunk_id"],
-                    "quote": chunk["text"][:1200],
-                }
+            citations, excerpts = numbered_excerpts(data.get("chunks", []))
             data = {k: v for k, v in data.items() if k != "chunks"} | {
-                "excerpts": [
-                    {"citation_id": key, "quote": entry["quote"]}
-                    for key, entry in citations.items()
-                ]
+                "excerpts": excerpts,
             }
         formats = {
             "answer": 'Return {"claims":[{"text":"answer","evidence":[{"citation_id":"E1"}]}]}. Maximum 2 claims. Return empty claims when evidence is insufficient.',
-            "support": 'Return {"status":"supported"|"contradicted"|"uncertain","reason":"brief explanation"}. Determine whether the quoted evidence supports the entire claim and its limitations.',
+            "support": 'Return {"status":"supported"|"contradicted"|"uncertain","reason":"brief explanation"}. Check that the claim answers the question and that quoted evidence supports the entire claim, conditions and limitations. A matching phrase alone is insufficient; if unsure return uncertain.',
             "research": 'Return {"observations":[{"field":"a requested field","value":"reported text","unit":"unit or empty","citation_id":"E1"}]}. Maximum 2 observations.',
             "relevance": 'Return {"scores":[{"candidate_id":"input id","score":0,"reason":"brief reason"}]}. Score 0..5. Include every supplied id exactly once.',
         }
@@ -270,6 +269,9 @@ class NetworkProvider:
                 "included_chunk_ids": [c["chunk_id"] for c in citations.values()],
                 "provider": self.fingerprint,
                 "gateway_version": self.gateway_version,
+                "excerpt_policy": "numbered-source-spans-v1",
+                "excerpt_lengths": excerpt_audit(citations, excerpts),
+                "usage": model_usage(response),
             }
             return value
         except (ValueError, KeyError, IndexError, TypeError, AttributeError):

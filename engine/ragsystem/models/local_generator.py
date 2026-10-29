@@ -3,7 +3,12 @@ import json
 from pathlib import Path
 
 from ragsystem.domain.errors import EngineError
-from ragsystem.models.provider import EVIDENCE_ANSWER_RULES
+from ragsystem.models.provider import (
+    EVIDENCE_ANSWER_RULES,
+    excerpt_audit,
+    model_usage,
+    numbered_excerpts,
+)
 
 GENERATOR_REVISION = "91cad51170dc346986eccefdc2dd33a9da36ead9"
 GENERATOR_NAME = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
@@ -42,7 +47,7 @@ class LocalGenerator:
             "cpu_threads": 4,
             "gpu_layers": 0,
             "quote_selection": "numbered-input-spans-max1200-token-budget-v2",
-            "prompt_version": "evidence-json-v11-conflicts",
+            "prompt_version": "evidence-json-v12-sources",
             "relevance_prompt_version": "relevance-json-v1",
         }
 
@@ -64,12 +69,7 @@ class LocalGenerator:
         )
         citations = {}
         if task in {"answer", "research"}:
-            excerpts = []
-            for index, chunk in enumerate(data.get("chunks", [])):
-                key = f"E{index + 1}"
-                quote = chunk["text"][:1200]
-                citations[key] = {"chunk_id": chunk["chunk_id"], "quote": quote}
-                excerpts.append({"citation_id": key, "quote": quote})
+            citations, excerpts = numbered_excerpts(data.get("chunks", []))
             data = {key: value for key, value in data.items() if key != "chunks"} | {
                 "excerpts": excerpts
             }
@@ -169,6 +169,8 @@ class LocalGenerator:
             "dropped_chunk_ids": dropped,
             "context_limit": 4096,
             "completion_reserve": 1000,
+            "excerpt_policy": "numbered-source-spans-v1",
+            "excerpt_lengths": excerpt_audit(citations, data.get("excerpts", [])),
         }
         from llama_cpp import LogitsProcessorList
 
@@ -186,6 +188,7 @@ class LocalGenerator:
         )
         try:
             value = json.loads(result["choices"][0]["message"]["content"])
+            context_metadata["usage"] = model_usage(result)
             if not isinstance(value, dict):
                 raise ValueError("not object")
             if task == "answer":

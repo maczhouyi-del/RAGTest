@@ -41,3 +41,4 @@
 
 - [mvp-v0.3.md](mvp-v0.3.md)：三入口MVP、自动准备、schema13/14、FTS词频/中文、重叠切分/溢出拒绝、索引清单及显式Provider/API/Magpie。旧握手与端点兼容。
 - [retrieval-answer-v0.6.md](retrieval-answer-v0.6.md)：RAG-01系统信息/复合意图、原始排名RRF、内容多样性、默认每篇3段、当前问题优先、失败诊断及离线同范围评估；schema18不迁移，科研与平台门禁仍独立。
+- [retrieval-answer-v0.7.md](retrieval-answer-v0.7.md)：RAG-02同范围历史、引号短语优先、截断前有界本地复核、实际模型输入/来源前缀审计及阶段诊断；默认不增LLM查询改写或重排调用。

@@ -419,6 +419,12 @@ def test_optional_relevance_review_is_persisted_and_never_creates_claims_in_extr
     assert result["status"] == "completed" and result["claims"] == []
     assert result["result"]["kind"] == "evidence_only"
     ranking = result["result"]["relevance_review"]
-    assert ranking["ranked_chunk_ids"] == list(reversed(ranking["baseline_chunk_ids"]))
+    baseline = ranking["baseline_chunk_ids"]
+    assert len(baseline) == 12 and [len(batch) for batch in ranking["batches"]] == [6, 6]
+    # Each fixture batch returns scores 0..5. Equal grades across the two
+    # batches retain their original order, rather than fabricating 12 grades.
+    expected = [baseline[index] for index in (5, 11, 4, 10, 3, 9, 2, 8, 1, 7, 0, 6)]
+    assert ranking["ranked_chunk_ids"] == expected
+    assert ranking["final_context_chunk_ids"] == expected[:3]
     assert result["model_history"][0]["stage"] == "relevance"
     assert len(result["evidence"]) <= 3

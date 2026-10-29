@@ -25,9 +25,7 @@ def test_draft_preserves_secret_for_save_but_never_persists_and_states_are_real(
             registry.preview({"kind": "api", "base_url": url}, "invalid")
         assert not registry._drafts
         result = registry.preview({"kind": "api", "base_url": url}, "valid-test-key")
-        saved = registry.save(
-            values(url, credential_token=result["credential_token"]), ""
-        )
+        saved = registry.save(values(url, credential_token=result["credential_token"]), "")
         assert saved["credential_available"] and saved["connection_verified"]
         assert not saved["generation_verified"]
         assert all(body is None for _, body, _ in calls)
@@ -87,9 +85,7 @@ def test_offline_presets_empty_key_noauth_and_catalog_fallback(tmp_path):
         registry.save(values("https://example.com/v1", auth_mode="none"), "")
     with protocol_server() as (url, _calls, state):
         state["catalog_status"] = 404
-        preview = registry.preview(
-            {"kind": "api", "base_url": url, "auth_mode": "none"}, ""
-        )
+        preview = registry.preview({"kind": "api", "base_url": url, "auth_mode": "none"}, "")
         assert preview["models"] == [] and not preview["connection_verified"]
         saved = registry.save(
             values(url, auth_mode="none", credential_token=preview["credential_token"]),
@@ -153,7 +149,9 @@ def test_explicit_parameter_profiles_no_fallback(output, tokens):
         assert len(calls) == before + 1
 
 
-@pytest.mark.parametrize("old_prompt", ["evidence-json-v9", "evidence-json-v10-history"])
+@pytest.mark.parametrize(
+    "old_prompt", ["evidence-json-v9", "evidence-json-v10-history", "evidence-json-v11-conflicts"]
+)
 def test_existing_local_model_prompt_upgrade_checks_all_other_fingerprints(
     tmp_path, monkeypatch, old_prompt
 ):
@@ -170,7 +168,7 @@ def test_existing_local_model_prompt_upgrade_checks_all_other_fingerprints(
         "weight_sha256": "fixed",
         "prompt_version": old_prompt,
     }
-    new = {**old, "prompt_version": "evidence-json-v11-conflicts"}
+    new = {**old, "prompt_version": "evidence-json-v12-sources"}
 
     class RuntimeFixture:
         fingerprint = new
@@ -190,9 +188,7 @@ def test_existing_local_model_prompt_upgrade_checks_all_other_fingerprints(
     assert service.require() is runtime
     with db.connection() as conn:
         saved = json.loads(
-            conn.execute(
-                "SELECT value_json FROM app_settings WHERE key='generator'"
-            ).fetchone()[0]
+            conn.execute("SELECT value_json FROM app_settings WHERE key='generator'").fetchone()[0]
         )
     assert saved["fingerprint"] == new
     runtime.fingerprint = {**new, "weight_sha256": "changed"}

@@ -85,3 +85,5 @@ OCR完整候选能力当前只在本机macOS26.2 arm64实测；tesserocr轮子�
 HARDEN-01（2026-10-27）：健康接口报告实际schema及engine/database/keyword/vector/generation/OCR分项；未配置向量或生成能力时为degraded，连接成功不代表科研质量或所有功能就绪。设置内部六分类；引擎“重新连接”只恢复退出进程，仍存活但不健康时保留进程，明确主动重启另行操作。加固进度见docs/engineering/reports/HARDEN-01-2026-10-27.md。本轮不提交、不推送或发布。
 
 RAG-01（2026-10-27）：系统配置问题直接读取本机状态；复合问题保留系统信息与论文子问题。RRF保留原始通道排名，普通问答默认每逻辑论文3片段、总计最多8；独立问题不再自动拼接历史检索词，失败和拒答状态分别记录。增量协议见[retrieval-answer-v0.6](contracts/retrieval-answer-v0.6.md)，可运行比较工具/人工金标流程见[评估规范](docs/evaluation/goldset-protocol.md)，实际验证与限制见[工程报告](docs/engineering/reports/RAG-01-2026-10-27.md)。用户本轮已授权修改后推送RAGTest源码；此前“不推送”是历史任务边界，发布与科研/平台门禁保持独立。
+
+RAG-02（2026-10-28）：按Dify/RAGFlow/Haystack/LlamaIndex官方资料对照检查API问答链路；修复混合问题误拆、跨范围历史与后续请求的来源复查，支持引号短语优先与截断前有界本地复核（默认关闭）。问答卡可展开“本轮检索过程”查看查询、候选/模型输入及分段耗时。API接收本地检索后的编号原文，引用核验和同模型支持意见仍需区分。见[当前契约v0.7](contracts/retrieval-answer-v0.7.md)和[本轮报告](docs/engineering/reports/RAG-02-2026-10-28.md)；当前源码改动保留本地，正式科研/Windows/千篇门禁未解除。

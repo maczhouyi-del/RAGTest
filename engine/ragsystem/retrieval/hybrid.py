@@ -185,13 +185,17 @@ class HybridSearch:
             seen_chunks.add(hit["chunk_id"])
             digest = hit.get("content_sha256", hit["chunk_id"])
             (repeated if digest in groups else unique).append(hit)
-            groups.setdefault(digest, []).append(
+            associations = hit.get("content_sources") or [
                 {
                     key: hit[key]
                     for key in ("chunk_id", "doc_version_id", "source_anchor_id", "page_number")
                     if key in hit
                 }
-            )
+            ]
+            group = groups.setdefault(digest, [])
+            for source in associations:
+                if not any(item["chunk_id"] == source["chunk_id"] for item in group):
+                    group.append(source)
         counts, chosen = {}, []
         for hit in unique + repeated:
             paper = papers.get(hit["doc_version_id"])
@@ -223,7 +227,18 @@ class HybridSearch:
             for key in sorted(scores, key=lambda key: (-scores[key], key))
         ]
 
-    def search(self, query, versions, k, project_id, strategy, paper_quota=None, filters=None):
+    def search(
+        self,
+        query,
+        versions,
+        k,
+        project_id,
+        strategy,
+        paper_quota=None,
+        filters=None,
+        *,
+        include_candidates=False,
+    ):
         if (
             type(k) is not int
             or not 1 <= k <= 100
@@ -235,12 +250,16 @@ class HybridSearch:
         ):
             raise EngineError("INVALID_SEARCH")
         versions = list(dict.fromkeys(versions))
+        search_started = time.perf_counter()
+        timings = {}
         if strategy in {"vector_exact", "hybrid"} and not self.config():
             raise EngineError("EMBEDDING_NOT_CONFIGURED", status=409)
         with self.db.connection() as conn:
             self.sources.require_scope(conn, versions, project_id)
         require_metadata_scope(self.db, versions, filters)
+        timings["scope_validation_ms"] = (time.perf_counter() - search_started) * 1000
         candidate_limit = max(k, 50)
+        phase_started = time.perf_counter()
         lexical = (
             self.sources.search(
                 query,
@@ -253,13 +272,16 @@ class HybridSearch:
             else []
         )
         lexical = [hit | {"lexical_rank": hit["rank"]} for hit in lexical]
+        if strategy != "vector_exact":
+            timings["lexical_ms"] = (time.perf_counter() - phase_started) * 1000
         if strategy in {"fts_only", "keyword"}:
             require_metadata_scope(self.db, versions, filters)
+            phase_started = time.perf_counter()
+            selected = self.paper_quota(lexical, k, paper_quota)
+            timings["context_selection_ms"] = (time.perf_counter() - phase_started) * 1000
+            timings["total_ms"] = (time.perf_counter() - search_started) * 1000
             return {
-                "results": [
-                    hit | {"rank": index + 1}
-                    for index, hit in enumerate(self.paper_quota(lexical, k, paper_quota))
-                ],
+                "results": [hit | {"rank": index + 1} for index, hit in enumerate(selected)],
                 "per_paper_limit": paper_quota,
                 "strategy": strategy,
                 "candidate_limit_per_channel": candidate_limit,
@@ -267,12 +289,15 @@ class HybridSearch:
                 "tokenizer_version": TOKENIZER_VERSION
                 if strategy == "keyword"
                 else "unicode61-literal",
+                **({"candidates": lexical} if include_candidates else {}),
+                "timings_ms": timings,
             }
         config = self.config()
         if not config:
             raise EngineError("EMBEDDING_NOT_CONFIGURED", status=409)
         if not self.status()["ready"]:
             raise EngineError("INDEX_REBUILD_REQUIRED", status=409)
+        phase_started = time.perf_counter()
         if self.encoder is None or self.encoder_path != config["model_dir"]:
             try:
                 self.encoder = LocalE5(Path(config["model_dir"]))
@@ -281,9 +306,12 @@ class HybridSearch:
             self.encoder_path = config["model_dir"]
         if self.encoder.fingerprint != config["fingerprint"]:
             raise EngineError("MODEL_FINGERPRINT_CHANGED", status=409)
+        timings["model_ready_ms"] = (time.perf_counter() - phase_started) * 1000
         started = time.perf_counter()
         query_vector = self.encoder.encode([query], query=True)[0]
         encoding_ms = (time.perf_counter() - started) * 1000
+        timings["query_embedding_ms"] = encoding_ms
+        phase_started = time.perf_counter()
         eligible = self.cache.eligible(config["space_id"], versions)
         adapter = self.adapter(
             config["backend"],
@@ -292,7 +320,9 @@ class HybridSearch:
             self.encoder.dimension,
         )
         hits = adapter.search_exact(query_vector, eligible, candidate_limit)
+        timings["vector_retrieval_ms"] = (time.perf_counter() - phase_started) * 1000
         vector_hits = []
+        phase_started = time.perf_counter()
         with self.db.connection() as conn:
             conn.execute("BEGIN")
             # Recheck project visibility after potentially slow query encoding.
@@ -336,10 +366,13 @@ class HybridSearch:
                             "distance": hit["distance"],
                         }
                     )
+        timings["source_mapping_ms"] = (time.perf_counter() - phase_started) * 1000
+        phase_started = time.perf_counter()
         if strategy == "vector_exact":
             results = sorted(vector_hits, key=lambda hit: (hit["vector_rank"], hit["chunk_id"]))
         else:
             results = self.fuse(lexical, vector_hits)
+        timings["fusion_ms"] = (time.perf_counter() - phase_started) * 1000
         require_metadata_scope(self.db, versions, filters)
         with self.db.connection() as conn:
             conn.execute("BEGIN")
@@ -366,7 +399,11 @@ class HybridSearch:
                 raise EngineError("INDEX_SCOPE_CHANGED", status=409)
         if not self.status()["ready"]:
             raise EngineError("INDEX_REBUILD_REQUIRED", status=409)
-        results = self.paper_quota(results, k, paper_quota)
+        candidates = results
+        phase_started = time.perf_counter()
+        results = self.paper_quota(candidates, k, paper_quota)
+        timings["context_selection_ms"] = (time.perf_counter() - phase_started) * 1000
+        timings["total_ms"] = (time.perf_counter() - search_started) * 1000
         return {
             "per_paper_limit": paper_quota,
             "results": [hit | {"rank": index + 1} for index, hit in enumerate(results)],
@@ -380,4 +417,6 @@ class HybridSearch:
             "query_embedding_ms": encoding_ms,
             "generation": config["generation"],
             "scientific_quality": "NOT_EVALUATED",
+            "timings_ms": timings,
+            **({"candidates": candidates} if include_candidates else {}),
         }

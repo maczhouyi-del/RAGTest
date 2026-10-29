@@ -93,3 +93,45 @@ def test_real_e5_same_snapshot_strategy_comparison_and_cross_language_execution(
     output = os.environ.get("RAGSYSTEM_COMPARISON_EVIDENCE")
     if output:
         Path(output).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+
+
+def test_optional_review_comparison_uses_bounded_pool_then_top_ten(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    root, db, version = store(tmp_path)
+    Parser(db, root).parse(version, "parse")
+    calls = []
+
+    class Reviewer:
+        fingerprint = {"fixture": "comparison-review-not-gold"}
+
+        def generate(self, task, data):
+            calls.append(data)
+            assert task == "relevance" and 1 <= len(data["candidates"]) <= 6
+            return {
+                "scores": [
+                    {"candidate_id": item["candidate_id"], "score": 2, "reason": "fixture"}
+                    for item in data["candidates"]
+                ]
+            }
+
+        def close(self):
+            pass
+
+    reviewer = Reviewer()
+    tool = module()
+    monkeypatch.setattr(
+        tool,
+        "GenerationService",
+        lambda db: SimpleNamespace(require=lambda: reviewer, generator=reviewer),
+    )
+    result = tool.compare(
+        root,
+        tmp_path / "review-comparison",
+        cases(version),
+        ["keyword_review"],
+        include_local_review=True,
+    )
+    assert result["status"] == "MEASURED" and result["scientific_quality"] == "BLOCKED"
+    assert len(calls) == 2 and len(result["rows"][0]["retrieved"]) == 10
+    assert len(result["rows"][0]["local_review"]["baseline_chunk_ids"]) == 12

@@ -2,7 +2,7 @@ import hashlib
 from pathlib import Path
 
 from ragsystem.domain.errors import EngineError
-from ragsystem.retrieval.tokenizer import index_terms, search_terms
+from ragsystem.retrieval.tokenizer import index_terms, quoted_phrases, search_terms, tokenize
 from ragsystem.storage.database import Database
 
 
@@ -32,7 +32,14 @@ class Sources:
         return authorized
 
     def search(
-        self, query: str, allowed_versions: list[str], k: int, *, project_id=None, terms=False
+        self,
+        query: str,
+        allowed_versions: list[str],
+        k: int,
+        *,
+        project_id=None,
+        terms=False,
+        phrase_priority=True,
     ):
         if (
             type(k) is not int
@@ -47,6 +54,7 @@ class Sources:
         # A literal FTS phrase, not an SQL/FTS expression supplied by PDF text.
         phrase = '"' + query.replace('"', '""') + '"'
         table = "chunks_fts"
+        phases = []
         if terms:
             self.ensure_terms()
             tokens = search_terms(query)[:100]
@@ -54,20 +62,42 @@ class Sources:
             table = "chunks_terms_v2"
             if not phrase:
                 raise EngineError("INVALID_SEARCH")
+            explicit = quoted_phrases(query) if phrase_priority else []
+            if explicit:
+                phases.append(
+                    (
+                        "quoted_phrase",
+                        " AND ".join(
+                            '"' + " ".join(tokenize(value)).replace('"', '""') + '"'
+                            for value in explicit
+                        ),
+                    )
+                )
+        phases.append(("or" if terms else "literal", phrase))
         with self.db.connection() as conn:
             # Scope validation and FTS read share one read snapshot, including
             # project membership. A concurrent edit cannot split their meaning.
             conn.execute("BEGIN")
             authorized = self.require_scope(conn, allowed_versions, project_id)
-            rows = conn.execute(
-                f"""SELECT c.*,bm25({table}) AS score FROM {table}
+            rows, seen = [], set()
+            for phase, expression in phases:
+                candidates = conn.execute(
+                    f"""SELECT c.*,bm25({table}) AS score FROM {table}
                 JOIN chunks c ON c.id={table}.chunk_id
                 JOIN document_versions v ON v.id=c.doc_version_id
                 WHERE {table} MATCH ? AND c.visible=1 AND v.visibility='visible'
                     AND c.doc_version_id IN ({placeholders})
                 ORDER BY score,c.id LIMIT ?""",
-                [phrase, *authorized, k],
-            ).fetchall()
+                    [expression, *authorized, k],
+                ).fetchall()
+                for phase_rank, row in enumerate(candidates, 1):
+                    if row["id"] not in seen:
+                        rows.append(
+                            dict(row) | {"lexical_stage": phase, "lexical_stage_rank": phase_rank}
+                        )
+                        seen.add(row["id"])
+                if len(rows) >= k:
+                    break
             return [
                 {
                     "doc_version_id": row["doc_version_id"],
@@ -79,9 +109,11 @@ class Sources:
                     "lexical_rank": rank + 1,
                     "content_sha256": row["content_sha256"],
                     "bm25_score": row["score"],
+                    "lexical_stage": row["lexical_stage"],
+                    "lexical_stage_rank": row["lexical_stage_rank"],
                     "location_confidence": "unknown",
                 }
-                for rank, row in enumerate(rows)
+                for rank, row in enumerate(rows[:k])
             ]
 
     def ensure_terms(self):

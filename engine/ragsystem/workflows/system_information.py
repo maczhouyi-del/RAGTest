@@ -77,22 +77,48 @@ def question_parts(question):
     topic = system_information_topic(question)
     if topic:
         return [topic], ""
-    clauses = re.split(
-        r"[？?！!。;；\n,，]+|以及|并且|同时|并|\band\b|\balso\b", question, flags=re.I
-    )
-    topics, literature = [], []
-    for clause in clauses:
-        clause = clause.strip()
-        if not clause:
+    # Capture separators so scientific punctuation and conjunctions survive intact.
+    separator = r"[？?！!。;；\n,，]+|以及|并且|同时|\band\b|\balso\b"
+    parts = []
+    for value in re.split(f"({separator})", question, flags=re.I):
+        # A bare 并 is a connector only immediately after a complete system clause
+        # and before an explicit instruction verb. Never split 并行/合并/并发.
+        boundary = next(
+            (
+                match
+                for match in re.finditer(r"并(?=解释|说明|比较|回答|分析|介绍)", value)
+                if system_information_topic(value[: match.start()])
+            ),
+            None,
+        )
+        parts.extend(
+            [value[: boundary.start()], "并", value[boundary.end() :]] if boundary else [value]
+        )
+    topics, removed = [], set()
+    for index, value in enumerate(parts):
+        topic = system_information_topic(value)
+        if not topic:
             continue
-        topic = system_information_topic(clause)
-        if topic:
-            if topic not in topics:
-                topics.append(topic)
-        else:
-            literature.append(clause)
-    # When nothing matched, preserve the entire original wording, including punctuation.
-    return (topics, "；".join(literature)) if topics else ([], question)
+        if topic not in topics:
+            topics.append(topic)
+        removed.add(index)
+        if index and re.fullmatch(separator + r"|并", parts[index - 1], flags=re.I):
+            removed.add(index - 1)
+        elif index + 1 < len(parts) and re.fullmatch(
+            separator + r"|并", parts[index + 1], flags=re.I
+        ):
+            removed.add(index + 1)
+    if not topics:
+        return [], question
+    literature = "".join(value for index, value in enumerate(parts) if index not in removed)
+    literature = literature.strip(" \t\r\n？?！!。;；,，")
+    literature = re.sub(
+        r"^(?:并且|以及|同时|and\b|also\b|并(?=解释|说明|比较|回答|分析|介绍))\s*",
+        "",
+        literature,
+        flags=re.I,
+    )
+    return topics, literature
 
 
 def runtime_information(work, topic, selection, strategy="keyword"):

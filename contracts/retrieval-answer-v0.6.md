@@ -1,5 +1,7 @@
 # 检索到回答增量契约 v0.6（RAG-01，2026-10-27）
 
+RAG-02当前查询/历史、重排预算、API输入与诊断增量见[v0.7](retrieval-answer-v0.7.md)；以下保留RAG-01当时行为记录，正式质量门禁没有因后续功能自动通过。
+
 继承search-v0.2、workbench-v0.2及mvp-v0.5；以下为当前实现，替代旧文中的无条件历史拼接和展开后排名语义。IPC握手0.1.0、`/v0`、health.api_revision=0.5-local、SQLite schema18不变，无数据迁移。质量门禁未通过。
 
 ## 阶段与失败边界

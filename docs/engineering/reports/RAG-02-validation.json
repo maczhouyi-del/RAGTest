@@ -1,0 +1,615 @@
+{
+  "task": "RAG-02",
+  "report_date": "2026-10-28",
+  "timezone": "Asia/Shanghai",
+  "baseline": "b47fa877fb6c7b07f3e95fdfa0ebd5bcf9df996b",
+  "records": [
+    {
+      "label": "S00-python",
+      "started_at": "2026-10-27T15:48:42.810587+00:00",
+      "finished_at": "2026-10-27T15:49:33.499786+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "exit_code": 0,
+      "summary": "269 passed, 13 skipped, 1 warning in 50.28s",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T154842810587Z-S00-python.json",
+      "raw_sha256": "232b1d80020596140899ab3bbec3d76f0f21349709f69f160c312af0f7e9518f"
+    },
+    {
+      "label": "S01-before",
+      "started_at": "2026-10-27T16:07:01.446097+00:00",
+      "finished_at": "2026-10-27T16:07:04.373571+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "tests/integration/test_pipeline_refinements.py"
+      ],
+      "exit_code": 1,
+      "summary": "执行失败（见原始记录）",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T160701446097Z-S01-before.json",
+      "raw_sha256": "01b71a2e740b24138cbc69a295e6b75ca455a0292bcf5fdbe02fecb72d469c00"
+    },
+    {
+      "label": "S02-query-and-phrase",
+      "started_at": "2026-10-27T16:08:56.661326+00:00",
+      "finished_at": "2026-10-27T16:09:01.941954+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "tests/integration/test_pipeline_refinements.py",
+        "tests/integration/test_system_information.py",
+        "tests/integration/test_round2_conversations.py"
+      ],
+      "exit_code": 1,
+      "summary": "2 failed, 35 passed, 1 warning in 5.14s",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T160856661326Z-S02-query-and-phrase.json",
+      "raw_sha256": "688c292966fd7771bbbf84cb6a2cd71c2bcc7d0ea242022f0fa61ea5fe3d4cd2"
+    },
+    {
+      "label": "S02-scope-after",
+      "started_at": "2026-10-27T16:09:50.843697+00:00",
+      "finished_at": "2026-10-27T16:09:57.751315+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "tests/integration/test_pipeline_refinements.py",
+        "tests/integration/test_system_information.py",
+        "tests/integration/test_round2_conversations.py",
+        "tests/integration/test_provider_authorization.py"
+      ],
+      "exit_code": 0,
+      "summary": "40 passed, 1 warning in 6.77s",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T160950843697Z-S02-scope-after.json",
+      "raw_sha256": "37f944aae9d5d295e07cd16f446d0c471f464a01d4df901f1f7dfcda70f5591b"
+    },
+    {
+      "label": "S03-before-context",
+      "started_at": "2026-10-27T16:17:32.853199+00:00",
+      "finished_at": "2026-10-27T16:17:33.346086+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "tests/unit/test_excerpt_context.py",
+        "tests/integration/test_pipeline_refinements.py"
+      ],
+      "exit_code": 2,
+      "summary": "BLOCKED（原始记录为准）",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T161732853199Z-S03-before-context.json",
+      "raw_sha256": "937a53e13576aa39eeb4068c9966660afbf3d841be2d4c9586724e5e9fc6c40d"
+    },
+    {
+      "label": "S03-context-after",
+      "started_at": "2026-10-27T16:20:03.479038+00:00",
+      "finished_at": "2026-10-27T16:20:16.757021+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "tests/unit/test_excerpt_context.py",
+        "tests/integration/test_pipeline_refinements.py",
+        "tests/integration/test_workbench.py",
+        "tests/integration/test_round2_providers.py",
+        "tests/unit/test_local_review_ranking.py",
+        "tests/integration/test_generation_providers.py"
+      ],
+      "exit_code": 1,
+      "summary": "1 failed, 44 passed, 1 warning in 13.08s",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T162003479038Z-S03-context-after.json",
+      "raw_sha256": "96c3c5ab378b9360f02566afaadebd00f3acdac036e74eff6b7b32427b553e1b"
+    },
+    {
+      "label": "S04-core",
+      "started_at": "2026-10-27T16:22:05.982433+00:00",
+      "finished_at": "2026-10-27T16:22:24.356924+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "tests/unit/test_excerpt_context.py",
+        "tests/integration/test_pipeline_refinements.py",
+        "tests/integration/test_workbench.py",
+        "tests/integration/test_round2_providers.py",
+        "tests/unit/test_local_review_ranking.py",
+        "tests/integration/test_generation_providers.py",
+        "tests/integration/test_system_information.py",
+        "tests/integration/test_answer_pipeline.py"
+      ],
+      "exit_code": 0,
+      "summary": "89 passed, 1 warning in 18.19s",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T162205982433Z-S04-core.json",
+      "raw_sha256": "ba11a3dab89364a2056ff4f51d8b79ec5057f1d115a4a86b6e0ee66a3577f149"
+    },
+    {
+      "label": "S04-ruff",
+      "started_at": "2026-10-27T16:25:20.497141+00:00",
+      "finished_at": "2026-10-27T16:25:20.533342+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/compare_retrieval.py"
+      ],
+      "exit_code": 1,
+      "summary": "执行失败（见原始记录）",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T162520497141Z-S04-ruff.json",
+      "raw_sha256": "2678acceeba16b520bccf6a9fb455f7a74b75d4c552f586b57cd268d115f6ff0"
+    },
+    {
+      "label": "S05-ui-build",
+      "started_at": "2026-10-27T16:26:04.790106+00:00",
+      "finished_at": "2026-10-27T16:26:05.510723+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "summary": "✓ built in 124ms",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T162604790106Z-S05-ui-build.json",
+      "raw_sha256": "e3721def3dc489f5c512a8f778bb17f1f400a342f926ab6587bda5ccd44b82c6"
+    },
+    {
+      "label": "S05-full-python",
+      "started_at": "2026-10-27T16:26:05.552652+00:00",
+      "finished_at": "2026-10-27T16:26:59.157303+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "exit_code": 0,
+      "summary": "282 passed, 13 skipped, 1 warning in 53.30s",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T162605552652Z-S05-full-python.json",
+      "raw_sha256": "d17f4f9dbe8a54c6dca864f981a1508e0e48d58c7e5ff4ef80f4e1bacec74f32"
+    },
+    {
+      "label": "S05-excerpt-boundary",
+      "started_at": "2026-10-27T16:28:28.085028+00:00",
+      "finished_at": "2026-10-27T16:28:31.428462+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "tests/integration/test_pipeline_refinements.py",
+        "tests/unit/test_excerpt_context.py"
+      ],
+      "exit_code": 0,
+      "summary": "13 passed, 1 warning in 3.18s",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T162828085028Z-S05-excerpt-boundary.json",
+      "raw_sha256": "2e960bed9bbcfa9181ba46ce13af455c9b6abbc79bedc0bec7ee384d40f64434"
+    },
+    {
+      "label": "S06-static",
+      "started_at": "2026-10-27T16:29:23.633780+00:00",
+      "finished_at": "2026-10-27T16:29:23.660272+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/compare_retrieval.py"
+      ],
+      "exit_code": 0,
+      "summary": "All checks passed!",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T162923633780Z-S06-static.json",
+      "raw_sha256": "8881ca4b23430ae62b7211f0e3d327004a6917931e2f053bf1c46d98b00bc383"
+    },
+    {
+      "label": "S06-browser",
+      "started_at": "2026-10-27T16:30:47.334149+00:00",
+      "finished_at": "2026-10-27T16:31:44.890230+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "env",
+        "RAGSYSTEM_BROWSER_SOURCE_ENGINE=1",
+        "RAGSYSTEM_MVP03_STAGE=C",
+        "RAGSYSTEM_EVIDENCE_DIR=docs/engineering/evidence/RAG-02-2026-10-27/browser",
+        "RAGSYSTEM_PLAYWRIGHT_DIR=/Users/kabudamac/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules",
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "exit_code": 0,
+      "summary": "BROWSER_UI_SMOKE: PASS; real engine process, simulated Tauri transport; not native/Windows acceptance",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T163047334149Z-S06-browser.json",
+      "raw_sha256": "a515fa19d36672995a01c5e571448a396173e05993cd03c0b17c98f62cad431d"
+    },
+    {
+      "label": "S06-resources",
+      "started_at": "2026-10-27T16:30:48.491472+00:00",
+      "finished_at": "2026-10-27T16:32:31.982635+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "env",
+        "RAGSYSTEM_MODEL_DIR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/models/intfloat-multilingual-e5-small-614241f622f53c4eeff9890bdc4f31cfecc418b3",
+        "RAGSYSTEM_OCR_MODEL_DIR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/models/tessdata-fast-65727574dfcd264acbb0c3e07860e4e9e9b22185",
+        "RAGSYSTEM_DOCLING_MODEL_DIR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/models/docling-heron-tableformer-fast-candidates",
+        "RAGSYSTEM_COMPARISON_EVIDENCE=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/docs/engineering/evidence/RAG-02-2026-10-27/real-pdf-strategy-comparison.json",
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "exit_code": 0,
+      "summary": "295 passed, 1 skipped, 1 warning in 103.15s (0:01:43)",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T163048491472Z-S06-resources.json",
+      "raw_sha256": "dc13029939193900afec8d72ce2bba9190590aa46a4286e3ec6510b7eb315cf1"
+    },
+    {
+      "label": "S07-evaluator",
+      "started_at": "2026-10-27T16:44:22.554025+00:00",
+      "finished_at": "2026-10-27T16:44:24.014184+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "tests/integration/test_retrieval_comparison.py",
+        "tests/unit/test_retrieval_evaluation.py",
+        "tests/unit/test_local_review_ranking.py",
+        "tests/unit/test_evaluation_tools.py"
+      ],
+      "exit_code": 0,
+      "summary": "17 passed, 1 skipped, 1 warning in 1.30s",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T164422554025Z-S07-evaluator.json",
+      "raw_sha256": "8e28d101caf7e5e6201bb6928a202d95c845a63476fae9c1ab91199c58b83bee"
+    },
+    {
+      "label": "S07-freeze",
+      "started_at": "2026-10-27T16:44:23.639876+00:00",
+      "finished_at": "2026-10-27T16:44:36.162120+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--output-directory",
+        ".tools/build/RAG-02-final-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/RAG-02-2026-10-27"
+      ],
+      "exit_code": 0,
+      "summary": "执行成功（见原始记录）",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T164423639876Z-S07-freeze.json",
+      "raw_sha256": "b06a49886846f99f9644f24c8c20e740436be3e952d94805b3b5bea82aa28c4b"
+    },
+    {
+      "label": "S08-ui-final",
+      "started_at": "2026-10-27T16:50:21.996244+00:00",
+      "finished_at": "2026-10-27T16:50:22.604158+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "summary": "✓ built in 113ms",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T165021996244Z-S08-ui-final.json",
+      "raw_sha256": "1638a453aedc405fef4b7bd4e3bac8406182c1f515455304c5a63b4dd15c302b"
+    },
+    {
+      "label": "S08-browser-final",
+      "started_at": "2026-10-27T16:50:22.644194+00:00",
+      "finished_at": "2026-10-27T16:51:19.840735+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "env",
+        "RAGSYSTEM_BROWSER_SOURCE_ENGINE=1",
+        "RAGSYSTEM_MVP03_STAGE=C",
+        "RAGSYSTEM_EVIDENCE_DIR=docs/engineering/evidence/RAG-02-2026-10-27/browser-final",
+        "RAGSYSTEM_PLAYWRIGHT_DIR=/Users/kabudamac/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules",
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "exit_code": 0,
+      "summary": "BROWSER_UI_SMOKE: PASS; real engine process, simulated Tauri transport; not native/Windows acceptance",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T165022644194Z-S08-browser-final.json",
+      "raw_sha256": "affa6a1c9ca840b0966b7c052d7d7049c90dfdafd42c5bd41dc7628d29f6aaa6"
+    },
+    {
+      "label": "S08-python-final",
+      "started_at": "2026-10-27T16:50:22.644194+00:00",
+      "finished_at": "2026-10-27T16:52:10.053860+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "env",
+        "RAGSYSTEM_MODEL_DIR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/models/intfloat-multilingual-e5-small-614241f622f53c4eeff9890bdc4f31cfecc418b3",
+        "RAGSYSTEM_OCR_MODEL_DIR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/models/tessdata-fast-65727574dfcd264acbb0c3e07860e4e9e9b22185",
+        "RAGSYSTEM_DOCLING_MODEL_DIR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/models/docling-heron-tableformer-fast-candidates",
+        "RAGSYSTEM_FROZEN_SIDECAR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/RAG-02-final-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "RAGSYSTEM_COMPARISON_EVIDENCE=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/docs/engineering/evidence/RAG-02-2026-10-27/real-pdf-strategy-comparison-final.json",
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "exit_code": 0,
+      "summary": "297 passed, 1 warning in 107.11s (0:01:47)",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T165022644194Z-S08-python-final.json",
+      "raw_sha256": "4f3114f8067421dc819b248732d77e067ea6ecc2dea321f50f7d3b7c962cfe8d"
+    },
+    {
+      "label": "S08-rust-final",
+      "started_at": "2026-10-27T16:50:22.646363+00:00",
+      "finished_at": "2026-10-27T16:50:31.380688+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "env",
+        "CARGO_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo",
+        "RUSTUP_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/rustup",
+        "RAGSYSTEM_TEST_SIDECAR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/RAG-02-final-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "summary": "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T165022646363Z-S08-rust-final.json",
+      "raw_sha256": "3c28c3e8a2dbc1d7007e9846a302f072f2098351d6bc1d851707b770969c59f5"
+    },
+    {
+      "label": "S08-static",
+      "started_at": "2026-10-27T16:55:10.975880+00:00",
+      "finished_at": "2026-10-27T16:55:11.046960+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/compare_retrieval.py",
+        "tools/evaluate_scientific_quality.py"
+      ],
+      "exit_code": 0,
+      "summary": "All checks passed!",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T165510975880Z-S08-static.json",
+      "raw_sha256": "1395f23aeb5e7fcc301c166f658e40f487209bdc964b3b4d040e489fe95a904c"
+    },
+    {
+      "label": "S08-kit",
+      "started_at": "2026-10-27T16:55:11.072808+00:00",
+      "finished_at": "2026-10-27T16:55:11.153001+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/validate_kit.py"
+      ],
+      "exit_code": 0,
+      "summary": "STATIC KIT VALIDATION: PASS (files and syntax only)",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T165511072808Z-S08-kit.json",
+      "raw_sha256": "89dc167ee12d0dfbfd62aa6457a0ec64fa7ca99805851b4391e44cacc17d08cb"
+    },
+    {
+      "label": "S09-real-capacity-gate",
+      "started_at": "2026-10-27T16:58:15.895268+00:00",
+      "finished_at": "2026-10-27T16:58:15.953667+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/capacity_benchmark.py",
+        "--kind",
+        "real",
+        "--manifest",
+        "tests/fixtures/public/manifest.json",
+        "--output",
+        "docs/engineering/evidence/RAG-02-2026-10-27/capacity-real"
+      ],
+      "exit_code": 2,
+      "summary": "BLOCKED（原始记录为准）",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T165815895268Z-S09-real-capacity-gate.json",
+      "raw_sha256": "ee4e79b8b2ea5cbd24b68d9d09d536170fdc69e97d0c1ddd8a35805af0b04836"
+    },
+    {
+      "label": "S09-scientific-gate",
+      "started_at": "2026-10-27T16:58:15.895268+00:00",
+      "finished_at": "2026-10-27T16:58:15.949544+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/evaluate_scientific_quality.py",
+        "--gold",
+        "docs/evaluation/gold-cases.template.jsonl",
+        "--predictions",
+        "docs/evaluation/predictions.template.jsonl",
+        "--manifest",
+        "tests/fixtures/public/manifest.json",
+        "--thresholds",
+        "docs/evaluation/thresholds.proposed.json",
+        "--output",
+        "docs/engineering/evidence/RAG-02-2026-10-27/scientific-gate"
+      ],
+      "exit_code": 2,
+      "summary": "BLOCKED（原始记录为准）",
+      "raw_record": "docs/engineering/evidence/RAG-02-2026-10-27/20261027T165815895268Z-S09-scientific-gate.json",
+      "raw_sha256": "2505d2a80a9524a4919219f0c5d177697b3fc0e425a1bc3e9ed65da2cea87214"
+    }
+  ],
+  "references": [
+    {
+      "project": "Dify",
+      "url": "https://www.dify.ai/blog/introducing-knowledge-pipeline",
+      "checked": "2026-10-27—28",
+      "used_for": "stage observability, metadata and citations"
+    },
+    {
+      "project": "RAGFlow",
+      "url": "https://ragflow.io/docs/v1.0.0-rc2/search_settings",
+      "checked": "2026-10-27—28",
+      "used_for": "separate candidate pool and output, threshold/latency tradeoff"
+    },
+    {
+      "project": "Haystack",
+      "url": "https://docs.haystack.deepset.ai/docs/3.1/documentjoiner",
+      "checked": "2026-10-27—28",
+      "used_for": "independent retrieval lists and rank fusion"
+    },
+    {
+      "project": "Haystack MultiRetriever",
+      "url": "https://docs.haystack.deepset.ai/reference/3.3/retrievers-api",
+      "checked": "2026-10-27—28",
+      "used_for": "per-retriever top_k vs fused top_k interface; not installed"
+    },
+    {
+      "project": "LlamaIndex docs",
+      "url": "https://developers.llamaindex.ai/python/framework/integrations/retrievers/reciprocal_rerank_fusion/",
+      "checked": "2026-10-27—28",
+      "used_for": "optional query generation and retaining original query"
+    },
+    {
+      "project": "LlamaIndex source",
+      "url": "https://github.com/run-llama/llama_index/blob/main/llama-index-core/llama_index/core/retrievers/fusion_retriever.py",
+      "checked": "2026-10-27—28",
+      "used_for": "query generation is separate LLM call; original query is retained"
+    }
+  ],
+  "python_final": {
+    "passed": 297,
+    "failed": 0,
+    "skipped": 0
+  },
+  "rust_final": {
+    "passed": 6,
+    "failed": 0,
+    "ignored": 3
+  },
+  "browser": {
+    "checks": 88,
+    "status": "PASS",
+    "transport": "SIMULATED TAURI; REAL SOURCE ENGINE; LOOPBACK MODEL FIXTURE"
+  },
+  "current_sidecar": {
+    "path": ".tools/build/RAG-02-final-sidecar/ragsystem-engine-aarch64-apple-darwin",
+    "sha256": "cd4a4e6d64cf22d03454906939cde4cce6f42dbb888d0ad007627b489c4710a0",
+    "bytes": 31930288,
+    "target": "aarch64-apple-darwin"
+  },
+  "frozen_source_matches_current": true,
+  "real_pdf_retrieval": {
+    "data_kind": "one real PDF; two unreviewed queries; two repeats per strategy",
+    "summary": {
+      "keyword": {
+        "successful_runs": 4,
+        "retrieval_ms": {
+          "samples": 4,
+          "p50": 2.7820210088975728,
+          "p95": 3.3942500012926757
+        },
+        "metrics": {
+          "recall_at_5": null,
+          "recall_at_10": null,
+          "mrr": null,
+          "ndcg_at_10": null
+        }
+      },
+      "vector_exact": {
+        "successful_runs": 4,
+        "retrieval_ms": {
+          "samples": 4,
+          "p50": 21.776812471216545,
+          "p95": 512.2983750188723
+        },
+        "metrics": {
+          "recall_at_5": null,
+          "recall_at_10": null,
+          "mrr": null,
+          "ndcg_at_10": null
+        }
+      },
+      "hybrid": {
+        "successful_runs": 4,
+        "retrieval_ms": {
+          "samples": 4,
+          "p50": 23.074062017258257,
+          "p95": 23.28416600357741
+        },
+        "metrics": {
+          "recall_at_5": null,
+          "recall_at_10": null,
+          "mrr": null,
+          "ndcg_at_10": null
+        }
+      }
+    },
+    "scientific_quality": "BLOCKED"
+  },
+  "windows_install": "BLOCKED",
+  "real_1000_paper_capacity": "BLOCKED",
+  "human_scientific_gold": "BLOCKED",
+  "real_paid_api_generation": "NOT EXECUTED",
+  "release": "NO-GO",
+  "committed_or_pushed": false
+}

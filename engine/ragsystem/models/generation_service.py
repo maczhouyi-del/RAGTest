@@ -99,8 +99,9 @@ class GenerationService:
             if compatible.get("prompt_version") in {
                 "evidence-json-v9",
                 "evidence-json-v10-history",
+                "evidence-json-v11-conflicts",
             }:
-                compatible["prompt_version"] = "evidence-json-v11-conflicts"
+                compatible["prompt_version"] = "evidence-json-v12-sources"
             if generator.fingerprint != compatible:
                 generator.close()
                 raise EngineError("MODEL_FINGERPRINT_CHANGED")

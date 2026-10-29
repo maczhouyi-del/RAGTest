@@ -22,6 +22,19 @@ def search_terms(text):
     return list(dict.fromkeys(tokenize(text)))
 
 
+def quoted_phrases(text):
+    phrases = []
+    for match in re.finditer(
+        r'"([^"\n]{2,200})"|“([^”\n]{2,200})”', unicodedata.normalize("NFKC", text)
+    ):
+        phrase = next(value for value in match.groups() if value is not None).strip()
+        if phrase and tokenize(phrase) and phrase not in phrases:
+            phrases.append(phrase)
+        if len(phrases) == 3:
+            break
+    return phrases
+
+
 def index_terms(conn, chunk_id, text):
     if not conn.execute(
         "SELECT 1 FROM terms_indexed_chunks_v2 WHERE chunk_id=?", (chunk_id,)

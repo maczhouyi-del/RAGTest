@@ -19,8 +19,20 @@ module.exports=async function({page,rpc,nav,input,send,check,wait,calls,setDelay
  check(first.status==='completed'&&first.evidence.length>0&&first.result.intent==='literature','DOCUMENT_QUESTION_NORMAL_RAG');
  check(!first.result.context_policy.retrieval_query.includes('你是什么模型'),'SYSTEM_QUESTIONS_NOT_RETRIEVAL_CONTEXT');
  check(first.result.retrieval.hits.length<=8&&first.result.retrieval.per_paper_limit===3,'DEFAULT_THREE_PER_PAPER_EIGHT_TOTAL');
- const mixed=await send('你是什么模型？并解释 BERT 使用了哪些预训练任务？');
+ check(first.result.pipeline_trace.model_attempts.answer===1&&first.result.pipeline_trace.model_attempts.support===1,'ACTUAL_MODEL_STAGE_ATTEMPTS');
+ const firstCard=page.locator(`[data-run-id="${first.id}"]`);
+ await firstCard.getByText('本轮检索过程',{exact:true}).click();
+ await firstCard.getByText(/实际检索查询：BERT 使用了哪些预训练任务/).waitFor();
+ check((await firstCard.locator('.pipeline-diagnostics').innerText()).includes('支持性检查'),'PIPELINE_DIAGNOSTICS_VISIBLE');
+ await firstCard.getByText(/应用送入模型/).waitFor();check(true,'MODEL_CONTEXT_COUNTS_VISIBLE');
+ await firstCard.locator('.pipeline-diagnostics').scrollIntoViewIfNeeded();
+ await page.screenshot({path:path.join(evidence,stage+'-pipeline.png'),fullPage:true});
+ const answerRequest=[...calls].reverse().find(call=>call.body&&!call.body.messages[0].content.includes('entire claim'));
+ const sent=JSON.parse(answerRequest.body.messages[1].content);
+ check(sent.excerpts.every(item=>item.source?.document_label&&item.source?.version_label&&item.source?.page_number>0&&typeof item.is_partial==='boolean'),'NUMBERED_EXCERPTS_WITH_SOURCE_AND_PARTIAL_FLAGS');
+ const mixed=await send('你是什么模型？并解释并行训练与 BERT and GPT-2 的预训练任务？');
  check(mixed.result.intent==='mixed'&&mixed.evidence.length>0&&mixed.result.system_information.length===1,'MIXED_BOTH_PARTS_PRESERVED');
+ check(mixed.result.literature_question==='解释并行训练与 BERT and GPT-2 的预训练任务','MIXED_SCIENTIFIC_CONJUNCTIONS_PRESERVED');
  await page.locator(`[data-run-id="${mixed.id}"] .system-answer`).waitFor();
  setDelay(700);
  const second=await send('BERT pre-training tasks evidence isolation',async()=>{
