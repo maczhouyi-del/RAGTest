@@ -793,22 +793,42 @@ async fn export_research_report(
     }).await.map_err(|_|"ENGINE_TASK_FAILED")?
 }
 
+// Only fixed command wrappers supply these values; no frontend-controlled route
+// or grant purpose is accepted. Recheck the workspace after the native dialog,
+// under with_engine's lock, so a selection cannot cross a workspace switch.
+async fn choose_model_directory(
+    app: tauri::AppHandle,
+    bridge: Arc<Bridge>,
+    title: &'static str,
+    purpose: &'static str,
+    route: &'static str,
+) -> Result<Option<Value>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = bridge.current_root()?;
+        let Some(path) = app.dialog().file().set_title(title).blocking_pick_folder() else {
+            return Ok(None);
+        };
+        let path = path.into_path().map_err(|_| "DIRECTORY_NOT_ALLOWED")?;
+        bridge.with_engine(|engine| {
+            if bridge.current_root()? != root {
+                return Err("WORKSPACE_CHANGED".into());
+            }
+            let grant = directory_grant(engine, path, purpose)?;
+            Ok(Some(engine.request("POST", route, Some(json!({
+                "model_grant_id": grant["directory_grant_id"],
+                "idempotency_key": random_key()?
+            })))?))
+        })
+    }).await.map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
 #[tauri::command]
 async fn choose_generator_model(
     app: tauri::AppHandle,
     state: State<'_, Arc<Bridge>>,
 ) -> Result<Option<Value>, String> {
-    let bridge = Arc::clone(state.inner());
-    tauri::async_runtime::spawn_blocking(move || {
-        let root = bridge.current_root()?;
-        let Some(path) = app.dialog().file().set_title("选择已批准的 Qwen GGUF 候选目录").blocking_pick_folder() else {return Ok(None);};
-        let path = path.into_path().map_err(|_|"DIRECTORY_NOT_ALLOWED")?;
-        bridge.with_engine(|engine| {
-            if bridge.current_root()? != root {return Err("WORKSPACE_CHANGED".into());}
-            let grant = directory_grant(engine, path, "generator")?;
-            Ok(Some(engine.request("POST", "/v0/generator", Some(json!({"model_grant_id":grant["directory_grant_id"],"idempotency_key":random_key()?})))?))
-        })
-    }).await.map_err(|_|"ENGINE_TASK_FAILED")?
+    choose_model_directory(app, Arc::clone(state.inner()),
+        "选择已批准的 Qwen GGUF 候选目录", "generator", "/v0/generator").await
 }
 
 #[tauri::command]
@@ -816,17 +836,8 @@ async fn choose_ocr_model(
     app: tauri::AppHandle,
     state: State<'_, Arc<Bridge>>,
 ) -> Result<Option<Value>, String> {
-    let bridge = Arc::clone(state.inner());
-    tauri::async_runtime::spawn_blocking(move || {
-        let root = bridge.current_root()?;
-        let Some(path) = app.dialog().file().set_title("选择已批准的 tessdata_fast eng/chi_sim 目录").blocking_pick_folder() else {return Ok(None);};
-        let path = path.into_path().map_err(|_|"DIRECTORY_NOT_ALLOWED")?;
-        bridge.with_engine(|engine| {
-            if bridge.current_root()? != root {return Err("WORKSPACE_CHANGED".into());}
-            let grant = directory_grant(engine, path, "ocr")?;
-            Ok(Some(engine.request("POST", "/v0/ocr", Some(json!({"model_grant_id":grant["directory_grant_id"],"idempotency_key":random_key()?})))?))
-        })
-    }).await.map_err(|_|"ENGINE_TASK_FAILED")?
+    choose_model_directory(app, Arc::clone(state.inner()),
+        "选择已批准的 tessdata_fast eng/chi_sim 目录", "ocr", "/v0/ocr").await
 }
 
 #[tauri::command]
@@ -844,17 +855,8 @@ async fn choose_docling_model(
     app: tauri::AppHandle,
     state: State<'_, Arc<Bridge>>,
 ) -> Result<Option<Value>, String> {
-    let bridge = Arc::clone(state.inner());
-    tauri::async_runtime::spawn_blocking(move || {
-        let root = bridge.current_root()?;
-        let Some(path) = app.dialog().file().set_title("选择已批准的 Docling Heron / TableFormer 资源根目录").blocking_pick_folder() else {return Ok(None);};
-        let path = path.into_path().map_err(|_|"DIRECTORY_NOT_ALLOWED")?;
-        bridge.with_engine(|engine| {
-            if bridge.current_root()? != root {return Err("WORKSPACE_CHANGED".into());}
-            let grant = directory_grant(engine, path, "docling")?;
-            Ok(Some(engine.request("POST", "/v0/docling", Some(json!({"model_grant_id":grant["directory_grant_id"],"idempotency_key":random_key()?})))?))
-        })
-    }).await.map_err(|_|"ENGINE_TASK_FAILED")?
+    choose_model_directory(app, Arc::clone(state.inner()),
+        "选择已批准的 Docling Heron / TableFormer 资源根目录", "docling", "/v0/docling").await
 }
 
 #[tauri::command]

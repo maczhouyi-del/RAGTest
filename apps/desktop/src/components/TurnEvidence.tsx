@@ -1,8 +1,14 @@
 import type {AnswerRun,Evidence,Snapshot} from "../bridge";
 import PipelineDiagnostics from "./PipelineDiagnostics";
 
-function page(item:Evidence){try{const n=JSON.parse(item.anchor_json).page_number;return Number.isInteger(n)&&n>0?n:null;}catch{return null;}}
-function version(item:Evidence){try{return JSON.parse(item.anchor_json).doc_version_id as string;}catch{return "";}}
+function evidenceLocation(item:Pick<Evidence,"anchor_json">) {
+ // Old/malformed anchors still render as unverified; decoding must not grant
+ // permission to open a source (current_source_status remains authoritative).
+ try {
+  const anchor=JSON.parse(item.anchor_json);
+  return {page:Number.isInteger(anchor.page_number)&&anchor.page_number>0?anchor.page_number as number:null,version:anchor.doc_version_id as string|undefined};
+ } catch {return {page:null,version:""};}
+}
 const human=(value:string)=>value==="confirmed"?"已核对":value==="rejected"?"存在歧义":"待核对";
 const support=(value:string)=>value==="supported"?"认为支持":value==="contradicted"?"相矛盾":value==="uncertain"?"不确定":"未执行";
 export default function TurnEvidence({answer,data,pending,onOpen}:{answer:AnswerRun|null;data:Snapshot;pending:boolean;onOpen:(evidence:Evidence)=>void}) {
@@ -20,8 +26,8 @@ export default function TurnEvidence({answer,data,pending,onOpen}:{answer:Answer
   </section>
   <section><h3>检索策略与过程</h3><p>本轮策略：{answer.strategy}</p><PipelineDiagnostics result={answer.result} expanded/>{!answer.result?.pipeline_trace&&<p>本轮尚无阶段记录；旧记录缺失的数据不补造。</p>}</section>
   <section className="turn-sources"><h3>原文引用</h3>{answer.evidence.length===0&&<p>{["queued","running"].includes(answer.status)?"正在处理本轮，引用尚未发布。":"本轮没有可展示的原文引用。"}</p>}
-   {answer.evidence.map((item,index)=>{const saved=answer.scope.find(doc=>doc.doc_version_id===version(item));const doc=data.documents.find(doc=>doc.doc_version_id===version(item));const claims=answer.claims.filter(claim=>claim.evidence_ids.includes(item.id));return <article className="turn-source" key={item.id} data-evidence-id={item.id}>
-    <button className="source-link" aria-label={`打开证据 ${index+1}`} disabled={item.current_source_status!=="verified"} onClick={()=>onOpen(item)}>{doc?.title??saved?.title??"引用文献"} · {page(item)?`第 ${page(item)} 页`:"页码未验证"}</button>
+   {answer.evidence.map((item,index)=>{const location=evidenceLocation(item);const saved=answer.scope.find(doc=>doc.doc_version_id===location.version);const doc=data.documents.find(doc=>doc.doc_version_id===location.version);const claims=answer.claims.filter(claim=>claim.evidence_ids.includes(item.id));return <article className="turn-source" key={item.id} data-evidence-id={item.id}>
+    <button className="source-link" aria-label={`打开证据 ${index+1}`} disabled={item.current_source_status!=="verified"} onClick={()=>onOpen(item)}>{doc?.title??saved?.title??"引用文献"} · {location.page?`第 ${location.page} 页`:"页码未验证"}</button>
     <small>版本 {(saved?.file_sha256??doc?.file_sha256)?.slice(0,12)??"未保存"}</small>
     <blockquote>{item.quote}</blockquote>
     <p className="source-status">引用校验：{item.current_source_status==="verified"?"原文精确匹配":item.current_source_status} · 人工核对：{human(item.human_status)}</p>

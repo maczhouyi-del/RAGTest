@@ -271,3 +271,30 @@ def test_schema9_to10_migration_keeps_exact_upgrade_backup(tmp_path):
             ).fetchone()[0]
             == 0
         )
+
+
+def test_turn_page_lookahead_uses_oldest_returned_cursor(store):
+    root, db, version = store
+    work = Workbench(db, root, HybridSearch(db, root))
+    conversation = work.create_conversation()
+    history = History(work)
+    empty = history.turns(conversation["id"], limit=2)
+    assert empty["items"] == [] and empty["total"] == 0 and empty["next_cursor"] is None
+    runs = []
+    for n in range(3):
+        run = work.create_answer(
+            f"BERT {n}", [version], None, "extractive", "keyword",
+            conversation_id=conversation["id"],
+        )
+        work.run_answer(run["id"])
+        runs.append(run)
+    # Tied dates force UUID ordering; the display reverses the selected page,
+    # but its continuation must not repeat or skip the lookahead turn.
+    with db.transaction() as conn:
+        conn.execute("UPDATE answer_runs SET created_at='2026-11-02T00:00:00+00:00'")
+    ordered = sorted(run["id"] for run in runs)
+    first = history.turns(conversation["id"], limit=2)
+    last = history.turns(conversation["id"], cursor=first["next_cursor"], limit=2)
+    assert [run["id"] for run in first["items"]] == ordered[1:]
+    assert [run["id"] for run in last["items"]] == ordered[:1]
+    assert first["total"] == last["total"] == 3 and last["next_cursor"] is None

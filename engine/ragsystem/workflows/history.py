@@ -38,6 +38,16 @@ def decode_cursor(value):
         raise EngineError("INVALID_CURSOR") from exc
 
 
+def _history_page(rows, total, limit):
+    # Queries fetch one lookahead row. Keep the cursor on the last returned
+    # descending row, even when the chat later displays that page in reverse.
+    return {
+        "items": rows[:limit],
+        "total": total,
+        "next_cursor": encode_cursor(rows[limit - 1]) if len(rows) > limit else None,
+    }
+
+
 class History:
     def __init__(self, workbench):
         self.work, self.db = workbench, workbench.db
@@ -67,11 +77,7 @@ class History:
             total = conn.execute(
                 "SELECT count(*) FROM conversations c WHERE c.project_id IS ? AND " + archive_filter, (project_id,)
             ).fetchone()[0]
-        return {
-            "items": rows[:limit],
-            "total": total,
-            "next_cursor": encode_cursor(rows[limit - 1]) if len(rows) > limit else None,
-        }
+        return _history_page(rows, total, limit)
 
     def manage_conversation(self, identifier, action, project_id=None, title=None):
         if action not in {"rename", "archive", "restore", "delete"}:
@@ -139,12 +145,10 @@ class History:
             total = conn.execute(
                 "SELECT count(*) FROM answer_runs WHERE conversation_id=?", (identifier,)
             ).fetchone()[0]
-        return {
-            "conversation": dict(conversation),
-            "items": [self.answer(r["id"], project_id) for r in reversed(rows[:limit])],
-            "total": total,
-            "next_cursor": encode_cursor(rows[limit - 1]) if len(rows) > limit else None,
-        }
+        page = _history_page(rows, total, limit)
+        page["conversation"] = dict(conversation)
+        page["items"] = [self.answer(r["id"], project_id) for r in reversed(page["items"])]
+        return page
 
     def index(self, kind, project_id=None, cursor=None, limit=30):
         if kind in {"conversations", "archived_conversations"}:
@@ -172,11 +176,7 @@ class History:
                 f"SELECT COUNT(*) FROM {table} r JOIN scope_snapshots s ON s.id=r.scope_id WHERE s.project_id IS ?",
                 (project_id,),
             ).fetchone()[0]
-        return {
-            "items": rows[:limit],
-            "next_cursor": encode_cursor(rows[limit - 1]) if len(rows) > limit else None,
-            "total": total,
-        }
+        return _history_page(rows, total, limit)
 
     def answer(self, identifier, project_id):
         values = self.work.answers(project_id, run_id=identifier)
