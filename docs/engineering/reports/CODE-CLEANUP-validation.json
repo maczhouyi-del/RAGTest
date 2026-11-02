@@ -1,0 +1,368 @@
+{
+  "task": "CODE-CLEANUP",
+  "base": "c3b6d8adc863a03935d60a28b0338d354a63124a",
+  "commands": [
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T071718079152Z-baseline-python.json",
+      "sha256": "6c5f5934c83544583cd174460d8461251ccdbd046f30c0889752eb0dc89af53d",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:17:18.079152+00:00",
+      "finished_at": "2026-11-02T07:19:24.605187+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T071719092924Z-baseline-rust.json",
+      "sha256": "6a2168d8f50f766d15cfbb4009df32e93668256a5aa393b619c9c789d3867c33",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:17:19.092924+00:00",
+      "finished_at": "2026-11-02T07:21:02.477786+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T071720255500Z-baseline-frontend.json",
+      "sha256": "6c7bc704e5bea5bd204f077e33d0d5edff1a642239d49bd78d6eb96e1c9532d0",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:17:20.255500+00:00",
+      "finished_at": "2026-11-02T07:17:21.242094+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T071721299132Z-baseline-ruff.json",
+      "sha256": "c6dd627d568e33074fe58248651c7851819e83f651fdedbfa1438314154a5083",
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:17:21.299132+00:00",
+      "finished_at": "2026-11-02T07:17:21.383558+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T071721436254Z-baseline-clippy.json",
+      "sha256": "41e0efaed08fa2dbcf50c3f2355b855f0c8c40878378e3130beb23d8d9ba2fd3",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:17:21.436254+00:00",
+      "finished_at": "2026-11-02T07:17:44.069165+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072154439836Z-targeted.json",
+      "sha256": "4f584736f46177cc760e2e7161aea17d5a39338d55df24d9f45bc2fad42098ca",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_history_lifecycle.py",
+        "tests/integration/test_conversation_management.py",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:21:54.439836+00:00",
+      "finished_at": "2026-11-02T07:21:58.198867+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072158245407Z-frontend.json",
+      "sha256": "f74f06b22e51e8df29c132d3ff67b41044f5c03921dd925deba6fd0672338356",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:21:58.245407+00:00",
+      "finished_at": "2026-11-02T07:21:58.965543+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072256922651Z-targeted-final.json",
+      "sha256": "81634c868bc4a16c751bd999a0c49c8a67bab52db3e60898745855c114879c44",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_history_lifecycle.py",
+        "tests/integration/test_conversation_management.py",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:22:56.922651+00:00",
+      "finished_at": "2026-11-02T07:23:00.410467+00:00",
+      "exit_code": 1
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072258038890Z-freeze.json",
+      "sha256": "133324ed508756544aea96e4801a1bd0ebac27e24b54d10d7bdb04b76bd5e439",
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--build-label",
+        "CODE-CLEANUP",
+        "--include-vector-lab",
+        "--include-generation-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab",
+        "--output-directory",
+        ".tools/build/CODE-CLEANUP-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/CODE-CLEANUP"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:22:58.038890+00:00",
+      "finished_at": "2026-11-02T07:25:11.775923+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072259207400Z-browser.json",
+      "sha256": "c3652dafeb34022a8aa9437467dd59086c414660ce65882c84cc5a1f52a84b9d",
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:22:59.207400+00:00",
+      "finished_at": "2026-11-02T07:23:52.901567+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072300477211Z-ruff-final.json",
+      "sha256": "8a10dcf061cee08f41ede57221aeec422ffe8471c7e629c7f5fbf5154571c829",
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:23:00.477211+00:00",
+      "finished_at": "2026-11-02T07:23:00.559462+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072300614783Z-frontend-final.json",
+      "sha256": "1a5de548297e2c9919e28a176a11499790ed97b7835aa94bae3f055649490bd4",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:23:00.614783+00:00",
+      "finished_at": "2026-11-02T07:23:01.120763+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072319455939Z-targeted-fixed.json",
+      "sha256": "aa1820d2037879f9e62490158dfe11eff2755d6addc7928fac44854a3cf0c814",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_history_lifecycle.py",
+        "tests/integration/test_conversation_management.py",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:23:19.455939+00:00",
+      "finished_at": "2026-11-02T07:23:23.093749+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072434901071Z-python-final.json",
+      "sha256": "0e699f5d0015afff86ae046e6e330e118a96d7f5cc23dab9243b21fbd3d34175",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:24:34.901071+00:00",
+      "finished_at": "2026-11-02T07:26:38.186882+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072436060128Z-clippy-final.json",
+      "sha256": "b64c45289ee362ebb78bf6dd35cb00e160771314cd5ac6cd6289cb36237595f8",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:24:36.060128+00:00",
+      "finished_at": "2026-11-02T07:24:38.178751+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072438233706Z-ruff-verified.json",
+      "sha256": "6efad0253d2c01f99bd4b7f32bc2eedcb0b4c43815fecf7ba10cf711cdab3400",
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:24:38.233706+00:00",
+      "finished_at": "2026-11-02T07:24:38.288816+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072529801230Z-rust-final.json",
+      "sha256": "747a0fdafe67606a0e0cd3746f54f025a2087f45e40950c12b11d788c961269d",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:25:29.801230+00:00",
+      "finished_at": "2026-11-02T07:28:50.226792+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072530944293Z-frozen-final.json",
+      "sha256": "a0a9dc76cef3bd2a736b291556ebad1c7d6432466ae234847bb36738f9fd2073",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_sidecar_lifecycle.py",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:25:30.944293+00:00",
+      "finished_at": "2026-11-02T07:26:00.056194+00:00",
+      "exit_code": 1
+    },
+    {
+      "path": "docs/engineering/evidence/CODE-CLEANUP/20261102T072718777049Z-frozen-recheck.json",
+      "sha256": "99289db5ded9d362b620fc2deb9a0efb0c9d0d166cb517a79819d0a4f52b54bd",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_sidecar_lifecycle.py",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-02T07:27:18.777049+00:00",
+      "finished_at": "2026-11-02T07:27:37.079974+00:00",
+      "exit_code": 0
+    }
+  ],
+  "limits": [
+    "Windows NOT EXECUTED",
+    "scientific gold NOT EXECUTED",
+    "paid model API NOT EXECUTED",
+    "native model picker dialog NOT EXECUTED"
+  ],
+  "user_delivery_override": "Verified source directly to main, no PR",
+  "boundaries": {
+    "tauri_command_names_unchanged": true,
+    "schema_migrations_contracts_locks_algorithms_unchanged": true,
+    "sensitive_pattern_scan": "PASS",
+    "files_reviewed": [
+      "README.md",
+      "apps/desktop/src-tauri/src/lib.rs",
+      "apps/desktop/src/components/TurnEvidence.tsx",
+      "engine/ragsystem/workflows/history.py",
+      "tests/integration/test_history_lifecycle.py",
+      "docs/engineering/execplans/CODE-CLEANUP-2026-11-02.md",
+      "docs/engineering/reports/CODE-CLEANUP-2026-11-02.md"
+    ]
+  },
+  "status": "PASS",
+  "tests": {
+    "python_before": 353,
+    "python_after": 354,
+    "rust_before": 10,
+    "rust_after": 10,
+    "frozen_final": 4,
+    "browser_assertions": 46,
+    "targeted_final": 13,
+    "final_failures": 0,
+    "final_skips": 0,
+    "intermediate_failures": [
+      "new test fixture busy turn (fixed)",
+      "frozen HTTP reset (4/4 recheck passed; root cause unconfirmed)"
+    ]
+  }
+}

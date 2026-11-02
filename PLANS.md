@@ -1,5 +1,7 @@
 # PLANS.md — 路线图、门禁与可执行工作机制
 
+CODE-CLEANUP本地验证完成（2026-11-02）：用户授权全仓证据审查与小范围等价重构，后续明确改为验证后直接提交推送main、不创建PR。基线c3b6d8a干净；按[计划](docs/engineering/execplans/CODE-CLEANUP-2026-11-02.md)实施，见[报告](docs/engineering/reports/CODE-CLEANUP-2026-11-02.md)。不改科研算法、契约、schema/迁移、依赖锁，不删用户数据；只复用已批准本地模型，禁止额外付费API或模型下载。
+
 2026-11-02源码同步授权：用户明确要求提交并推送GitHub main，按[GH-05计划](docs/engineering/execplans/GH-05-source-sync.md)将既有已验收本地源码、测试与工程文档正常同步origin/main；覆盖这些任务当时不提交/推送的限制，不包含模型/论文/数据库/凭据/原始日志/构建产物，不强推或发布。历史报告保持其当时状态。
 
 本地维护完成（2026-11-01）：用户明确授权本次历史构建清理，已删除清单58个旧目录，回收约22.69 GiB；314份诊断记录先归档核验，最新CHAT-02三个目录及23个文件哈希保持。源码/用户库/模型未改，当前target/dist保留。见[清理报告](docs/engineering/reports/BUILD-CLEANUP-01-2026-11-01.md)。本次例外不改变后续删除约束。
@@ -258,3 +260,5 @@ MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统�
 §29 实际结果（2026-10-31）：三个截图原句已在源码、冻结侧车及本机原生应用验证。数量直接读库2篇；单篇贡献/问题通过原文结构补充召回，实际DeepSeek回答completed并保留BERT引用；原生PDF第1页实际渲染。257条持久向量/来源映射检查正常，同向量sqlite-vec/LanceDB前10相同，未更换模型/后端或破坏性重建。官方DeepSeek显式关闭隐藏思考并细分传输/截断错误；历史连接失败的底层原因无法追溯，不假定证书根因。
 
 Python全量336 PASS/1 SKIP（冻结变量未提供），随后冻结生命周期4 PASS覆盖该项，新增最终定向10 PASS；Rust含全部候选9 PASS；TS/Ruff/Clippy及模拟桥88项通过。真实API按测试前声明扩展预算至18次POST，仅公开BERT片段，原生6次完成两回答；数据库副本与真实库计数不同均按实际记录。最终独立app为 `.tools/build/macos-rag03-final-20261031T040823560658Z/RAGSystem.app`，已启动并核对RAG-03构建/96项源码哈希；普通cargo构建白屏和磁盘满等中途失败记录保留。详见[报告](docs/engineering/reports/RAG-03-2026-10-31.md)、[验证索引](docs/engineering/reports/RAG-03-validation.json)、[v0.9契约](contracts/retrieval-answer-v0.9.md)。本机场景交付PASS，不解除Windows/科研金标/千篇/安全发行正式门禁；无commit/push/Release。
+
+CODE-CLEANUP结果：修改前Python353/Rust10，修改后Python354/Rust10、新冻结生命周期4、浏览器46断言通过；TS/Ruff/Clippy通过。三处等价去重及分页边界测试完成，保留隐藏兼容功能；中间测试失败和复测边界见报告。按用户最新指令拆分提交后普通同步main、不创建PR；Windows/科研/正式发布未验收。

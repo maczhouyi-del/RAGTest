@@ -32,7 +32,7 @@ GitHub仅提供源码。克隆后需在目标平台准备开发工具并按下�
 
 ## 启动本机预览
 
-MVP-02新开发应用另存于 `.tools/build/macos-mvp02-<构建时间>/RAGSystem.app`，具体本机路径见组合报告/本地 evidence/macos-development-app.json；旧应用保留。
+本机开发应用位于 `.tools/build/macos-<任务与构建时间>/RAGSystem.app`，以对应验收报告的具体路径和SHA为准。历史构建目录可能已按用户授权清理，历史报告中的路径不保证仍存在；源码仓库不分发这些产物。
 
 此前Mac开发预览产物：`apps/desktop/src-tauri/target/debug/bundle/macos/RAGSystem.app`。包含候选推理运行时、**不包含模型权重**；无发行签名/公证或干净安装结论。双击打开即可；普通浏览器预览不能访问本地文件。资料目录由系统local_data_dir下的`RAGSystem/`派生，debug可用绝对`RAGSYSTEM_DEV_DATA_ROOT`指定新测试目录。不要指向旧项目数据。
 
