@@ -2,7 +2,6 @@
 
 import secrets
 import time
-from uuid import uuid4
 
 from ragsystem.domain.errors import EngineError
 from ragsystem.models.network_provider import NetworkProvider, definition, endpoint
@@ -19,7 +18,7 @@ class ProviderRegistry:
     def get(self, identifier):
         with self.db.connection() as conn:
             row = conn.execute(
-                "SELECT * FROM generation_providers WHERE id=?", (identifier,)
+                "SELECT * FROM generation_providers WHERE id=? AND retired_at IS NULL", (identifier,)
             ).fetchone()
         if row is None:
             raise EngineError("PROVIDER_NOT_FOUND", status=404)
@@ -29,9 +28,30 @@ class ProviderRegistry:
         with self.db.connection() as conn:
             rows = [
                 dict(row)
-                for row in conn.execute("SELECT * FROM generation_providers ORDER BY name,id")
+                for row in conn.execute("SELECT * FROM generation_providers WHERE retired_at IS NULL ORDER BY name,id")
             ]
         return [self.public(row) for row in rows]
+
+    def retired(self):
+        with self.db.connection() as conn:
+            return [dict(row) for row in conn.execute("SELECT * FROM generation_providers WHERE retired_at IS NOT NULL ORDER BY updated_at DESC,id")]
+
+    def restore(self, identifier, revision, active_id, active_revision):
+        with self.db.transaction() as conn:
+            row = conn.execute("SELECT * FROM generation_providers WHERE id=? AND retired_at IS NOT NULL", (identifier,)).fetchone()
+            active = conn.execute("SELECT * FROM generation_providers WHERE retired_at IS NULL").fetchone()
+            if row is None:
+                raise EngineError("PROVIDER_NOT_FOUND", status=404)
+            if row['revision'] != revision or (active['id'] if active else None) != active_id or (active['revision'] if active else 0) != active_revision:
+                raise EngineError("PROVIDER_CHANGED", status=409)
+            conn.execute("UPDATE generation_providers SET retired_at=? WHERE retired_at IS NULL", (utc_now(),))
+            conn.execute("UPDATE generation_providers SET retired_at=NULL,revision=revision+1,updated_at=? WHERE id=?", (utc_now(), identifier))
+            conn.execute("UPDATE generation_provider_authorizations SET enabled=0")
+        # A restored destination must never inherit a current secret or consent.
+        self._keys.clear()
+        self._states.clear()
+        self._drafts.clear()
+        return self.public(self.get(identifier))
 
     def public(self, row):
         state = self._states.get(row["id"], {})
@@ -89,7 +109,7 @@ class ProviderRegistry:
             row = conn.execute(
                 "SELECT * FROM generation_providers WHERE id=?", (identifier,)
             ).fetchone()
-            if row is None:
+            if row is None or row['retired_at'] is not None:
                 raise EngineError("PROVIDER_NOT_FOUND", status=404)
             if row["revision"] != revision:
                 raise EngineError("PROVIDER_CHANGED", status=409)
@@ -105,7 +125,7 @@ class ProviderRegistry:
             row = conn.execute(
                 "SELECT * FROM generation_providers WHERE id=?", (identifier,)
             ).fetchone()
-            if row is None:
+            if row is None or row['retired_at'] is not None:
                 raise EngineError("PROVIDER_NOT_FOUND", status=404)
             if row["revision"] != revision:
                 raise EngineError("PROVIDER_CHANGED", status=409)
@@ -202,23 +222,29 @@ class ProviderRegistry:
                 key, verified = draft[2], draft[3]
         if values["auth_mode"] == "none":
             key = ""
-        identifier = values.get("id") or str(uuid4())
+        identifier = values.get("id") or "00000000-0000-4000-8000-000000000001"
         if values["kind"] not in {"api", "magpie"}:
             raise EngineError("PROVIDER_KIND_INVALID")
         # Validate key without persisting it, even temporarily.
         NetworkProvider({**values, "id": identifier, "revision": 1}, key).close()
         with self.db.transaction() as conn:
+            active = conn.execute("SELECT * FROM generation_providers WHERE retired_at IS NULL").fetchone()
+            if not values.get('id') and active:
+                if self.critical_configuration(active) != self.critical_configuration(values) or active['name'] != values['name']:
+                    raise EngineError("PROVIDER_EXISTS", status=409)
+                # Retrying the same initial form updates its stable active row.
+                identifier = active['id']
+                values['expected_revision'] = active['revision']
+            elif active and identifier != active['id']:
+                raise EngineError("PROVIDER_EXISTS", status=409)
             current = conn.execute(
                 "SELECT * FROM generation_providers WHERE id=?", (identifier,)
             ).fetchone()
+            if current and current['retired_at'] is not None:
+                raise EngineError("PROVIDER_RETIRED", status=409)
             revision = current["revision"] if current else 0
             if values["expected_revision"] != revision:
                 raise EngineError("PROVIDER_CHANGED", status=409)
-            if (
-                not current
-                and conn.execute("SELECT COUNT(*) FROM generation_providers").fetchone()[0] >= 16
-            ):
-                raise EngineError("PROVIDER_LIMIT")
             if (
                 not key
                 and not credential_token

@@ -601,7 +601,7 @@ async fn history_page(
     cursor: String,
     state: State<'_, Arc<Bridge>>,
 ) -> Result<Value, String> {
-    if !["answers", "research", "conversations"].contains(&kind.as_str())
+    if !["answers", "research", "conversations", "archived_conversations"].contains(&kind.as_str())
         || cursor.len() > 512
         || !cursor
             .bytes()
@@ -653,6 +653,18 @@ async fn conversation_turns(conversation_id: String, cursor: String, state: Stat
     if !valid_job_id(&conversation_id) || cursor.len()>512 || !cursor.bytes().all(|b| b.is_ascii_alphanumeric() || b==b'-' || b==b'_') { return Err("INVALID_REQUEST".into()); }
     let bridge = Arc::clone(state.inner());
     tauri::async_runtime::spawn_blocking(move || bridge.with_engine(|engine| engine.request("GET", &format!("/v0/conversations/{conversation_id}/turns?cursor={cursor}&limit=30"), None)))
+        .await.map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
+async fn manage_conversation(conversation_id: String, action: String, title: Option<String>, project_id: Option<String>, state: State<'_, Arc<Bridge>>) -> Result<Value, String> {
+    if !valid_job_id(&conversation_id) || !["rename", "archive", "restore", "delete"].contains(&action.as_str()) {
+        return Err("INVALID_REQUEST".into());
+    }
+    history_scope(project_id.as_deref())?;
+    if action == "rename" && title.as_ref().is_none_or(|value| value.trim().is_empty() || value.chars().count()>160) { return Err("INVALID_CONVERSATION_TITLE".into()); }
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || bridge.with_engine(|engine| engine.request("POST", &format!("/v0/conversations/{conversation_id}/manage"), Some(json!({"action":action,"title":title,"project_id":project_id})))))
         .await.map_err(|_| "ENGINE_TASK_FAILED")?
 }
 
@@ -1093,6 +1105,19 @@ async fn read_mvp_answer(
 }
 
 #[tauri::command]
+async fn retired_generation_providers(state: State<'_, Arc<Bridge>>) -> Result<Value, String> {
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || bridge.with_engine(|engine| engine.request("GET", "/v0/generation-providers/retired", None))).await.map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
+async fn restore_generation_provider(identifier: String, expected_revision: u64, active_id: Option<String>, active_revision: u64, state: State<'_, Arc<Bridge>>) -> Result<Value, String> {
+    if !valid_job_id(&identifier) || active_id.as_ref().is_some_and(|id| !valid_job_id(id)) || expected_revision==0 { return Err("INVALID_REQUEST".into()); }
+    let bridge = Arc::clone(state.inner());
+    tauri::async_runtime::spawn_blocking(move || bridge.with_engine(|engine| engine.request("POST", &format!("/v0/generation-providers/{identifier}/restore"), Some(json!({"expected_revision":expected_revision,"active_id":active_id,"active_revision":active_revision}))))).await.map_err(|_| "ENGINE_TASK_FAILED")?
+}
+
+#[tauri::command]
 async fn list_generation_providers(state: State<'_, Arc<Bridge>>) -> Result<Value, String> {
     let bridge = Arc::clone(state.inner());
     tauri::async_runtime::spawn_blocking(move || {
@@ -1221,6 +1246,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             preview_generation_provider,
             list_generation_providers,
+            retired_generation_providers,
+            restore_generation_provider,
             save_generation_provider,
             probe_generation_provider,
             authorize_generation_provider,
@@ -1249,6 +1276,7 @@ pub fn run() {
             ask_question,
             create_conversation,
             conversation_turns,
+            manage_conversation,
             create_research_plan,
             run_research_plan,
             review_evidence,
@@ -1355,6 +1383,41 @@ mod tests {
         let failed = import_selected_paths(vec![PathBuf::from("/test/a.pdf")], None, |_, _| {calls += 1; Err("NOT_PDF".into())});
         assert_eq!(failed.unwrap_err(), "NOT_PDF");
         assert_eq!(calls, 1);
+    }
+
+    #[test]
+    fn frozen_conversation_management_and_single_provider_survive_restart() {
+        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let root = std::env::temp_dir().join(format!("ragsystem-chat-management-{stamp}"));
+        let bridge = test_bridge(root);
+        bridge.recover_engine(false).unwrap();
+        let conversation = bridge.with_engine(|engine| engine.request("POST", "/v0/conversations", None)).unwrap();
+        let id = conversation["id"].as_str().unwrap();
+        let endpoint = format!("/v0/conversations/{id}/manage");
+        for body in [json!({"action":"rename","title":"持久对话"}), json!({"action":"archive"})] {
+            bridge.with_engine(|engine| engine.request("POST", &endpoint, Some(body))).unwrap();
+        }
+        let body = json!({"id":null,"name":"Local protocol test","kind":"api","base_url":"http://127.0.0.1:9/v1","model":"test","expected_revision":0,"api_key":""});
+        let mut provider_id = String::new();
+        for _ in 0..3 {
+            let saved = bridge.with_engine(|engine| engine.request("POST", "/v0/generation-providers", Some(body.clone()))).unwrap();
+            if provider_id.is_empty() { provider_id = saved["id"].as_str().unwrap().into(); }
+            assert_eq!(saved["id"], provider_id);
+            bridge.recover_engine(true).unwrap();
+        }
+        let archived = bridge.with_engine(|engine| engine.request("GET", "/v0/history/archived_conversations", None)).unwrap();
+        assert_eq!(archived["total"], 1);
+        assert_eq!(archived["items"][0]["title"], "持久对话");
+        let providers = bridge.with_engine(|engine| engine.request("GET", "/v0/generation-providers", None)).unwrap();
+        assert_eq!(providers["providers"].as_array().unwrap().len(), 1);
+        assert_eq!(providers["providers"][0]["credential_available"], false);
+        for action in ["restore", "delete"] {
+            bridge.with_engine(|engine| engine.request("POST", &endpoint, Some(json!({"action":action})))).unwrap();
+        }
+        bridge.recover_engine(true).unwrap();
+        let recent = bridge.with_engine(|engine| engine.request("GET", "/v0/history/conversations", None)).unwrap();
+        assert_eq!(recent["total"], 0);
+        bridge.engine.lock().unwrap().take().unwrap().stop();
     }
 
     #[test]

@@ -14,6 +14,10 @@ from ragsystem.retrieval.evaluation import latency_summary, ranking_metrics
 ROOT = Path(__file__).resolve().parents[1]
 
 CATEGORIES = {
+    "ordinary_qa",
+    "conflicting_evidence",
+    "low_relevance_distractors",
+    "experimental_conditions",
     "methods",
     "results",
     "numeric_units",

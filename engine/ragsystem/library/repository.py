@@ -201,6 +201,25 @@ class Library:
                 )
             return rows
 
+    def select_qa_versions(self, versions, policy="latest_imported"):
+        if policy not in {"latest_imported", "explicit_versions"}:
+            raise EngineError("VERSION_POLICY_INVALID")
+        if not versions or len(versions) > 1000:
+            raise EngineError("SCOPE_NOT_AVAILABLE", status=409)
+        if policy == "explicit_versions":
+            return list(dict.fromkeys(versions))
+        # Selection can only shrink the caller's authorized IDs. Import order is
+        # not publication chronology; UUID is only a deterministic timestamp tie-break.
+        with self.db.connection() as conn:
+            rows = conn.execute(
+                "SELECT id,document_id FROM document_versions WHERE id IN ("
+                + ",".join("?" for _ in versions) + ") ORDER BY created_at DESC,id", versions,
+            ).fetchall()
+        chosen = {}
+        for row in rows:
+            chosen.setdefault(row["document_id"], row["id"])
+        return [version for version in versions if version in chosen.values()]
+
     def update_metadata(self, document_id, value):
         try:
             body = (

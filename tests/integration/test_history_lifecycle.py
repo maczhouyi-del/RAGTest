@@ -7,6 +7,7 @@ from ragsystem.ingestion.import_pdf import PdfImporter
 from ragsystem.jobs.repository import Jobs
 from ragsystem.library.lifecycle import Lifecycle
 from ragsystem.library.repository import Library
+from ragsystem.models.provider import input_metadata, numbered_excerpts
 from ragsystem.parsing.pipeline import Parser
 from ragsystem.retrieval.hybrid import HybridSearch
 from ragsystem.retrieval.source_search import Sources
@@ -149,6 +150,7 @@ def test_lifecycle_change_during_model_or_parse_work_cannot_publish(store, monke
                 return {"status": "supported", "reason": "fixture"}
             chunk = data["chunks"][0]
             return {
+                "context_metadata": input_metadata(data["chunks"], *numbered_excerpts(data["chunks"])),
                 "claims": [
                     {
                         "text": "fixture",

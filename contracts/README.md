@@ -1,5 +1,7 @@
 # Contracts — 跨模块契约提案（尚未冻结）
 
+2026-11-01反馈增量：[feedback-workspace-v0.11.md](feedback-workspace-v0.11.md)，模型完整目录、直接恢复、复制、题名范围及结构候选诊断；schema20不变，延续v0.10安全与对话约束。
+
 这些文件是为了让 Codex 在多语言/多进程编程前对齐词汇和边界；**不代表 v1.1 已经审批过具体字段或已生成服务端实现**。
 
 2026-10-24后续开发已实现部分端点/迁移；实际协议、Job投影、SourceAnchor与草案差异见[implementation-v0.1.md](implementation-v0.1.md)。原草案保留，不把未实现字段/能力当现有API。
@@ -42,3 +44,9 @@
 - [mvp-v0.3.md](mvp-v0.3.md)：三入口MVP、自动准备、schema13/14、FTS词频/中文、重叠切分/溢出拒绝、索引清单及显式Provider/API/Magpie。旧握手与端点兼容。
 - [retrieval-answer-v0.6.md](retrieval-answer-v0.6.md)：RAG-01系统信息/复合意图、原始排名RRF、内容多样性、默认每篇3段、当前问题优先、失败诊断及离线同范围评估；schema18不迁移，科研与平台门禁仍独立。
 - [retrieval-answer-v0.7.md](retrieval-answer-v0.7.md)：RAG-02同范围历史、引号短语优先、截断前有界本地复核、实际模型输入/来源前缀审计及阶段诊断；默认不增LLM查询改写或重排调用。
+
+当前整改增量：[retrieval-answer-v0.8.md](retrieval-answer-v0.8.md)，强制输入审计/统一输出限制、授权内筛选及显式版本选择；历史v0.7保留。
+
+当前实际故障修复增量：[retrieval-answer-v0.9.md](retrieval-answer-v0.9.md)，系统数量、单篇结构候选、官方 DeepSeek 有界输出和运行构建标识；schema18与旧端点兼容。
+
+- [conversation-workspace-v0.10.md](conversation-workspace-v0.10.md)：CHAT-01，schema19/20对话管理、单一有效远程配置、逐轮证据与滚动；旧配置停用保留。

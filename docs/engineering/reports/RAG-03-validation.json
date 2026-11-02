@@ -1,0 +1,541 @@
+{
+  "task": "RAG-03",
+  "recorded_at": "2026-10-31T04:14:51.138918+00:00",
+  "platform": "macOS 26.2 arm64, Apple M4, 16GB",
+  "base_commit": "1282b1066523d4a1d0a8ce0c34df8715db09201b",
+  "functional_native_cases": "PASS",
+  "windows_install": "NOT EXECUTED / BLOCKED",
+  "scientific_gold": "BLOCKED",
+  "release": "NO-GO",
+  "git_actions": "no commit/push/Release",
+  "real_api_post_calls": 18,
+  "api_endpoint": "https://api.deepseek.com/v1",
+  "maximum_output_tokens_per_request": 900,
+  "api_data": "hash-verified public BERT excerpts and bounded test questions/context only",
+  "candidate_source_secret_scan": "PASS (pattern scan; not a formal security audit)",
+  "dependency_locks": [
+    {
+      "file": "engine/uv.lock",
+      "sha256": "d5545125b240b2a275b86711b7c4ff57e3c515d52a6aa6664dfaed34e6aef571",
+      "matches_HEAD": true
+    },
+    {
+      "file": "apps/desktop/package-lock.json",
+      "sha256": "5cb90138e7477f5f71db6b507a21894d5e072f8c82379fdb23acc1cbe148ba54",
+      "matches_HEAD": true
+    },
+    {
+      "file": "apps/desktop/src-tauri/Cargo.lock",
+      "sha256": "b32fe4b83a06e4fed5a0a41da863227a0b8d1d789c5508e9d051d74efde44b54",
+      "matches_HEAD": true
+    }
+  ],
+  "commands": [
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T130943917275Z-local-diagnosis.json",
+      "sha256": "22e10707e574f5d92452e6b816be4b5f253cefe91d5bf21d0c94ed963d7dd958",
+      "started_at": "2026-10-30T13:09:43.917275+00:00",
+      "finished_at": "2026-10-30T13:09:47.827706+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "docs/engineering/evidence/RAG-03/diagnose-local.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T131358969341Z-reported-regression.json",
+      "sha256": "4579b1b6fbb3a5eb864a02814eb33cf59449aab82f801f9f4bb7d9cb83f4d27d",
+      "started_at": "2026-10-30T13:13:58.969341+00:00",
+      "finished_at": "2026-10-30T13:14:03.115368+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_user_reported_questions.py",
+        "tests/unit/test_provider_transport_diagnostics.py",
+        "tests/integration/test_system_information.py",
+        "tests/integration/test_generation_providers.py",
+        "-q"
+      ],
+      "exit_code": 1
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T131503603209Z-reported-regression-fixed.json",
+      "sha256": "bbfa0eda1b3ec0de3612c5677aa4c32d4ee09d1241ce2bd88621264414c4463c",
+      "started_at": "2026-10-30T13:15:03.603209+00:00",
+      "finished_at": "2026-10-30T13:15:07.578414+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_user_reported_questions.py",
+        "tests/unit/test_provider_transport_diagnostics.py",
+        "tests/integration/test_system_information.py",
+        "tests/integration/test_generation_providers.py",
+        "-q"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T131603932298Z-static.json",
+      "sha256": "5ad3d50c3fb5111c7cefc524f06ecb79114493fe7e84436dbf1d0c2103423021",
+      "started_at": "2026-10-30T13:16:03.932298+00:00",
+      "finished_at": "2026-10-30T13:16:04.005377+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--fix",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/test_real_generation_api.py",
+        "packaging/build_sidecar.py"
+      ],
+      "exit_code": 1
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T131604032629Z-typescript.json",
+      "sha256": "583b4dce239c46131bec9e547512b80342ccf5261e61a5d51f19fd1680aa2bce",
+      "started_at": "2026-10-30T13:16:04.032629+00:00",
+      "finished_at": "2026-10-30T13:16:04.776569+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T131645620776Z-static-fixed.json",
+      "sha256": "756da397045ddae53e870fd959f4fbb390e57489e6f38b2699507bf8bf355210",
+      "started_at": "2026-10-30T13:16:45.620776+00:00",
+      "finished_at": "2026-10-30T13:16:45.631735+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/test_real_generation_api.py",
+        "packaging/build_sidecar.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T131726264122Z-full-python.json",
+      "sha256": "9198e342de41200fed80d9f309e8ed14d670fdb5b23596fbc976f2cedd75ffdd",
+      "started_at": "2026-10-30T13:17:26.264122+00:00",
+      "finished_at": "2026-10-30T13:19:09.017326+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "-rs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T131727364412Z-freeze-current.json",
+      "sha256": "7593a9c8ecfb4f9900dbc3c16b06508f74bfe9ec84f1a259f4c67bbb96d41bda",
+      "started_at": "2026-10-30T13:17:27.364412+00:00",
+      "finished_at": "2026-10-30T13:19:53.682229+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--output-directory",
+        ".tools/build/RAG-03-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/RAG-03",
+        "--include-vector-lab",
+        "--include-generation-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T131846459259Z-desktop-current.json",
+      "sha256": "5ccd80e91f8d8becdf8ba374af9da356ed071653e54a0e6f65f8968311dcd16c",
+      "started_at": "2026-10-30T13:18:46.459259+00:00",
+      "finished_at": "2026-10-30T13:18:49.590610+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "build",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T132015580310Z-frontend-final.json",
+      "sha256": "c22e5933cbf693af7962d6c2ab7b6e01c3707fa4e2316d8ede964b8e45a6aaeb",
+      "started_at": "2026-10-30T13:20:15.580310+00:00",
+      "finished_at": "2026-10-30T13:20:16.275300+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T132016302601Z-desktop-final.json",
+      "sha256": "955dcd4b5911df1a61fba30eaacb2e8278ec3c53f5244f99b6c01f969d5fb739",
+      "started_at": "2026-10-30T13:20:16.302601+00:00",
+      "finished_at": "2026-10-30T13:20:16.791432+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "build",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T132016711375Z-frozen-lifecycle.json",
+      "sha256": "31ee62b2b3a43028076a6e1b1a76b379f62d87f74c1127b34e3b8da0d816e75c",
+      "started_at": "2026-10-30T13:20:16.711375+00:00",
+      "finished_at": "2026-10-30T13:20:59.037616+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_sidecar_lifecycle.py",
+        "-q"
+      ],
+      "exit_code": 1
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T132016819621Z-stage-app.json",
+      "sha256": "095714924237b2f613c3800fd8679ff5bda75f7ef5a54bedfab33497b09d4a1a",
+      "started_at": "2026-10-30T13:20:16.819621+00:00",
+      "finished_at": "2026-10-30T13:20:19.725680+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/stage_macos_development.py",
+        "--task-label",
+        "rag03",
+        "--sidecar",
+        ".tools/build/RAG-03-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "--evidence-directory",
+        "docs/engineering/evidence/RAG-03"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T132028564943Z-static-final.json",
+      "sha256": "22b7a7327468ca34f8b4e1b8b12da830f7a9d3a02ac16f518563f671d69f485b",
+      "started_at": "2026-10-30T13:20:28.564943+00:00",
+      "finished_at": "2026-10-30T13:20:28.929085+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--fix",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/test_real_generation_api.py",
+        "tools/test_frozen_reported_api.py",
+        "packaging/build_sidecar.py",
+        "packaging/stage_macos_development.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T132029071495Z-rust.json",
+      "sha256": "a417598207c9450b0aed25cc1e45d6d21cc850b50129e9adffd60540acf36233",
+      "started_at": "2026-10-30T13:20:29.071495+00:00",
+      "finished_at": "2026-10-30T13:21:16.087281+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 101
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T132059073165Z-browser.json",
+      "sha256": "60457b8ccfd6c7f36001c707d7ae9bc7f4b3a6b8d44a29df65e99ea68b0b857b",
+      "started_at": "2026-10-30T13:20:59.073165+00:00",
+      "finished_at": "2026-10-30T13:22:03.976403+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T132116118818Z-clippy.json",
+      "sha256": "967ce66ec2f786330393f8b8adb962e4c3d4521079f5c83742a1f5d4e982556e",
+      "started_at": "2026-10-30T13:21:16.118818+00:00",
+      "finished_at": "2026-10-30T13:21:16.920723+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261030T132205693340Z-rust-sequential.json",
+      "sha256": "806a6782c4d3d2d2ad3000f854f7b3f2149872be9193050828ec1eca415212be",
+      "started_at": "2026-10-30T13:22:05.693340+00:00",
+      "finished_at": "2026-10-30T13:22:34.004456+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 101
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261031T040402942318Z-rust-full-after-space.json",
+      "sha256": "fc117da84e53395a73f52bbb8ca126750de7a283b915053a0e1cbc1af4f4ea3b",
+      "started_at": "2026-10-31T04:04:02.942318+00:00",
+      "finished_at": "2026-10-31T04:07:42.033214+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261031T040459828824Z-frozen-persisted-verification.json",
+      "sha256": "1333363a331dc24e2055ce28c5b5e0e20e18fcbb3d6724f46d8cb56c80e69646",
+      "started_at": "2026-10-31T04:04:59.828824+00:00",
+      "finished_at": "2026-10-31T04:05:00.021814+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "docs/engineering/evidence/RAG-03/recover-frozen-results.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261031T040756452831Z-native-protocol-build.json",
+      "sha256": "11196e0e6577bea483d8bc6f6edc27857e584b555a8a53ac24a5d463c671ea32",
+      "started_at": "2026-10-31T04:07:56.452831+00:00",
+      "finished_at": "2026-10-31T04:08:16.080398+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "tauri",
+        "--",
+        "build",
+        "--debug",
+        "--no-bundle",
+        "--",
+        "--locked",
+        "--offline"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261031T040801634641Z-frozen-lifecycle-after-space.json",
+      "sha256": "ab4d6bfc021e41954f6b359d0cf2753f92096f9cf01b6f47b34a5325cd68ddcb",
+      "started_at": "2026-10-31T04:08:01.634641+00:00",
+      "finished_at": "2026-10-31T04:08:16.622433+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_sidecar_lifecycle.py",
+        "-q"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261031T040823538658Z-stage-native-final.json",
+      "sha256": "b68d11a14b2fd632a5270d51a077b78b4fe0c0157818f0a7e4d6a49082cbf382",
+      "started_at": "2026-10-31T04:08:23.538658+00:00",
+      "finished_at": "2026-10-31T04:08:25.260613+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/stage_macos_development.py",
+        "--task-label",
+        "rag03-final",
+        "--sidecar",
+        ".tools/build/RAG-03-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "--evidence-directory",
+        "docs/engineering/evidence/RAG-03/native-final"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261031T041035851966Z-reported-final.json",
+      "sha256": "3a48fde12685e9db05bd9b300d2b648af1bc79e7aa7b4a57feafa238150012ea",
+      "started_at": "2026-10-31T04:10:35.851966+00:00",
+      "finished_at": "2026-10-31T04:10:36.947878+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_user_reported_questions.py",
+        "tests/unit/test_provider_transport_diagnostics.py",
+        "-q"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261031T041056153475Z-static-delivery.json",
+      "sha256": "6ebcbf8f944aab9efe04163fdf48605157b01679c636cd5a11c548bb17ff4fb7",
+      "started_at": "2026-10-31T04:10:56.153475+00:00",
+      "finished_at": "2026-10-31T04:10:56.224393+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/test_real_generation_api.py",
+        "tools/test_frozen_reported_api.py",
+        "packaging/build_sidecar.py",
+        "packaging/stage_macos_development.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261031T041206883825Z-verify-native-delivery.json",
+      "sha256": "1db7715b6ecd916732048ac26a8aa1831bf9bda4bf33bff0bd3b3a5f1751e5f8",
+      "started_at": "2026-10-31T04:12:06.883825+00:00",
+      "finished_at": "2026-10-31T04:12:07.130232+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "docs/engineering/evidence/RAG-03/verify-final-delivery.py"
+      ],
+      "exit_code": 1
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/20261031T041220149700Z-verify-native-delivery-fixed.json",
+      "sha256": "56b47d9c986db60143d276e3a6dfb22c69a9f452ea71a1af06cc686cfb58dd59",
+      "started_at": "2026-10-31T04:12:20.149700+00:00",
+      "finished_at": "2026-10-31T04:12:20.404101+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "argv": [
+        "engine/.venv/bin/python",
+        "docs/engineering/evidence/RAG-03/verify-final-delivery.py"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "artifacts": [
+    {
+      "file": "docs/engineering/evidence/RAG-03/local-diagnosis.json",
+      "sha256": "5a83416f12041d3157b112387f0d17bc0daf0faadfa7a29772f26a89d7033fd3",
+      "bytes": 13347
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/real-api-20261030T131528451283Z.json",
+      "sha256": "2544b06f9fbc40a9f5d5ffc057b42aee53b5724659a81d04f58cf186d78178eb",
+      "bytes": 89321
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/frozen-real-api-20261030T132014493301Z.json",
+      "sha256": "38545c980b91b8141afd889d8deb5db3e858e0c2eba2c2148649cab5b591926c",
+      "bytes": 50984
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/frozen-persisted-verification.json",
+      "sha256": "d8db3630714a73d523244217bdab4e27c94a4fb0b43f6b2b7479e9a7724f3143",
+      "bytes": 101884
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/sidecar-20261030T131727422347Z.json",
+      "sha256": "7890544512fd3ed2628abf300b53754e070fc0978fd62bd8f8dbcdf54e27957a",
+      "bytes": 13564
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/native-final/macos-development-app.json",
+      "sha256": "be4acbc6186ea1177ed0b549dd6a6d38ee422d9b0c49500698cc734a0fe3dc52",
+      "bytes": 575
+    },
+    {
+      "file": "docs/engineering/evidence/RAG-03/native-final-verification.json",
+      "sha256": "911b770a71efddaf9cfc04adf7b5050503e6688e6838d2ea1e0231999aed063a",
+      "bytes": 81546
+    }
+  ],
+  "notes": [
+    "Earlier failures are preserved; inspect exit_code.",
+    "Full Python 336 passed / 1 skipped; frozen lifecycle subsequently 4 passed covers omitted frozen test; final targeted 10 passed includes one added ambiguity regression.",
+    "Rust final serial full candidate suite 9 passed.",
+    "Frozen client failure occurred during result read; persisted completed results independently verified without additional network calls.",
+    "Native UI 4 new completed runs: count, extractive contribution, two real DeepSeek answers. Source and frozen each also tested the three original questions."
+  ]
+}

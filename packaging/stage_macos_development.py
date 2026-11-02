@@ -10,6 +10,7 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--task-label", default="mvp02")
+parser.add_argument("--sidecar", type=Path, help="Explicit verified sidecar; preserve the default development binary")
 parser.add_argument("--evidence-directory", default="docs/engineering/evidence/MVP-02-2026-10-25")
 args = parser.parse_args()
 if not args.task_label or any(char not in "abcdefghijklmnopqrstuvwxyz0123456789-" for char in args.task_label):
@@ -28,7 +29,7 @@ shutil.copytree(template, output)
 executable = output / "Contents/MacOS/ragsystem-desktop"
 sidecar = output / "Contents/MacOS/ragsystem-engine"
 shutil.copy2(base / "target/debug/ragsystem-desktop", executable)
-shutil.copy2(base / "binaries/ragsystem-engine-aarch64-apple-darwin", sidecar)
+shutil.copy2(args.sidecar or base / "binaries/ragsystem-engine-aarch64-apple-darwin", sidecar)
 subprocess.run(
     ["codesign", "--force", "--deep", "--sign", "-", str(output)], check=True
 )

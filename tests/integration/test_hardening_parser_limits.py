@@ -171,3 +171,24 @@ def test_frozen_worker_keeps_only_named_bootloader_state(tmp_path, monkeypatch):
 
     monkeypatch.setattr(module.subprocess, "Popen", create)
     assert run_worker({"pdf_path": str(pdf(tmp_path / "safe.pdf"))})["document_page_count"] == 1
+
+
+def test_actual_worker_file_resource_limit(tmp_path):
+    if sys.platform == "win32":
+        # The production supervisor must attach an OS job before sending any PDF input.
+        from ragsystem.parsing.windows_job import ParserJob
+        child = subprocess.Popen([sys.executable, "-c", "import time;time.sleep(30)"])
+        job = ParserJob(child)
+        job.close()
+        assert child.wait(timeout=5) != 0
+        return
+    target = tmp_path / "bounded-spool"
+    result = subprocess.run(
+        [sys.executable, "-c", "from ragsystem.parsing.limits import apply_process_limits; "
+         "apply_process_limits(); "
+         f"open({str(target)!r}, 'wb').write(b'x' * (17 * 1024**2))"],
+        env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2] / "engine")},
+        capture_output=True,
+    )
+    assert result.returncode != 0
+    assert target.stat().st_size <= 16 * 1024**2

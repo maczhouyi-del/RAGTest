@@ -59,10 +59,18 @@ def review_order(generator, question, hits, *, max_candidates=6, before_call=Non
                 raise EngineError("MODEL_RERANK_INVALID")
             judgments[value["candidate_id"]] = value
         batches.append(batch)
-    order = sorted(candidates, key=lambda key: -judgments[key]["score"])
+    # Reorder only within each batch, then interleave ordinal ranks. Absolute
+    # model scores from different requests never participate in a comparison.
+    ordered_batches = [sorted(batch, key=lambda key: -judgments[key]["score"]) for batch in batches]
+    if len(batches) == 1:
+        order = ordered_batches[0]
+    elif all(len({judgments[key]["score"] for key in batch}) == 1 for batch in batches):
+        order = keys  # No within-batch preference: retain the full baseline order.
+    else:
+        order = [batch[rank] for rank in range(REVIEW_BATCH_SIZE) for batch in ordered_batches if rank < len(batch)]
     ranked = [candidates[key] for key in order] + hits[len(selected) :]
     return ranked, {
-        "policy": "bounded-local-relevance-v2-batched"
+        "policy": "bounded-local-relevance-v3-ordinal-interleave"
         if max_candidates > 6
         else "bounded-local-relevance-v1",
         "fingerprint": generator.fingerprint,
@@ -72,6 +80,6 @@ def review_order(generator, question, hits, *, max_candidates=6, before_call=Non
             {**judgments[key], "chunk_id": candidates[key]["chunk_id"]} for key in candidates
         ],
         "batches": batches,
-        "score_interpretation": "uncalibrated local model opinion; batch-position bias not evaluated",
+        "score_interpretation": "within-batch ordinal interleave; raw scores never compared across batches; quality unvalidated",
         "scientific_quality": "NOT_EVALUATED",
     }

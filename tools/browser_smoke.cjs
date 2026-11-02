@@ -15,10 +15,11 @@ async function main() {
   const evidence = path.join(root, process.env.RAGSYSTEM_EVIDENCE_DIR || 'docs/engineering/evidence/P0-implementation-2026-10-24');
   const p1 = process.env.RAGSYSTEM_P1_SMOKE === '1';
   const round3 = process.env.RAGSYSTEM_MVP03_STAGE;
+  const chatManagement=process.env.RAGSYSTEM_CHAT_MANAGEMENT==='1';
   const hardening = process.env.RAGSYSTEM_HARDEN_SMOKE === "1";
   const round2 = process.env.RAGSYSTEM_MVP_ROUND2_STAGE;
   const reference = process.env.RAGSYSTEM_UI_REFERENCE_SMOKE === '1';
-  const mvp = process.env.RAGSYSTEM_MVP_SMOKE === '1' || reference || !!round2 || !!round3;
+  const mvp = process.env.RAGSYSTEM_MVP_SMOKE === '1' || reference || !!round2 || !!round3 || chatManagement;
   fs.mkdirSync(evidence, {recursive: true});
   let dataRoot = path.join(root, '.tools/test-data', 'browser-' + crypto.randomUUID());
   let token = crypto.randomBytes(32).toString('hex');
@@ -96,6 +97,9 @@ async function main() {
       if (command === 'prepare_mvp') return rpc('POST','/v0/mvp/prepare',{version_ids:args.versionIds,idempotency_key:crypto.randomUUID()});
       if (command === 'read_mvp_answer') return rpc('GET',`/v0/answers/${args.answerId}`);
       if (command === 'list_generation_providers') return rpc('GET','/v0/generation-providers');
+      if (command === 'retired_generation_providers') return rpc('GET','/v0/generation-providers/retired');
+      if (command === 'restore_generation_provider') return rpc('POST',`/v0/generation-providers/${args.identifier}/restore`,{expected_revision:args.expectedRevision,active_id:args.activeId,active_revision:args.activeRevision});
+      if (command === 'manage_conversation') return rpc('POST',`/v0/conversations/${args.conversationId}/manage`,{action:args.action,title:args.title,project_id:args.projectId});
       if (command === 'save_generation_provider') return rpc('POST','/v0/generation-providers',args.body);
       if (command === 'preview_generation_provider') return rpc('POST','/v0/generation-provider-probe',args.body);
       if (command === 'authorize_generation_provider') return rpc('POST',`/v0/generation-providers/${args.identifier}/authorization`,{expected_revision:args.expectedRevision,enabled:args.enabled});
@@ -222,7 +226,8 @@ a=c.execute("SELECT value_json FROM app_settings WHERE key='active_index'").fetc
 print(json.dumps({'vector_sha256':h.hexdigest(),'vectors':c.execute('SELECT count(*) FROM embedding_records').fetchone()[0],'index_builds':c.execute("SELECT count(*) FROM jobs WHERE type='embed_batch'").fetchone()[0],'active_index':json.loads(a[0]) if a else None,'secret_in_db':any(any(secret in line for secret in ['local-protocol-fixture-key','fixture-authorization-secret']) for line in c.iterdump())}))`;const output=require('node:child_process').spawnSync(path.join(root,'engine/.venv/bin/python'),['-c',script,path.join(dataRoot,'data/research.db')],{encoding:'utf8'});if(output.status!==0)throw Error('SQLITE_AUDIT_FAILED');return JSON.parse(output.stdout);};
     if(mvp){
       await page.locator('.connection').filter({hasText:/本地引擎(?:已连接|部分可用)/}).waitFor();
-      if(round3){await require('./browser_mvp03.cjs')({page,rpc,root,evidence,errors,stage:round3,audit});if(hardening)await require('./browser_hardening.cjs')({page,rpc,evidence,errors});}
+      if(chatManagement){await require('./browser_chat_management.cjs')({page,rpc,root,evidence,errors,audit});}
+      else if(round3){await require('./browser_mvp03.cjs')({page,rpc,root,evidence,errors,stage:round3,audit});if(hardening)await require('./browser_hardening.cjs')({page,rpc,evidence,errors});}
       else if(round2)await require('./browser_round2.cjs')({page,rpc,root,evidence,errors,stage:round2,audit});
       else if(reference)await require('./browser_reference.cjs')({page,rpc,root,evidence,errors});
       else await require('./browser_mvp.cjs')({page,rpc,root,evidence,errors});
@@ -327,7 +332,7 @@ print(json.dumps({'vector_sha256':h.hexdigest(),'vectors':c.execute('SELECT coun
     }
     }
     if (errors.length) throw new Error('BROWSER_PAGE_ERRORS:' + errors.join(','));
-    fs.writeFileSync(path.join(evidence, reference?'browser-ui-reference-smoke.json':mvp?(process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'browser-mvp-extractive-smoke.json':'browser-mvp-smoke.json'):'browser-smoke.json'), JSON.stringify({status: 'PASS', mvp_workflow:mvp, data_root: dataRoot, real_frozen_engine: process.env.RAGSYSTEM_BROWSER_SOURCE_ENGINE!=='1', transport: 'SIMULATED TAURI BRIDGE', native_dialogs_tested: false, full_native_e2e: false, windows_tested: false, p1_workflow: p1, workbench_workflow:process.env.RAGSYSTEM_WORKBENCH_SMOKE==='1', page_errors: errors, assertions: round3?['See MVP03-'+round3+'-browser.json']:round2?['See stage-'+round2+'-browser.json; real process; no native IME certification']:reference?['reference layouts/real states','batch import/dedup/parse','document filters/details','real E5/RRF/extractive answer','scope isolation','PDF source/review persistence/return','API consent/session key','backup/restore','responsive 1586/1200/720']:mvp?['three tabs/default QA','batch PDF/dedup/automatic parse','real E5/sqlite-vec index',process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'real cited extractive answer':'real cited local generation','SHA-verified PDF rendering','history reload','backup/restore persistence']:['real import shown', 'real parse shown', 'real FTS hits', 'SHA-verified PDF canvas rendered', ...(p1 ? ['project create/switch', 'project-targeted import', 'unparsed PDF reading/page jump/zoom', 'same original in two projects', 'metadata persisted across reload', 'DOI normalization', 'tag filter'] : [])]}, null, 2));
+    fs.writeFileSync(path.join(evidence, reference?'browser-ui-reference-smoke.json':mvp?(process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'browser-mvp-extractive-smoke.json':'browser-mvp-smoke.json'):'browser-smoke.json'), JSON.stringify({status: 'PASS', mvp_workflow:mvp, data_root: dataRoot, real_frozen_engine: process.env.RAGSYSTEM_BROWSER_SOURCE_ENGINE!=='1', transport: 'SIMULATED TAURI BRIDGE', native_dialogs_tested: false, full_native_e2e: false, windows_tested: false, p1_workflow: p1, workbench_workflow:process.env.RAGSYSTEM_WORKBENCH_SMOKE==='1', page_errors: errors, assertions: chatManagement?['See CHAT-01-browser.json']:round3?['See MVP03-'+round3+'-browser.json']:round2?['See stage-'+round2+'-browser.json; real process; no native IME certification']:reference?['reference layouts/real states','batch import/dedup/parse','document filters/details','real E5/RRF/extractive answer','scope isolation','PDF source/review persistence/return','API consent/session key','backup/restore','responsive 1586/1200/720']:mvp?['three tabs/default QA','batch PDF/dedup/automatic parse','real E5/sqlite-vec index',process.env.RAGSYSTEM_MVP_EXTRACTIVE_SMOKE==='1'?'real cited extractive answer':'real cited local generation','SHA-verified PDF rendering','history reload','backup/restore persistence']:['real import shown', 'real parse shown', 'real FTS hits', 'SHA-verified PDF canvas rendered', ...(p1 ? ['project create/switch', 'project-targeted import', 'unparsed PDF reading/page jump/zoom', 'same original in two projects', 'metadata persisted across reload', 'DOI normalization', 'tag filter'] : [])]}, null, 2));
     console.log('BROWSER_UI_SMOKE: PASS; real engine process, simulated Tauri transport; not native/Windows acceptance');
   } catch (error) {
     const stamp = Date.now();

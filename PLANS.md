@@ -1,5 +1,13 @@
 # PLANS.md — 路线图、门禁与可执行工作机制
 
+2026-11-02源码同步授权：用户明确要求提交并推送GitHub main，按[GH-05计划](docs/engineering/execplans/GH-05-source-sync.md)将既有已验收本地源码、测试与工程文档正常同步origin/main；覆盖这些任务当时不提交/推送的限制，不包含模型/论文/数据库/凭据/原始日志/构建产物，不强推或发布。历史报告保持其当时状态。
+
+本地维护完成（2026-11-01）：用户明确授权本次历史构建清理，已删除清单58个旧目录，回收约22.69 GiB；314份诊断记录先归档核验，最新CHAT-02三个目录及23个文件哈希保持。源码/用户库/模型未改，当前target/dist保留。见[清理报告](docs/engineering/reports/BUILD-CLEANUP-01-2026-11-01.md)。本次例外不改变后续删除约束。
+
+当前反馈任务已完成（2026-11-01）：CHAT-02模型完整目录、直接归档恢复、正文复制、题名范围识别及有界摘要/比较召回修复。Python353 PASS/0 FAIL/0 SKIP、新冻结生命周期4 PASS、Rust10 PASS、浏览器46断言PASS，原库快照3例及本机UI通过；官方目录GET返回2模型、生成POST 0。schema20与原向量/文献保留，99项冻结源码哈希已核对。详见[计划](docs/engineering/execplans/CHAT-02-user-feedback.md)、[报告](docs/engineering/reports/CHAT-02-2026-11-01.md)。额外GUI重启被锁屏阻塞，Windows/科研金标/新真实生成未验收；既有OSV FAIL未解除。所有已有工作保留，未提交/推送/发布。
+
+当前增量已完成（2026-11-01）：CHAT-01四项本地功能及schema19/20迁移已实现并验证。Python346 PASS/0 FAIL/0 SKIP，Rust10 PASS，浏览器40项断言PASS；实际Mac新app已重启核验，原数据保留，远程配置1有效+7可恢复停用。按[执行计划](docs/engineering/execplans/CHAT-01-conversation-workspace.md)完成，详见[交付报告](docs/engineering/reports/CHAT-01-2026-11-01.md)。依赖OSV门禁仍FAIL，Windows/科研/千篇/发布未验收；保留先前未提交修改，不提交/推送/发布。
+
 > 本文件是本项目的**工作规划约定**。用户在P0-00后授权继续开发，并最新要求标记、延期不阻断开发的测试后继续功能。按ADR-009及用户连续开发指令推进独立P1–P4本地实现；P0正式验收仍BLOCKED，未把未测项标PASS。功能状态见§14；新增指定GitHub仓库源码上传授权见§15。
 
 最新任务：用户于2026-10-29明确要求提交推送RAG-02，执行§27的GH-04源码同步授权。RAG-02开发与验证见§26；RAG-01已同步b47fa87，§25及更早记录保留当时语义。
@@ -236,3 +244,17 @@ MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统�
 用户明确要求“提交推送至GitHub”，允许将已完成RAG-02的源码、测试、契约及工程文档正常提交并同步既有RAGTest origin/main，覆盖§26本地开发结束时的未提交/未推送边界。fetch确认基线b47fa877fb6c7b07f3e95fdfa0ebd5bcf9df996b与远端一致，31项原有改动吻合交付清单。历史报告与验证JSON的未提交字段描述当时状态，本次同步单独登记。
 
 范围不含论文、模型、数据库、凭据、原始日志或安装包，不强推、不合并、不发布Release，不新增付费API授权。无生产源码变动，不重复既有完整回归；检查差异、测试证据哈希、提交清单与敏感内容后提交，推送后核对远端完整SHA和工作区。计划：[GH-04](docs/engineering/execplans/GH-04-rag02-source-upload.md)；报告：[GH-04](docs/engineering/reports/GH-04-2026-10-29.md)。平台/科研/千篇及发布门禁保持原状态。
+
+## 28. REMEDIATE-01 全面整改（2026-10-29）
+
+本轮用户附件明确授权依次修复 P1-01/02/03/04/07/05/06、P2-08/09/10/11 并完整回归。编号为整改清单局部编号，不重定义历史任务板。按[执行计划](docs/engineering/execplans/REMEDIATE-01.md)推进；外部环境/金标/千篇/签名缺口记录 BLOCKED 后继续独立工作，不代表阶段验收通过。本轮禁止自动提交、推送、Release；历史源码同步授权不沿用。
+
+§28 实际结果（2026-10-30）：本机可执行整改和验证完成，保留工作区未提交。Python 最后全量 327 PASS/0 FAIL/1 SKIP（遗漏冻结变量），补跑完整侧车生命周期 4 PASS/0 FAIL/0 SKIP 覆盖该项；此前完整 326 PASS/0 FAIL/0 SKIP。Rust 完整候选 9 PASS/0 FAIL/0 ignored，TS/Ruff/Clippy/锁检查通过，浏览器 C 阶段 88 项通过。新增实际输入强制收据、2条结论硬限制、授权内真实过滤、最近导入版本选择、批内秩合并、SQLite 扩展探测、Windows Job 资源控制及审计/SBOM工具。两篇公开工程 corpus 29页424Chunk完成增量/持久复用/恢复，不能替代1000篇或金标。P1-07/P2-10/P2-11工程契约PASS；跨平台、OS权限隔离、漏洞处置、金标/千篇、费用硬预算与发行许可/签名继续BLOCKED，重排增益NOT_EVALUATED，发布NO-GO。详见[完整整改报告](docs/engineering/reports/REMEDIATE-01-2026-10-30.md)与[验证索引](docs/engineering/reports/REMEDIATE-01-validation.json)。本轮无commit/push/Release、真实付费API、模型下载或用户资料外发。
+
+## 29. RAG-03 用户实际失败排查（2026-10-30）
+
+用户截图要求实修数量误路由、文献贡献/问题回答失败，并明确授权新DeepSeek Key测试。按[RAG-03计划](docs/engineering/execplans/RAG-03-user-failures.md)执行：只读当前应用数据、隔离公开文献试验、修复源码、构建新本地开发.app并验证；不沿用旧API授权、不发送用户论文、不commit/push/Release。基线main1282b10及REMEDIATE-01未提交改动全部保留。发现当前进程来自2026-10-26旧bundle，源码修改不会自动更新它。
+
+§29 实际结果（2026-10-31）：三个截图原句已在源码、冻结侧车及本机原生应用验证。数量直接读库2篇；单篇贡献/问题通过原文结构补充召回，实际DeepSeek回答completed并保留BERT引用；原生PDF第1页实际渲染。257条持久向量/来源映射检查正常，同向量sqlite-vec/LanceDB前10相同，未更换模型/后端或破坏性重建。官方DeepSeek显式关闭隐藏思考并细分传输/截断错误；历史连接失败的底层原因无法追溯，不假定证书根因。
+
+Python全量336 PASS/1 SKIP（冻结变量未提供），随后冻结生命周期4 PASS覆盖该项，新增最终定向10 PASS；Rust含全部候选9 PASS；TS/Ruff/Clippy及模拟桥88项通过。真实API按测试前声明扩展预算至18次POST，仅公开BERT片段，原生6次完成两回答；数据库副本与真实库计数不同均按实际记录。最终独立app为 `.tools/build/macos-rag03-final-20261031T040823560658Z/RAGSystem.app`，已启动并核对RAG-03构建/96项源码哈希；普通cargo构建白屏和磁盘满等中途失败记录保留。详见[报告](docs/engineering/reports/RAG-03-2026-10-31.md)、[验证索引](docs/engineering/reports/RAG-03-validation.json)、[v0.9契约](contracts/retrieval-answer-v0.9.md)。本机场景交付PASS，不解除Windows/科研金标/千篇/安全发行正式门禁；无commit/push/Release。

@@ -19,7 +19,7 @@ module.exports=async function({page,rpc,evidence,errors}){
  check(JSON.stringify(before)===JSON.stringify((await rpc('GET','/v0/documents')).documents),'RECOVERY_DOCUMENTS_METADATA_KEPT');
  check((await rpc('GET','/v0/history/conversations')).total===histories.total,'RECOVERY_HISTORY_KEPT');
  const health=await rpc('GET','/v0/health');
- check(health.schema_version==='18'&&health.components.database.available,'ACTUAL_SCHEMA_IN_UI_ENGINE');
+ check(health.schema_version==='20'&&health.components.database.available,'ACTUAL_SCHEMA_IN_UI_ENGINE');
  await page.evaluate(()=>globalThis.__testBroker('test_crash_engine'));
  await page.evaluate(()=>globalThis.__testBroker('test_fail_next_recovery'));
  await page.getByRole('button',{name:'重新连接',exact:true}).waitFor();

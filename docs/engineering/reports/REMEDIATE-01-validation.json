@@ -1,0 +1,1148 @@
+{
+  "baseline": "1282b1066523d4a1d0a8ce0c34df8715db09201b",
+  "raw_logs_local_only": true,
+  "records": [
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T13:41:22.487015+00:00",
+      "finished_at": "2026-10-29T13:42:16.866396+00:00",
+      "label": "baseline",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T134122487015Z-baseline.json",
+      "raw_sha256": "f61451b0a12f274397391af1bd25240843cca8e58da33de2fd0be8b7260cd271",
+      "summary": [
+        "SKIPPED [1] tests/integration/test_docling.py:42: explicit approved layout/table resources and optional runtime required",
+        "SKIPPED [1] tests/integration/test_docling.py:158: explicit approved layout/table resources and optional runtime required",
+        "SKIPPED [1] tests/integration/test_docling.py:242: explicit approved layout/table resources and optional runtime required",
+        "SKIPPED [1] tests/integration/test_hybrid_workflow.py:22: No explicit approved local model directory",
+        "SKIPPED [1] tests/integration/test_hybrid_workflow.py:66: explicit approved E5 directory required",
+        "SKIPPED [1] tests/integration/test_local_model.py:12: Explicit local model path not supplied; no automatic download",
+        "SKIPPED [1] tests/integration/test_mvp_core.py:106: explicit approved E5 required",
+        "SKIPPED [1] tests/integration/test_ocr.py:56: explicit approved OCR resources/runtime required",
+        "SKIPPED [1] tests/integration/test_ocr.py:103: explicit approved OCR resources/runtime required",
+        "SKIPPED [1] tests/integration/test_ocr.py:221: explicit approved OCR resources/runtime required",
+        "SKIPPED [1] tests/integration/test_ocr.py:249: explicit approved OCR resources/runtime required",
+        "SKIPPED [1] tests/integration/test_retrieval_comparison.py:58: existing approved E5 required",
+        "SKIPPED [1] tests/integration/test_sidecar_lifecycle.py:121: Frozen binary not provided",
+        "284 passed, 13 skipped, 1 warning in 54.02s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_vector_contract.py",
+        "tests/integration/test_hybrid_workflow.py",
+        "tests/unit/test_release_gate_tools.py",
+        "-q"
+      ],
+      "exit_code": 1,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T13:42:18.373267+00:00",
+      "finished_at": "2026-10-29T13:42:19.391687+00:00",
+      "label": "vector-ci",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T134218373267Z-vector-ci.json",
+      "raw_sha256": "7aa9b7e609f20d29ee562ccc18c053aebdeb709e0de020dbafa160d5b75b67f3",
+      "summary": [
+        "SKIPPED [1] tests/integration/test_hybrid_workflow.py:22: No explicit approved local model directory",
+        "SKIPPED [1] tests/integration/test_hybrid_workflow.py:66: explicit approved E5 directory required",
+        "1 failed, 13 passed, 2 skipped in 0.81s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/dependency_gate.py",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/audit",
+        "--online"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T13:43:43.731425+00:00",
+      "finished_at": "2026-10-29T13:43:46.627586+00:00",
+      "label": "osv",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T134343731425Z-osv.json",
+      "raw_sha256": "6386d0ad69a2cf7e621a52eb9824ab575b6f47971901e110ce458faa68f79e7e",
+      "summary": [
+        "Status: BLOCKED"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_vector_contract.py",
+        "tests/integration/test_hardening_parser_limits.py",
+        "tests/integration/test_worker_parent.py",
+        "tests/unit/test_release_gate_tools.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T13:44:28.029003+00:00",
+      "finished_at": "2026-10-29T13:44:33.061726+00:00",
+      "label": "vector-parser",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T134428029003Z-vector-parser.json",
+      "raw_sha256": "6869d1274398c0be77457ccbe78675cb4491667eedbc93a037fbfd6949247276",
+      "summary": [
+        "24 passed in 4.78s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_pipeline_refinements.py",
+        "tests/integration/test_answer_pipeline.py",
+        "tests/integration/test_workbench.py",
+        "tests/unit/test_excerpt_context.py",
+        "tests/integration/test_generation_providers.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T13:45:55.554819+00:00",
+      "finished_at": "2026-10-29T13:46:10.905132+00:00",
+      "label": "input-boundary",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T134555554819Z-input-boundary.json",
+      "raw_sha256": "22a90af393f5c044afdedaad34669353111c2d138e93ccf91fe07b32c20e618b",
+      "summary": [
+        "58 passed, 1 warning in 15.19s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/unit/test_local_review_ranking.py",
+        "tests/unit/test_excerpt_context.py",
+        "tests/integration/test_pipeline_refinements.py",
+        "tests/integration/test_answer_pipeline.py",
+        "tests/integration/test_workbench.py",
+        "tests/integration/test_generation_providers.py",
+        "tests/unit/test_release_gate_tools.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T13:55:29.331072+00:00",
+      "finished_at": "2026-10-29T13:55:44.627949+00:00",
+      "label": "output-rerank",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T135529331072Z-output-rerank.json",
+      "raw_sha256": "4f0728dd7145a114dc1ef46d368968eee7895483159ebe5a960911ec869f9277",
+      "summary": [
+        "76 passed, 1 warning in 15.10s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_filter_semantics.py",
+        "tests/integration/test_library_workflow.py",
+        "tests/integration/test_retrieval_ranks.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:01:25.234542+00:00",
+      "finished_at": "2026-10-29T14:01:27.414654+00:00",
+      "label": "filters",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140125234542Z-filters.json",
+      "raw_sha256": "597e70e37ee2678b8078681d934b7a275ce69d83ff0464f92e2bc64834494b9b",
+      "summary": [
+        "23 passed, 1 warning in 1.98s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_identity_annotations_batch.py",
+        "tests/integration/test_workbench.py",
+        "tests/integration/test_history_lifecycle.py",
+        "-q"
+      ],
+      "exit_code": 1,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:02:50.030461+00:00",
+      "finished_at": "2026-10-29T14:02:57.736892+00:00",
+      "label": "versions",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140250030461Z-versions.json",
+      "raw_sha256": "b3a8b29966887a88d1f9688d107d3b078c2960d916e3f878632d06abd930749b",
+      "summary": [
+        "1 failed, 19 passed, 1 warning in 7.55s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--fix",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/dependency_gate.py",
+        "tools/local_corpus_manifest.py",
+        "tools/binary_inventory.py"
+      ],
+      "exit_code": 1,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:04:19.951992+00:00",
+      "finished_at": "2026-10-29T14:04:20.030068+00:00",
+      "label": "ruff",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140419951992Z-ruff.json",
+      "raw_sha256": "7e90efadf3cc0d321860f8439b012906763739bf6d400f67e12f02544d957b61",
+      "summary": [
+        "help: Move module level imports to top of file",
+        "",
+        "Found 29 errors (6 fixed, 23 remaining)."
+      ]
+    },
+    {
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:04:52.602789+00:00",
+      "finished_at": "2026-10-29T14:04:53.378283+00:00",
+      "label": "frontend",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140452602789Z-frontend.json",
+      "raw_sha256": "bdb6cde0f9ae986b0b2ec08d33a15d00fbc8bf3bbc165f13f7aab6818aaa34de",
+      "summary": [
+        "dist/assets/PdfPreview-x3M5w1kJ.js         434.72 kB │ gzip: 131.32 kB",
+        "",
+        "✓ built in 126ms"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "exit_code": 1,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:04:53.418429+00:00",
+      "finished_at": "2026-10-29T14:06:40.284864+00:00",
+      "label": "python-resources",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140453418429Z-python-resources.json",
+      "raw_sha256": "c7c9436186c7a6dfb4d738675042c1f496a7416282bea82e4ac93820cedb9b0f",
+      "summary": [
+        "SKIPPED [1] tests/integration/test_sidecar_lifecycle.py:121: Frozen binary not provided",
+        "2 failed, 320 passed, 1 skipped, 1 warning in 106.48s (0:01:46)"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/dependency_gate.py",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/audit-details",
+        "--online"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:06:18.309536+00:00",
+      "finished_at": "2026-10-29T14:06:23.442365+00:00",
+      "label": "osv-details",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140618309536Z-osv-details.json",
+      "raw_sha256": "29c2af172715ab3bdf0b576892af18dd1d380572d42b62ba6b68989ad765cb5f",
+      "summary": [
+        "Status: BLOCKED"
+      ]
+    },
+    {
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "audit",
+        "--package-lock-only",
+        "--json",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exit_code": 1,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:06:19.445301+00:00",
+      "finished_at": "2026-10-29T14:06:29.972234+00:00",
+      "label": "npm-audit",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140619445301Z-npm-audit.json",
+      "raw_sha256": "df419474ff70328f104f7e47eeecef6a468e735e58669a50d44ab74ac758317d",
+      "summary": [
+        "  }",
+        "}",
+        "npm error A complete log of this run can be found in: /Users/kabudamac/.npm/_logs/2026-10-29T14_06_19_559Z-debug-0.log"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--output-directory",
+        ".tools/build/REMEDIATE-01-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/REMEDIATE-01"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:06:20.599829+00:00",
+      "finished_at": "2026-10-29T14:06:33.787812+00:00",
+      "label": "frozen-build",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140620599829Z-frozen-build.json",
+      "raw_sha256": "1ba860a868bb3894b7037b2bb819d05bcb0d11cf8f158a43bea441af2f4fb2ac",
+      "summary": [
+        "    \"packaging/build_sidecar.py\": \"fb26580afaa6a90212da2dfae063025d8bc1ec2b4a7a419437c129ab6f2c0300\"",
+        "  }",
+        "}"
+      ]
+    },
+    {
+      "argv": [
+        "uv",
+        "lock",
+        "--check",
+        "--offline",
+        "--project",
+        "engine"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:08:27.289380+00:00",
+      "finished_at": "2026-10-29T14:08:27.415297+00:00",
+      "label": "lock-check",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140827289380Z-lock-check.json",
+      "raw_sha256": "fa9ca3fe2ade4f67d5911425b93c153c47671f2a52789ee811d2c72964372c1f",
+      "summary": [
+        "Resolved 99 packages in 25ms"
+      ]
+    },
+    {
+      "argv": [
+        "uv",
+        "pip",
+        "check",
+        "--python",
+        "engine/.venv/bin/python"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:08:27.446433+00:00",
+      "finished_at": "2026-10-29T14:08:27.476858+00:00",
+      "label": "environment-check",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140827446433Z-environment-check.json",
+      "raw_sha256": "c8a2fd0bb64a14f783667e30e514f2958537550644cb033f8e935a054355c4cf",
+      "summary": [
+        "Using Python 3.12.13 environment at: engine/.venv",
+        "Checked 96 packages in 3ms",
+        "All installed packages are compatible"
+      ]
+    },
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=engine",
+        "engine/.venv/bin/python",
+        "tools/evaluate_scientific_quality.py",
+        "--gold",
+        "docs/evaluation/gold-cases.template.jsonl",
+        "--predictions",
+        "docs/evaluation/predictions.template.jsonl",
+        "--manifest",
+        "tests/fixtures/public/manifest.json",
+        "--thresholds",
+        "docs/evaluation/thresholds.proposed.json",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/scientific"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:08:27.504503+00:00",
+      "finished_at": "2026-10-29T14:08:27.566311+00:00",
+      "label": "scientific-gate",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140827504503Z-scientific-gate.json",
+      "raw_sha256": "b52330af21e4cadb792faa5b9843cf412ab1fbb493f7fafec53c48cf7efe795c",
+      "summary": [
+        "{\"status\": \"BLOCKED\", \"scored_cases\": 0, \"coverage\": [], \"gate_blockers\": [\"HUMAN_GOLD_OR_PREDICTION_INCOMPLETE\", \"CATEGORY_COVERAGE_INCOMPLETE\", \"HUMAN_FACT_SUPPORT_REVIEW_MISSING\", \"METRIC_COVERAGE_INCOMPLETE\", \"LATENCY_MEASUREMENTS_MISSING\", \"SAMPLE_SIZE_NOT_MET\", \"THRESHOLDS_NOT_APPROVED\"], \"threshold_status\": \"pending\"}"
+      ]
+    },
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=engine",
+        "engine/.venv/bin/python",
+        "tools/capacity_benchmark.py",
+        "--kind",
+        "real",
+        "--manifest",
+        "tests/fixtures/public/manifest.json",
+        "--stages",
+        "1000",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/capacity"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:08:27.593681+00:00",
+      "finished_at": "2026-10-29T14:08:27.653941+00:00",
+      "label": "capacity-gate",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140827593681Z-capacity-gate.json",
+      "raw_sha256": "8ff597680f964c024822934fae06f478f47fb2052e84c1ef70da70cef079f29d",
+      "summary": [
+        "{\"started_at\": \"2026-10-29T14:08:27.640470+00:00\", \"kind\": \"real\", \"status\": \"BLOCKED\", \"root\": \"/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/test-data/capacity-real-636af632-b346-4e40-b0a1-82ebdeb112d0\", \"platform\": \"macOS-26.2-arm64-arm-64bit\", \"cpu\": \"arm\", \"logical_cpus\": 10, \"stages\": [], \"scientific_quality\": \"NOT_EVALUATED\", \"real_capacity_gate\": \"BLOCKED\", \"timing_scope\": \"incremental import/parse/index per stage; warm retrieval separated from measured query embedding; no generation; metadata extraction not run\", \"reason\": \"not enough distinct licensed SHA-identified papers\", \"available\": 2, \"required\": 1000}"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_system_information.py",
+        "tests/unit/test_input_boundaries.py",
+        "tests/integration/test_history_lifecycle.py",
+        "tests/integration/test_filter_semantics.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:08:53.481588+00:00",
+      "finished_at": "2026-10-29T14:08:57.780954+00:00",
+      "label": "focused-regression",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140853481588Z-focused-regression.json",
+      "raw_sha256": "ee93dea1d81a01c3a86421a97d5e4e41f25b0b15eaec8f2c417e9dfc900587b7",
+      "summary": [
+        "40 passed, 1 warning in 4.12s"
+      ]
+    },
+    {
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:08:54.637316+00:00",
+      "finished_at": "2026-10-29T14:09:49.623886+00:00",
+      "label": "browser",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140854637316Z-browser.json",
+      "raw_sha256": "9f04dbafa7d041ac152933c5292cf4605b6ee1a158cf8bc34ced8a49a245a239",
+      "summary": [
+        "BROWSER_UI_SMOKE: PASS; real engine process, simulated Tauri transport; not native/Windows acceptance"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/binary_inventory.py",
+        "--artifact",
+        ".tools/build/REMEDIATE-01-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/test-sidecar-payload.json"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:08:55.803617+00:00",
+      "finished_at": "2026-10-29T14:08:55.958037+00:00",
+      "label": "binary-inventory",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140855803617Z-binary-inventory.json",
+      "raw_sha256": "4b06b4ec6caa2021ac6e0a417f9acf9d3239c3f076866d028e6d1d72a2394fb1",
+      "summary": [
+        "{\"artifact\": \"ragsystem-engine-aarch64-apple-darwin\", \"sha256\": \"5de42b5c217284796a518bc8c74a3b5c42d0c728dc7640e91528e88e0df837b4\", \"kind\": \"actual-pyinstaller-payload-inventory\", \"license_review\": \"BLOCKED\", \"release_acceptance\": \"BLOCKED\", \"limitations\": [\"Python PYZ modules remain in their hashed archive; transitive and native library attribution requires review\", \"Bootloader, embedded Python and OS-linked libraries need separate provenance\", \"No signing, installer or clean-machine proof\"]}"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/unit/test_release_gate_tools.py",
+        "tests/integration/test_pipeline_refinements.py",
+        "tests/unit/test_evaluation_tools.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:09:42.942752+00:00",
+      "finished_at": "2026-10-29T14:09:47.767659+00:00",
+      "label": "audit-publication",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T140942942752Z-audit-publication.json",
+      "raw_sha256": "b818dd2e0936bd8ba703f8c193a56628671e53bdd3a5308c99608c4f00c85252",
+      "summary": [
+        "33 passed, 1 warning in 4.66s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--output-directory",
+        ".tools/build/REMEDIATE-01-final-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/REMEDIATE-01"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:11:16.407444+00:00",
+      "finished_at": "2026-10-29T14:11:28.893588+00:00",
+      "label": "freeze-final",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T141116407444Z-freeze-final.json",
+      "raw_sha256": "5f6835c1e7d3edabd38ac869f7829f887c15ba4ae5e3b7b4c3e4d1bb6b17daab",
+      "summary": [
+        "    \"packaging/build_sidecar.py\": \"f72d216fd8cb30a2e72690d921f350a0f1caea70109c8565036542d9604865f9\"",
+        "  }",
+        "}"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/dependency_gate.py",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/audit-curl",
+        "--online",
+        "--transport",
+        "curl"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:19:02.579298+00:00",
+      "finished_at": "2026-10-29T14:19:05.985037+00:00",
+      "label": "osv-curl",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T141902579298Z-osv-curl.json",
+      "raw_sha256": "ecc2748567673c2d769d83e0dfe8a169d3aa196dcfb2123fb999e77eface3897",
+      "summary": [
+        "Status: BLOCKED"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:19:03.726142+00:00",
+      "finished_at": "2026-10-29T14:20:54.003524+00:00",
+      "label": "python-final",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T141903726142Z-python-final.json",
+      "raw_sha256": "91b0ab8a1f4b581d1f7e8b326a0cd1723a665a34f97541a81229350d150f0d82",
+      "summary": [
+        "326 passed, 1 warning in 109.82s (0:01:49)"
+      ]
+    },
+    {
+      "argv": [
+        "env",
+        "CARGO_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo",
+        "RUSTUP_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/rustup",
+        "RAGSYSTEM_TEST_SIDECAR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/REMEDIATE-01-final-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T14:20:43.290851+00:00",
+      "finished_at": "2026-10-29T14:20:51.239496+00:00",
+      "label": "rust-local-toolchain",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T142043290851Z-rust-local-toolchain.json",
+      "raw_sha256": "a9c21a011c0ab5156852d02336c6b8ca8d45ae36c210907c6ab6e0a64117ab3c",
+      "summary": [
+        "test result: ok. 6 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 5.77s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/dependency_gate.py",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/audit-complete-details",
+        "--online",
+        "--transport",
+        "curl"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:16:26.016142+00:00",
+      "finished_at": "2026-10-29T18:16:37.382199+00:00",
+      "label": "osv-complete-details",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T181626016142Z-osv-complete-details.json",
+      "raw_sha256": "817020f79cff176e5212fbc74982b4a0f0d7a1d27de4cc684d43f44a365a0651",
+      "summary": [
+        "Status: BLOCKED"
+      ]
+    },
+    {
+      "argv": [
+        "env",
+        "CARGO_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo",
+        "RUSTUP_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/rustup",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo/bin/cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:16:27.111636+00:00",
+      "finished_at": "2026-10-29T18:16:35.482946+00:00",
+      "label": "clippy",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T181627111636Z-clippy.json",
+      "raw_sha256": "105651c651c1d7266f7fdeba6c5fab3aff5761dd51b49dbc113990d3da035a99",
+      "summary": [
+        "    Checking tauri-plugin-dialog v2.8.3",
+        "    Checking ragsystem-desktop v0.1.0 (/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/apps/desktop/src-tauri)",
+        "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.16s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/dependency_gate.py",
+        "tools/local_corpus_manifest.py",
+        "tools/binary_inventory.py",
+        "tools/evaluate_scientific_quality.py"
+      ],
+      "exit_code": 1,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:16:28.272873+00:00",
+      "finished_at": "2026-10-29T18:16:28.369493+00:00",
+      "label": "static-final",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T181628272873Z-static-final.json",
+      "raw_sha256": "8b05495bb6e3f609a58a1391f59ae2c94ad667fb0e9f66c33e4a953f745a6e50",
+      "summary": [
+        "",
+        "Found 1 error.",
+        "[*] 1 fixable with `--fix`."
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/validate_kit.py"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:16:28.403806+00:00",
+      "finished_at": "2026-10-29T18:16:28.511347+00:00",
+      "label": "static-kit",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T181628403806Z-static-kit.json",
+      "raw_sha256": "bf21711012f678cc629ceb72b19bc03a4107881a942584166de75b412ed42ca9",
+      "summary": [
+        "STATIC KIT VALIDATION: PASS (files and syntax only)",
+        "IMPORTANT: No Windows runtime, PDF, embedding, retrieval or scientific quality tests were executed by this validator."
+      ]
+    },
+    {
+      "argv": [
+        "env",
+        "CARGO_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo",
+        "RUSTUP_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/rustup",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo/bin/cargo",
+        "tree",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--target",
+        "aarch64-apple-darwin",
+        "-i",
+        "block-buffer"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:16:35.511454+00:00",
+      "finished_at": "2026-10-29T18:16:35.653432+00:00",
+      "label": "cargo-target-tree",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T181635511454Z-cargo-target-tree.json",
+      "raw_sha256": "179006adefe7b82e1df44402dbd1f831f1d4c841969a54eba1904a9cb6aa7e47",
+      "summary": [
+        "└── digest v0.10.7",
+        "    └── sha2 v0.10.9",
+        "        └── ragsystem-desktop v0.1.0 (/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/apps/desktop/src-tauri)"
+      ]
+    },
+    {
+      "argv": [
+        "env",
+        "PYTHONPATH=engine",
+        "engine/.venv/bin/python",
+        "tools/capacity_benchmark.py",
+        "--kind",
+        "real",
+        "--manifest",
+        "tests/fixtures/public/manifest.json",
+        "--stages",
+        "1,2",
+        "--queries",
+        "2",
+        "--model-directory",
+        ".tools/models/intfloat-multilingual-e5-small-614241f622f53c4eeff9890bdc4f31cfecc418b3",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/small-real-corpus"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:19:46.014449+00:00",
+      "finished_at": "2026-10-29T18:19:59.498723+00:00",
+      "label": "corpus-engineering",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T181946014449Z-corpus-engineering.json",
+      "raw_sha256": "fbcb296550afcc681887d93f663ee919ff9459f5ff8d9d617e78e21ce7094a02",
+      "summary": [
+        "{\"documents\": 1, \"kind\": \"real\", \"import_seconds\": 0.006251499988138676, \"parse_seconds\": 0.1420888330321759, \"index_seconds\": 3.816593083087355, \"index_delta\": {\"new_embeddings\": 225, \"reused_embeddings\": 0, \"chunks\": 225}, \"unchanged_reindex_new_embeddings\": 0, \"retrieval_ms\": {\"samples\": 2, \"warm_total_p50\": 17.21070904750377, \"warm_total_p95\": 17.21070904750377, \"excluding_measured_encoding_p95\": 14.777834061533213, \"query_encoding_mean\": 2.4138540029525757, \"generation_included\": false, \"SLA_acceptance\": \"NOT_EVALUATED\"}, \"pages\": 16, \"chunks\": 225, \"vectors\": 225, \"pdf_bytes\": 786279, \"backup_seconds\": 0.012803500052541494, \"restore_seconds\": 0.009624458034522831, \"restore_rebuild_new_embeddings\": 0, \"disk_bytes_with_retained_backups\": 10175848, \"memory\": {\"status\": \"MEASURED\", \"self_peak_bytes\": 2549661696, \"child_peak_bytes\": 42156032, \"scope\": \"separate process high-water marks, NOT simultaneous process-tree total\"}, \"status\": \"PASS\"}",
+        "{\"documents\": 2, \"kind\": \"real\", \"import_seconds\": 0.005378125002607703, \"parse_seconds\": 0.15899016696494073, \"index_seconds\": 3.6927227911073714, \"index_delta\": {\"new_embeddings\": 199, \"reused_embeddings\": 225, \"chunks\": 424}, \"unchanged_reindex_new_embeddings\": 0, \"retrieval_ms\": {\"samples\": 2, \"warm_total_p50\": 20.41424997150898, \"warm_total_p95\": 20.41424997150898, \"excluding_measured_encoding_p95\": 17.997249960899353, \"query_encoding_mean\": 2.420875011011958, \"generation_included\": false, \"SLA_acceptance\": \"NOT_EVALUATED\"}, \"pages\": 29, \"chunks\": 424, \"vectors\": 424, \"pdf_bytes\": 1190054, \"backup_seconds\": 0.01816612493712455, \"restore_seconds\": 0.013902958016842604, \"restore_rebuild_new_embeddings\": 0, \"disk_bytes_with_retained_backups\": 23081403, \"memory\": {\"status\": \"MEASURED\", \"self_peak_bytes\": 3142418432, \"child_peak_bytes\": 42156032, \"scope\": \"separate process high-water marks, NOT simultaneous process-tree total\"}, \"status\": \"PASS\"}",
+        "{\"status\": \"PASS\", \"error_code\": null, \"stages_completed\": 2}"
+      ]
+    },
+    {
+      "argv": [
+        "env",
+        "CARGO_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo",
+        "RUSTUP_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/rustup",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo/bin/cargo",
+        "tree",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--target",
+        "x86_64-pc-windows-msvc",
+        "--prefix",
+        "none"
+      ],
+      "exit_code": 101,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:19:47.173928+00:00",
+      "finished_at": "2026-10-29T18:19:47.669567+00:00",
+      "label": "rust-target-reachability",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T181947173928Z-rust-target-reachability.json",
+      "raw_sha256": "6c5372d13ef1f827f94324016d1df0d5db45744713c2e650f6035de46e434ca6",
+      "summary": [
+        "",
+        "Caused by:",
+        "  attempting to make an HTTP request, but --offline was specified"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/dependency_gate.py",
+        "tools/local_corpus_manifest.py",
+        "tools/binary_inventory.py",
+        "tools/evaluate_scientific_quality.py"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:44:09.696660+00:00",
+      "finished_at": "2026-10-29T18:44:09.708662+00:00",
+      "label": "static-final-corrected",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T184409696660Z-static-final-corrected.json",
+      "raw_sha256": "2f98a6c749cce1a5390cfd24173b9f310b4bb6811ca6e2bc8e349d90e3022d64",
+      "summary": [
+        "All checks passed!"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/unit/test_release_gate_tools.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:44:09.738610+00:00",
+      "finished_at": "2026-10-29T18:44:10.081737+00:00",
+      "label": "audit-tests-final",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T184409738610Z-audit-tests-final.json",
+      "raw_sha256": "dd0c302eb519825a5b52d9cc93929029a6eb24a69384248f334af780ed6ca664",
+      "summary": [
+        "8 passed in 0.12s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--include-vector-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab",
+        "--output-directory",
+        ".tools/build/REMEDIATE-01-candidates",
+        "--evidence-directory",
+        "docs/engineering/evidence/REMEDIATE-01"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:44:43.395029+00:00",
+      "finished_at": "2026-10-29T18:47:00.105858+00:00",
+      "label": "frozen-candidates",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T184443395029Z-frozen-candidates.json",
+      "raw_sha256": "99d7217c446f9ebf6d08f032feb31f89d933555a86f5192476661f069a79aa6a",
+      "summary": [
+        "    \"packaging/build_sidecar.py\": \"f72d216fd8cb30a2e72690d921f350a0f1caea70109c8565036542d9604865f9\"",
+        "  }",
+        "}"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/compare_retrieval.py",
+        "--workspace",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/test-data/capacity-real-d427f21d-b3ae-43ff-a1a1-31971668b3b5",
+        "--cases",
+        "docs/engineering/evidence/REMEDIATE-01/retrieval-cases.jsonl",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/comparison",
+        "--strategies",
+        "keyword,vector_exact,hybrid",
+        "--repeats",
+        "2"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:44:44.570186+00:00",
+      "finished_at": "2026-10-29T18:44:45.600534+00:00",
+      "label": "retrieval-comparison",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T184444570186Z-retrieval-comparison.json",
+      "raw_sha256": "7ad956e9224a5e69bab276af9767ee5d844fd6cbab44c605549e1da07a81eff7",
+      "summary": [
+        "{\"status\": \"MEASURED\", \"scientific_quality\": \"BLOCKED\"}"
+      ]
+    },
+    {
+      "argv": [
+        "env",
+        "CARGO_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo",
+        "RUSTUP_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/rustup",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo/bin/cargo",
+        "tree",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--target",
+        "aarch64-apple-darwin",
+        "--prefix",
+        "none"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:44:45.653693+00:00",
+      "finished_at": "2026-10-29T18:44:46.033922+00:00",
+      "label": "mac-target-dependencies",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T184445653693Z-mac-target-dependencies.json",
+      "raw_sha256": "f5c2734736aeb56e6f2ea7141710c0a8b03e1c6f8897f280af885ef62dbee153",
+      "summary": [
+        "tokio v1.54.1 (*)",
+        "tracing v0.1.44 (*)",
+        "tauri-build v2.7.4 (*)"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "docs/engineering/evidence/REMEDIATE-01/npm_bulk_audit.py"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:46:04.261149+00:00",
+      "finished_at": "2026-10-29T18:46:09.309205+00:00",
+      "label": "npm-bulk",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T184604261149Z-npm-bulk.json",
+      "raw_sha256": "4f42907b2132539f3dfad50363b4fbd4130ef85ddb02ca82eed845277278953c",
+      "summary": [
+        "BLOCKED: npm public bulk audit transport failed"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/unit/test_release_gate_tools.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:47:28.712519+00:00",
+      "finished_at": "2026-10-29T18:47:28.987951+00:00",
+      "label": "final-tool-tests",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T184728712519Z-final-tool-tests.json",
+      "raw_sha256": "1d79341141dda1a209c47adc07a63de1dc12daacbbc3d492a0dcec21f4fa1fac",
+      "summary": [
+        "9 passed in 0.11s"
+      ]
+    },
+    {
+      "argv": [
+        "env",
+        "CARGO_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo",
+        "RUSTUP_HOME=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/rustup",
+        "RAGSYSTEM_TEST_SIDECAR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/REMEDIATE-01-candidates/ragsystem-engine-aarch64-apple-darwin",
+        "RAGSYSTEM_MODEL_DIR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/models/intfloat-multilingual-e5-small-614241f622f53c4eeff9890bdc4f31cfecc418b3",
+        "RAGSYSTEM_OCR_MODEL_DIR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/models/tessdata-fast-65727574dfcd264acbb0c3e07860e4e9e9b22185",
+        "RAGSYSTEM_DOCLING_MODEL_DIR=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/models/docling-heron-tableformer-fast-candidates",
+        "RAGSYSTEM_OCR_SCAN_PDF=/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/docs/engineering/evidence/REMEDIATE-01/derived-BERT-page1.pdf",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:49:11.119893+00:00",
+      "finished_at": "2026-10-29T18:51:56.755322+00:00",
+      "label": "rust-candidates",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T184911119893Z-rust-candidates.json",
+      "raw_sha256": "384fc16dc3bd3c62243ca20b9c78e5a42ed010d83248993fab5c4f92b81a3def",
+      "summary": [
+        "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 164.11s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/binary_inventory.py",
+        "--artifact",
+        ".tools/build/REMEDIATE-01-candidates/ragsystem-engine-aarch64-apple-darwin",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/candidate-payload.json"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:49:12.285452+00:00",
+      "finished_at": "2026-10-29T18:49:14.170557+00:00",
+      "label": "actual-candidate-sbom",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T184912285452Z-actual-candidate-sbom.json",
+      "raw_sha256": "9985cbb5358dfa1248efce20b2ec63b7f533d88a6710e7f0c26c76bb77c4f5df",
+      "summary": [
+        "{\"artifact\": \"ragsystem-engine-aarch64-apple-darwin\", \"sha256\": \"85affaf6508ff95d1b8f0139eef37863da8c6e47117b7b792f94f0b4f4502c2f\", \"kind\": \"actual-pyinstaller-payload-inventory\", \"license_review\": \"BLOCKED\", \"release_acceptance\": \"BLOCKED\", \"limitations\": [\"Python PYZ modules remain in their hashed archive; transitive and native library attribution requires review\", \"Bootloader, embedded Python and OS-linked libraries need separate provenance\", \"No signing, installer or clean-machine proof\"]}"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/unit/test_release_gate_tools.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:53:07.492569+00:00",
+      "finished_at": "2026-10-29T18:53:08.013866+00:00",
+      "label": "final-tools",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T185307492569Z-final-tools.json",
+      "raw_sha256": "1e9d0f0eb291ac9de98253c0475c049425f3db605fefea45dffc3ae4d8bd8da0",
+      "summary": [
+        "10 passed in 0.37s"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/dependency_gate.py",
+        "tools/binary_inventory.py",
+        "tools/local_corpus_manifest.py",
+        "tools/evaluate_scientific_quality.py",
+        "packaging/build_sidecar.py"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:53:08.042322+00:00",
+      "finished_at": "2026-10-29T18:53:08.095229+00:00",
+      "label": "final-ruff",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T185308042322Z-final-ruff.json",
+      "raw_sha256": "1a39be5ebf04b443ad07a53ccb4980adc05a8eda61c8cdeee1c2ab7ab3495b75",
+      "summary": [
+        "All checks passed!"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/binary_inventory.py",
+        "--artifact",
+        ".tools/build/REMEDIATE-01-candidates/ragsystem-engine-aarch64-apple-darwin",
+        "--output",
+        "docs/engineering/evidence/REMEDIATE-01/final-candidate-payload.json"
+      ],
+      "exit_code": 2,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:53:08.132262+00:00",
+      "finished_at": "2026-10-29T18:53:09.988846+00:00",
+      "label": "final-candidate-sbom",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T185308132262Z-final-candidate-sbom.json",
+      "raw_sha256": "1f7dcb3e684f1f793a9cabd405e00d7bbe18d0987c203d79a3eead337b79ace9",
+      "summary": [
+        "{\"artifact\": \"ragsystem-engine-aarch64-apple-darwin\", \"sha256\": \"85affaf6508ff95d1b8f0139eef37863da8c6e47117b7b792f94f0b4f4502c2f\", \"kind\": \"actual-pyinstaller-payload-inventory\", \"license_review\": \"BLOCKED\", \"release_acceptance\": \"BLOCKED\", \"limitations\": [\"Python PYZ modules remain in their hashed archive; transitive and native library attribution requires review\", \"Bootloader, embedded Python and OS-linked libraries need separate provenance\", \"No signing, installer or clean-machine proof\"]}"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q",
+        "-rs"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:53:54.239730+00:00",
+      "finished_at": "2026-10-29T18:55:35.644677+00:00",
+      "label": "python-delivery",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T185354239730Z-python-delivery.json",
+      "raw_sha256": "7ee049d48986929cae3b524f53f3057e2191d7a6f6b6bd2153eaca92bb4320b6",
+      "summary": [
+        "SKIPPED [1] tests/integration/test_sidecar_lifecycle.py:121: Frozen binary not provided",
+        "327 passed, 1 skipped, 1 warning in 101.07s (0:01:41)"
+      ]
+    },
+    {
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_sidecar_lifecycle.py",
+        "-q",
+        "-rs"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:58:41.443987+00:00",
+      "finished_at": "2026-10-29T18:58:47.367213+00:00",
+      "label": "python-frozen-delivery",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T185841443987Z-python-frozen-delivery.json",
+      "raw_sha256": "326be3924d40fab9206c30f4fc9defa7f3da2d21cad473fee0aafd4df197ece3",
+      "summary": [
+        "4 passed in 5.79s"
+      ]
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:58:42.594181+00:00",
+      "finished_at": "2026-10-29T18:58:42.612239+00:00",
+      "label": "final-diff-check",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T185842594181Z-final-diff-check.json",
+      "raw_sha256": "dd8dad8992b06c379e6b2878e4854d84d8cbbd64a5b75e624ee5aefa4ffba3e2",
+      "summary": []
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--exit-code",
+        "--",
+        "engine/uv.lock",
+        "apps/desktop/package-lock.json",
+        "apps/desktop/src-tauri/Cargo.lock"
+      ],
+      "exit_code": 0,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-10-29T18:58:42.639058+00:00",
+      "finished_at": "2026-10-29T18:58:42.649112+00:00",
+      "label": "final-lock-diff",
+      "raw_record": "docs/engineering/evidence/REMEDIATE-01/20261029T185842639058Z-final-lock-diff.json",
+      "raw_sha256": "6d868c1361b6f6caae0b6a828f02a1d9484e8ae2276d0987fa4fd2b26c3b7a8a",
+      "summary": []
+    }
+  ]
+}

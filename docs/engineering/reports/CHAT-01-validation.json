@@ -1,0 +1,575 @@
+{
+  "task": "CHAT-01",
+  "date": "2026-11-01",
+  "platform": "macOS 26.2 arm64",
+  "functional_status": "PASS",
+  "tests": {
+    "python_final": {
+      "passed": 346,
+      "failed": 0,
+      "skipped": 0
+    },
+    "rust": {
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0
+    },
+    "browser_assertions": 40,
+    "ruff": "PASS",
+    "clippy": "PASS",
+    "typescript_vite": "PASS",
+    "npm_audit": "PASS",
+    "dependency_osv": "FAIL",
+    "windows_install": "NOT EXECUTED",
+    "scientific_gold": "NOT EXECUTED"
+  },
+  "app": {
+    "app": "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/macos-chat01-acceptance-20261031T174419711471Z/RAGSystem.app",
+    "executable_sha256": "1f993a3c54a2051e14e039e11208e8735371f979d7783a3c3ba2b3d3a53bee81",
+    "sidecar_sha256": "b8dd1ba4da72aefb56900115872030088b14684a66aa7c806aaf34f35dd055f4",
+    "scope": "local development only; ad-hoc signed, no notarization/installer/publication",
+    "previous_app_preserved": "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/apps/desktop/src-tauri/target/debug/bundle/macos/RAGSystem.app"
+  },
+  "frozen_source_files_verified": 98,
+  "historical_migrations_unchanged": true,
+  "dependency_locks_unchanged": true,
+  "native": {
+    "schema": 20,
+    "original_ids_preserved": true,
+    "original_vectors_preserved": true,
+    "active_remote_configs": 1,
+    "retired_remote_configs": 7,
+    "active_provider": {
+      "id": "a9adbdaa-ea1d-435f-bec1-386349f3630d",
+      "name": "DeepSeek",
+      "model": "deepseek-flash"
+    },
+    "native_test_conversation": {
+      "id": "fa00e51b-3e8d-48ac-8d92-e8f75af1e011",
+      "archived_at": "2026-11-01T08:39:39.681817+00:00",
+      "title": "CHAT-01 本机验收（可归档）"
+    },
+    "native_test_turns": 3,
+    "last_strategy": "hybrid",
+    "last_evidence_count": 3,
+    "integrity": [
+      "ok"
+    ],
+    "foreign_keys": [],
+    "cloud_calls_this_task": 0,
+    "native_deleted_user_conversations": 0
+  },
+  "native_index_refresh": {
+    "new_embeddings": 0,
+    "reused_embeddings": 257,
+    "generation": "8dd51689-bcf7-4e47-b380-e5cfc0da5b1e",
+    "cache_hash_preserved": true,
+    "old_index_preserved": true,
+    "index_manifest": {
+      "index.db": "4098d05eb7330d8ac14447a2d42fc615a8898c9ef32ba14202038ef5f0e6f9da"
+    }
+  },
+  "browser_fixture_boundary": {
+    "real_engine": true,
+    "real_public_pdfs": 2,
+    "real_e5_vectors": 424,
+    "transport": "SIMULATED TAURI",
+    "generation": "LOOPBACK FIXTURE",
+    "cloud_calls": 0
+  },
+  "commands": [
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T120421471316Z-conversation-initial.json",
+      "sha256": "4ef0f5f7bd48812932d73a6e4807199ce5c51099974eca910144b3226aed7de3",
+      "started_at": "2026-10-31T12:04:21.471316+00:00",
+      "finished_at": "2026-10-31T12:04:22.751021+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_conversation_management.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T120822547657Z-frontend-initial.json",
+      "sha256": "9f68649e23662dd9b02a0b2c6919125a566a97c4b86700a2bab6cb7d746b6d8b",
+      "started_at": "2026-10-31T12:08:22.547657+00:00",
+      "finished_at": "2026-10-31T12:08:23.070535+00:00",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T120905421315Z-targeted-first.json",
+      "sha256": "41d48542022850058cb57652e5698d83d7e075ca8a52b04a259e350cf3065d65",
+      "started_at": "2026-10-31T12:09:05.421315+00:00",
+      "finished_at": "2026-10-31T12:09:12.895026+00:00",
+      "exit_code": 1,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_conversation_management.py",
+        "tests/integration/test_single_provider.py",
+        "tests/integration/test_round2_providers.py",
+        "tests/integration/test_generation_providers.py",
+        "tests/integration/test_provider_authorization.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T120946957612Z-targeted-fixed.json",
+      "sha256": "00302d0996a493fa15593b95f686ef49e3d3dc1fafefba436ed874bcd75aee32",
+      "started_at": "2026-10-31T12:09:46.957612+00:00",
+      "finished_at": "2026-10-31T12:09:54.792570+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_conversation_management.py",
+        "tests/integration/test_single_provider.py",
+        "tests/integration/test_round2_providers.py",
+        "tests/integration/test_generation_providers.py",
+        "tests/integration/test_provider_authorization.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121007691108Z-static-first.json",
+      "sha256": "5adeaa4587ce433921e8672f0e44dd5d39dff55ab7f0adbd5e8f5c09b49c959b",
+      "started_at": "2026-10-31T12:10:07.691108+00:00",
+      "finished_at": "2026-10-31T12:10:07.708828+00:00",
+      "exit_code": 1,
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--fix",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121007769410Z-full-python-first.json",
+      "sha256": "c5e8b1cf84ecec6653f28d1399dfaadfd89a8f64a79f0a74870cd7cb9f8f94eb",
+      "started_at": "2026-10-31T12:10:07.769410+00:00",
+      "finished_at": "2026-10-31T12:11:50.835236+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121142168834Z-browser-first.json",
+      "sha256": "951bdd994b06e7b5b903724a5a5e463f3c2dc4ed225c19115ae4737856cc8684",
+      "started_at": "2026-10-31T12:11:42.168834+00:00",
+      "finished_at": "2026-10-31T12:12:07.454218+00:00",
+      "exit_code": 1,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121236888075Z-browser-second.json",
+      "sha256": "458e9868826f4f73431a2cdc305d115b8cd01a25b1c55b84eaba067243288c48",
+      "started_at": "2026-10-31T12:12:36.888075+00:00",
+      "finished_at": "2026-10-31T12:13:31.366282+00:00",
+      "exit_code": 1,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121323124243Z-freeze-chat.json",
+      "sha256": "eb67698c64199ce3cf6e33286bc4ba9ef443d4e41dd7467ff75ee9dba9ba781b",
+      "started_at": "2026-10-31T12:13:23.124243+00:00",
+      "finished_at": "2026-10-31T12:15:37.438881+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--build-label",
+        "CHAT-01",
+        "--include-vector-lab",
+        "--include-generation-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab",
+        "--output-directory",
+        ".tools/build/CHAT-01-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/CHAT-01"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121342338097Z-static-final.json",
+      "sha256": "09daf002c0bf6a688644a01d685af7225875f2b2942ccbade047a09db15cc96e",
+      "started_at": "2026-10-31T12:13:42.338097+00:00",
+      "finished_at": "2026-10-31T12:13:42.355355+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "packaging/build_sidecar.py"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121342410823Z-clippy.json",
+      "sha256": "12f5e9c49bf6711b577076fcf711409541c09236fc63539627ff65b8505a6053",
+      "started_at": "2026-10-31T12:13:42.410823+00:00",
+      "finished_at": "2026-10-31T12:13:53.145361+00:00",
+      "exit_code": 0,
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121408533961Z-browser-third.json",
+      "sha256": "c09b7d91edff695b52d10d3101056915dbb20c67fbdf002b85ca34dbe7cdb54e",
+      "started_at": "2026-10-31T12:14:08.533961+00:00",
+      "finished_at": "2026-10-31T12:16:13.740922+00:00",
+      "exit_code": 1,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121409678000Z-npm-audit.json",
+      "sha256": "4062bfa669258c7ce21b4d7c833d3d8a3bbc88b3b10009363d8cca823e84f559",
+      "started_at": "2026-10-31T12:14:09.678000+00:00",
+      "finished_at": "2026-10-31T12:14:23.559792+00:00",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "audit",
+        "--package-lock-only",
+        "--audit-level=moderate",
+        "--registry=https://registry.npmjs.org"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121446741123Z-dependency-ci.json",
+      "sha256": "a716639dc524adfe6aa97cb25c40f707be8e8b77ba855c1ca55d00d4056b5b6e",
+      "started_at": "2026-10-31T12:14:46.741123+00:00",
+      "finished_at": "2026-10-31T12:15:10.083038+00:00",
+      "exit_code": 1,
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/dependency_gate.py",
+        "--output",
+        "docs/engineering/evidence/CHAT-01/dependencies",
+        "--online"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T121527151287Z-frontend-final.json",
+      "sha256": "097563ab50772eed7a1651795ab67c9905437566c1c5a27859c63cf6357e18ee",
+      "started_at": "2026-10-31T12:15:27.151287+00:00",
+      "finished_at": "2026-10-31T12:15:27.806429+00:00",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T173349765129Z-rust-full.json",
+      "sha256": "ea8a881dd54221054ce863933e9cef79d3d5a1ffbbc0a30e44f2f123dadeedf5",
+      "started_at": "2026-10-31T17:33:49.765129+00:00",
+      "finished_at": "2026-10-31T17:37:28.498809+00:00",
+      "exit_code": 0,
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T173423723500Z-frontend-loading-fix.json",
+      "sha256": "889597d1e32239fe612dfb670ea716d088bfa6ab7b34c3dcf3253325c4198569",
+      "started_at": "2026-10-31T17:34:23.723500+00:00",
+      "finished_at": "2026-10-31T17:34:24.459416+00:00",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T173424507543Z-browser-final.json",
+      "sha256": "e2ec6d83e04a73712e06d872afc144c27399511e7167aaf0f927004a2fcdce20",
+      "started_at": "2026-10-31T17:34:24.507543+00:00",
+      "finished_at": "2026-10-31T17:36:29.515415+00:00",
+      "exit_code": 1,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T173451308130Z-frozen-lifecycle.json",
+      "sha256": "7c8195212825162d486a738a58add15617b24b7a2830b8d7f5da992dd6f40511",
+      "started_at": "2026-10-31T17:34:51.308130+00:00",
+      "finished_at": "2026-10-31T17:35:07.007264+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_sidecar_lifecycle.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T173528109553Z-native-before-audit.json",
+      "sha256": "e014921e6e7c5f5283154d59dd5d3d1f9a5bde6ab04d27447f96c1cb3e675b1b",
+      "started_at": "2026-10-31T17:35:28.109553+00:00",
+      "finished_at": "2026-10-31T17:35:28.171944+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "docs/engineering/evidence/CHAT-01/native-audit.py",
+        "before"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T173854467474Z-browser-verified.json",
+      "sha256": "507fc3835b5e4a12599bd160216a93aecdf0dee2093e204c3239a2554b72fb02",
+      "started_at": "2026-10-31T17:38:54.467474+00:00",
+      "finished_at": "2026-10-31T17:39:51.393987+00:00",
+      "exit_code": 1,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T173905626275Z-tauri-final.json",
+      "sha256": "db43af205cfcc63e0b073cfe405d9035191545cc17b5bd9a2526cb911da02972",
+      "started_at": "2026-10-31T17:39:05.626275+00:00",
+      "finished_at": "2026-10-31T17:39:24.439098+00:00",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "tauri",
+        "--",
+        "build",
+        "--debug",
+        "--no-bundle",
+        "--",
+        "--locked",
+        "--offline"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T173937806220Z-stage-native.json",
+      "sha256": "0c02c47776afe1316beb0b2ed31597f2fc7796d03d70a6dce1de9ac4bef3b2a0",
+      "started_at": "2026-10-31T17:39:37.806220+00:00",
+      "finished_at": "2026-10-31T17:39:39.903893+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/stage_macos_development.py",
+        "--task-label",
+        "chat01",
+        "--sidecar",
+        ".tools/build/CHAT-01-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "--evidence-directory",
+        "docs/engineering/evidence/CHAT-01/native-final"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T174347079911Z-browser-acceptance.json",
+      "sha256": "85ecd9e7077c459bee5b40cdb4bf9c1e29963ae633290788af3ba91cbc7891bb",
+      "started_at": "2026-10-31T17:43:47.079911+00:00",
+      "finished_at": "2026-10-31T17:44:39.266637+00:00",
+      "exit_code": 0,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T174348193732Z-tauri-acceptance.json",
+      "sha256": "2dc88dbdc0a031faf654bd2c7856b6e515dfa3c5e157944f92bf4c00816baffe",
+      "started_at": "2026-10-31T17:43:48.193732+00:00",
+      "finished_at": "2026-10-31T17:43:58.941272+00:00",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "tauri",
+        "--",
+        "build",
+        "--debug",
+        "--no-bundle",
+        "--",
+        "--locked",
+        "--offline"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T174419691264Z-stage-acceptance.json",
+      "sha256": "ceca325769e80086dddc667ca755ff32e7eecd0fef945ba81f62c82f1f8259b4",
+      "started_at": "2026-10-31T17:44:19.691264+00:00",
+      "finished_at": "2026-10-31T17:44:21.652096+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/stage_macos_development.py",
+        "--task-label",
+        "chat01-acceptance",
+        "--sidecar",
+        ".tools/build/CHAT-01-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "--evidence-directory",
+        "docs/engineering/evidence/CHAT-01/native-acceptance"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261031T174704641016Z-native-after-audit.json",
+      "sha256": "d76e7d96ba0b130902c008a18984c09850897bcedc1d4951b4cc18c15a3770aa",
+      "started_at": "2026-10-31T17:47:04.641016+00:00",
+      "finished_at": "2026-10-31T17:47:04.672809+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "docs/engineering/evidence/CHAT-01/native-audit.py",
+        "after"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261101T083909594124Z-conversation-final.json",
+      "sha256": "9c61305cbc69f4a7daef5db1e433129b979a9a4edb6766b741257357ff841e40",
+      "started_at": "2026-11-01T08:39:09.594124+00:00",
+      "finished_at": "2026-11-01T08:39:11.265055+00:00",
+      "exit_code": 1,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_conversation_management.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261101T083946992084Z-python-acceptance.json",
+      "sha256": "3d320a9b6bb6ef7b3b56f94d1569b8f22b9ad7af4de363d6cd2daeb83e826504",
+      "started_at": "2026-11-01T08:39:46.992084+00:00",
+      "finished_at": "2026-11-01T08:41:31.360811+00:00",
+      "exit_code": 1,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261101T084004028651Z-conversation-reference-fixed.json",
+      "sha256": "6f8906f07c67bee2ff31ad6528ff375b20fa9522fc1483a2fcddd04f3d34e65c",
+      "started_at": "2026-11-01T08:40:04.028651+00:00",
+      "finished_at": "2026-11-01T08:40:05.931199+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_conversation_management.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261101T084136296911Z-static-acceptance.json",
+      "sha256": "27235b48238dced9dae96a7c7e029071e7fb6dbaaad15f981b2aa318351ea049",
+      "started_at": "2026-11-01T08:41:36.296911+00:00",
+      "finished_at": "2026-11-01T08:41:36.357182+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "packaging/build_sidecar.py"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-01/20261101T084151177743Z-python-final-verified.json",
+      "sha256": "08bd174ea5c293b4a0fcb35818d7c97145127f927bdc8698d6b072c633b67ecd",
+      "started_at": "2026-11-01T08:41:51.177743+00:00",
+      "finished_at": "2026-11-01T08:43:47.776358+00:00",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ]
+    }
+  ]
+}

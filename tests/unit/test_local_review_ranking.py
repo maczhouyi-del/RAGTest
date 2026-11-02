@@ -61,3 +61,17 @@ def test_relevance_rejects_missing_duplicate_forged_or_invalid_scores(scores):
             "question",
             [{"chunk_id": "a", "preview": "one"}, {"chunk_id": "b", "preview": "two"}],
         )
+
+
+def test_cross_batch_score_shift_cannot_change_merge_or_drop_candidates():
+    class Batches:
+        fingerprint = {"fixture": "ordinal"}
+        def __init__(self, shift):
+            self.shift = shift
+        def generate(self, task, data):
+            return {"scores": [{"candidate_id": row["candidate_id"], "score": (1 if index == 0 else 0) + (self.shift if int(row["candidate_id"][1:]) > 6 else 0), "reason": "fixture"} for index, row in enumerate(data["candidates"])]}
+    hits = [{"chunk_id": str(index), "preview": "synthetic"} for index in range(12)]
+    low, _ = review_order(Batches(0), "fixture", hits, max_candidates=12)
+    high, record = review_order(Batches(4), "fixture", hits, max_candidates=12)
+    assert low == high and {row['chunk_id'] for row in low} == {row['chunk_id'] for row in hits}
+    assert record['scientific_quality'] == 'NOT_EVALUATED'

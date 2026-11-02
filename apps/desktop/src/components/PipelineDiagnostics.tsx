@@ -6,14 +6,17 @@ const stageNames:Record<string,string>={
   answer_generation:"回答生成",quote_validation:"引用校验",support_check:"支持性检查",
   publication_validation:"发布校验",system_info:"系统信息",
 };
-export default function PipelineDiagnostics({result}:{result:AnswerRun["result"]}) {
+export default function PipelineDiagnostics({result,expanded=false}:{result:AnswerRun["result"];expanded?:boolean}) {
   const trace=result?.pipeline_trace;
   if(!trace||result?.kind==="system_info")return null;
   const counts=trace.model_attempts,retrieval=result?.retrieval,context=result?.model_context;
-  return <details className="pipeline-diagnostics">
+  return <details className="pipeline-diagnostics" open={expanded||undefined}>
     <summary>本轮检索过程</summary>
     {result?.context_policy&&<p>实际检索查询：{result.context_policy.retrieval_query}</p>}
-    {retrieval&&<p>策略：{retrieval.strategy}；关键词候选 {retrieval.candidate_counts?.lexical??0} 条，向量候选 {retrieval.candidate_counts?.vector_embeddings??0} 组；最终选择 {retrieval.hits?.length??0} 段。</p>}
+    {retrieval&&<p>策略：{retrieval.strategy}；关键词候选 {retrieval.candidate_counts?.lexical??"未记录"} 条，向量候选 {retrieval.candidate_counts?.vector_chunks??retrieval.candidate_counts?.vector_embeddings??"未记录"} 条；最终选择 {retrieval.hits?.length??0} 段。</p>}
+    {retrieval?.hits?.some(hit=>typeof hit.rrf_score==="number")&&<details><summary>RRF 融合后入选片段</summary><ol>{retrieval.hits.map(hit=><li key={hit.chunk_id}>{hit.chunk_id.slice(0,8)} · 分数 {typeof hit.rrf_score==="number"?hit.rrf_score.toFixed(6):"非RRF候选"} · 关键词排名 {hit.lexical_rank??"—"} · 向量排名 {hit.vector_rank??"—"}</li>)}</ol></details>}
+    {retrieval&&!retrieval.hits?.some(hit=>typeof hit.rrf_score==="number")&&<p>本轮没有保存RRF融合分数（关键词或结构候选可能不使用RRF）。</p>}
+    {result?.relevance_review&&<details><summary>本地相关性复核记录</summary><pre>{JSON.stringify(result.relevance_review,null,2)}</pre></details>}
     {context?.included_chunk_ids&&<p>应用送入模型 {context.included_chunk_ids.length} 段；预算移除 {context.dropped_chunk_ids?.length??0} 段，部分截取 {context.excerpt_lengths?.filter(item=>item.is_partial).length??0} 段。</p>}
     {typeof context?.usage?.total_tokens==="number"&&<p>回答调用返回 Token 总量：{context.usage.total_tokens}（不含后续支持性检查）。</p>}
     <p>模型尝试：回答 {counts.answer} 次，支持性检查 {counts.support} 次，本地相关性复核 {counts.relevance} 次。</p>

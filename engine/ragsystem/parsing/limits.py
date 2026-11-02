@@ -8,9 +8,12 @@ from ragsystem.domain.errors import EngineError
 
 def apply_process_limits(cpu_seconds=240, docling=False):
     if sys.platform == "win32":
-        return {"cpu": "UNVERIFIED", "address_space": "UNVERIFIED"}
+        return {"cpu": "SUPERVISOR_JOB_OBJECT", "address_space": "SUPERVISOR_JOB_OBJECT"}
     import resource
 
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    # Bound each worker-created file, including stdout/stderr spool files.
+    resource.setrlimit(resource.RLIMIT_FSIZE, (16 * 1024**2, 16 * 1024**2))
     resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds))
     if sys.platform == "linux":
         limit = (4 if docling else 1) * 1024**3

@@ -1,3 +1,4 @@
+
 """RAG-02 pipeline regressions. Protocol/term fixtures are not scientific gold."""
 
 import json
@@ -6,6 +7,7 @@ import pytest
 from ragsystem.ingestion.import_pdf import PdfImporter
 from ragsystem.library.lifecycle import Lifecycle
 from ragsystem.library.repository import Library
+from ragsystem.models.provider import input_metadata, numbered_excerpts
 from ragsystem.parsing.pipeline import Parser
 from ragsystem.retrieval.hybrid import HybridSearch
 from ragsystem.retrieval.source_search import Sources
@@ -209,10 +211,7 @@ def test_claim_cannot_cite_a_retrieved_chunk_dropped_from_actual_model_input(wor
                         "evidence": [{"chunk_id": last["chunk_id"], "quote": last["text"][:60]}],
                     }
                 ],
-                "context_metadata": {
-                    "included_chunk_ids": [first["chunk_id"]],
-                    "dropped_chunk_ids": [last["chunk_id"]],
-                },
+                "context_metadata": input_metadata(data["chunks"], *numbered_excerpts([first])),
             }
 
     monkeypatch.setattr(bench.generation, "require", lambda: Generator())
@@ -236,6 +235,8 @@ def test_quote_must_be_inside_the_actual_sent_excerpt_not_only_the_same_chunk(wo
             chunk = data["chunks"][0]
             # The quoted text exists in the same retrieved chunk, beyond the
             # claimed actual model input. Publishing it would invent provenance.
+            citations, excerpts = numbered_excerpts([chunk])
+            excerpts[0].update(quote=chunk["text"][:40], included_characters=40, is_partial=True)
             return {
                 "claims": [
                     {
@@ -245,17 +246,7 @@ def test_quote_must_be_inside_the_actual_sent_excerpt_not_only_the_same_chunk(wo
                         ],
                     }
                 ],
-                "context_metadata": {
-                    "included_chunk_ids": [chunk["chunk_id"]],
-                    "excerpt_lengths": [
-                        {
-                            "chunk_id": chunk["chunk_id"],
-                            "original_characters": len(chunk["text"]),
-                            "included_characters": 40,
-                            "is_partial": True,
-                        }
-                    ],
-                },
+                "context_metadata": input_metadata(data["chunks"], citations, excerpts),
             }
 
     monkeypatch.setattr(bench.generation, "require", lambda: Generator())
@@ -267,3 +258,58 @@ def test_quote_must_be_inside_the_actual_sent_excerpt_not_only_the_same_chunk(wo
     trace = answer["result"]["pipeline_trace"]
     assert trace["stages"][-1]["status"] == "failed"
     assert trace["model_attempts"] == {"answer": 1, "support": 0, "relevance": 0}
+
+
+@pytest.mark.parametrize("damage", ["missing", "lengths", "duplicates", "hash", "source", "partial", "partition", "bool_length"])
+def test_untrusted_input_receipt_fails_before_support_or_publication(work, monkeypatch, damage):
+    bench, version = work
+    calls = []
+
+    class Generator:
+        fingerprint = {"fixture": "receipt-regression"}
+
+        def generate(self, task, data):
+            calls.append(task)
+            assert task == "answer"
+            chunks = data["chunks"]
+            metadata = input_metadata(chunks, *numbered_excerpts(chunks))
+            if damage == "missing":
+                metadata = None
+            elif damage == "lengths":
+                metadata.pop("excerpt_lengths")
+            elif damage == "duplicates":
+                metadata["included_chunk_ids"].append(metadata["included_chunk_ids"][0])
+            elif damage in {"hash", "source", "partial", "bool_length"}:
+                key, value = {"hash": ("text_sha256", "0" * 64), "source": ("source_sha256", "0" * 64), "partial": ("is_partial", None), "bool_length": ("included_characters", True)}[damage]
+                metadata["excerpt_lengths"][0][key] = value
+            elif damage == "partition":
+                metadata["dropped_chunk_ids"].append("not-retrieved")
+            return {"claims": [{"text": "fixture", "evidence": [{"chunk_id": chunks[0]["chunk_id"], "quote": chunks[0]["text"][:60]}]}], "context_metadata": metadata}
+
+    monkeypatch.setattr(bench.generation, "require", lambda: Generator())
+    run = bench.create_answer("BERT", [version], None, "generative", "keyword")
+    bench.run_answer(run["id"])
+    answer = bench.answers(run_id=run["id"])[0]
+    assert answer["status"] == "failed" and answer["error_code"] == "MODEL_INPUT_METADATA_INVALID"
+    assert not answer["claims"] and not answer["evidence"] and calls == ["answer"]
+
+
+def test_published_generation_evidence_is_only_the_sent_prefix(work, monkeypatch):
+    bench, version = work
+    sent = {}
+    class Generator:
+        fingerprint = {"fixture": "publication-receipt"}
+        def generate(self, task, data):
+            if task == "support":
+                return {"status": "supported", "reason": "fixture only"}
+            chunk = data['chunks'][0]
+            citations, excerpts = numbered_excerpts([chunk])
+            excerpts[0].update(quote=chunk['text'][:40], included_characters=40, is_partial=True)
+            sent.update(chunk_id=chunk['chunk_id'], quote=chunk['text'][:40])
+            return {'claims': [{'text': 'fixture', 'evidence': [sent.copy()]}], 'context_metadata': input_metadata(data['chunks'], citations, excerpts)}
+    monkeypatch.setattr(bench.generation, "require", lambda: Generator())
+    run = bench.create_answer("BERT", [version], None, "generative", "keyword")
+    bench.run_answer(run['id'])
+    answer = bench.answers(run_id=run['id'])[0]
+    assert answer['status'] == 'completed' and answer['evidence']
+    assert all(row['source_anchor_id'] == sent['chunk_id'] and row['quote'] == sent['quote'] for row in answer['evidence'])

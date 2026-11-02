@@ -1,84 +1,85 @@
-import {useEffect,useRef,useState,type FormEvent} from "react";
-import {conversationTurns,askQuestion,errorMessage,readSource,type AnswerRun,type Evidence,type GenerationConnection,type ReaderFile,type Snapshot} from "../bridge";
+import {useEffect,useLayoutEffect,useRef,useState,type FormEvent} from "react";
+import {manageConversation,conversationTurns,askQuestion,errorMessage,readSource,type AnswerRun,type Evidence,type GenerationConnection,type ReaderFile,type Snapshot} from "../bridge";
 import Icon from "./Icon";
-import PipelineDiagnostics from "./PipelineDiagnostics";
+import TurnEvidence from "./TurnEvidence";
+import CopyButton from "./CopyButton";
+import {answerParagraphs} from "./answerPresentation";
 import type {ReadingContext} from "./SourceWorkspace";
 
-function evidencePage(evidence:Evidence):number|null {try{const value=JSON.parse(evidence.anchor_json).page_number;return Number.isInteger(value)&&value>0?value:null;}catch{return null;}}
-export default function MvpAsk({data,providers,model,onModel,strategy,onStrategy,conversationId,onConversation,selectedId,onSelected,onCreated,onSettings,onImport,onRead}: {
-  data:Snapshot;providers:GenerationConnection[];model:string;onModel:(model:string)=>void;strategy:string;onStrategy:(value:string)=>void;conversationId:string;onConversation:(id:string)=>void;selectedId:string;onSelected:(id:string)=>void;onCreated:()=>Promise<unknown>;onSettings:()=>void;onImport:()=>void;onRead:(file:ReaderFile,context:ReadingContext)=>void;
+export default function MvpAsk({data,creatingConversation,providers,model,onModel,strategy,onStrategy,conversationId,onConversation,selectedId,onSelected,onCreated,onSettings,onImport,onRead}: {
+  data:Snapshot;creatingConversation:boolean;providers:GenerationConnection[];model:string;onModel:(model:string)=>void;strategy:string;onStrategy:(value:string)=>void;conversationId:string;onConversation:(id:string)=>void;selectedId:string;onSelected:(id:string)=>void;onCreated:()=>Promise<unknown>;onSettings:()=>void;onImport:()=>void;onRead:(file:ReaderFile,context:ReadingContext)=>void;
 }) {
   const [question,setQuestion]=useState(""),[loading,setLoading]=useState(false);
   const [answers,setAnswers]=useState<AnswerRun[]>([]),[olderCursor,setOlderCursor]=useState<string|null>(null);
   const [awaitingResult,setAwaitingResult]=useState(false);
-  const answer=awaitingResult?null:selectedId?answers.find(item=>item.id===selectedId)??null:answers.at(-1)??null;
-  useEffect(()=>{setAwaitingResult(false);setAllSources(false);},[selectedId,conversationId]);
+  const visibleAnswers=answers.filter(item=>item.conversation_id===conversationId);
+  const answer=awaitingResult?null:selectedId?visibleAnswers.find(item=>item.id===selectedId)??null:visibleAnswers.at(-1)??null;
+  useEffect(()=>{setAwaitingResult(false);},[selectedId,conversationId]);
   const [scope,setScope]=useState("all");
-  const [busy,setBusy]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState(""),[allSources,setAllSources]=useState(false);
+  const [busy,setBusy]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState("");
   const submitting=useRef(false),composing=useRef(false);
-  const current=useRef(conversationId);current.current=conversationId;
+  const chat=useRef<HTMLDivElement>(null),scrollIntent=useRef<string|null>(null),prepend=useRef<{height:number;top:number}|null>(null);
+  const [pendingQuestion,setPendingQuestion]=useState<{text:string;runId?:string}|null>(null),[archived,setArchived]=useState(false);
+  useLayoutEffect(()=>{
+    const container=chat.current;if(!container)return;
+    if(prepend.current){container.scrollTop=prepend.current.top+container.scrollHeight-prepend.current.height;prepend.current=null;return;}
+    const target=scrollIntent.current;if(!target)return;
+    const node=target==="pending"?container.querySelector<HTMLElement>("[data-pending-question]"):Array.from(container.querySelectorAll<HTMLElement>("[data-run-id]")).find(item=>item.dataset.runId===target);
+    if(node){container.scrollTo({top:container.scrollTop+node.getBoundingClientRect().top-container.getBoundingClientRect().top,behavior:"instant"});scrollIntent.current=null;}
+  },[answers,pendingQuestion]);
+  const current=useRef(conversationId),submittedConversation=useRef<string|null>(null);current.current=conversationId;
   const provider=providers.find(item=>item.id===model);
   useEffect(()=>{
     let alive=true,inFlight=false,cursorLoaded=false;
-    setLoading(!!conversationId);setAnswers([]);setOlderCursor(null);setError("");setAllSources(false);setPending(false);setQuestion("");
-    if(!conversationId){setScope("all");return;}
-    const poll=async()=>{if(inFlight)return;inFlight=true;try{const result=await conversationTurns(conversationId);if(alive&&current.current===conversationId){setLoading(false);setAnswers(previous=>[...previous.filter(old=>!result.items.some(item=>item.id===old.id)),...result.items]);if(!cursorLoaded){setOlderCursor(result.next_cursor);cursorLoaded=true;}setPending(result.items.some(item=>["queued","running"].includes(item.status)));}}catch(err){if(alive){setLoading(false);setError(errorMessage(err));}}finally{inFlight=false;}};
+    if(submittedConversation.current!==conversationId){setPendingQuestion(null);scrollIntent.current=null;prepend.current=null;}
+    setLoading(!!conversationId);setAnswers([]);setOlderCursor(null);setError("");setPending(false);setQuestion("");setArchived(false);
+    if(!conversationId){setScope("all");setPendingQuestion(null);return;}
+    const poll=async()=>{if(inFlight)return;inFlight=true;try{const result=await conversationTurns(conversationId);if(alive&&current.current===conversationId){setLoading(false);setArchived(!!result.conversation.archived_at);if(!cursorLoaded&&!pendingQuestion){scrollIntent.current=result.items.at(-1)?.id??null;}setPendingQuestion(previous=>previous?.runId&&result.items.some(item=>item.id===previous.runId)?null:previous);setAnswers(previous=>[...previous.filter(old=>!result.items.some(item=>item.id===old.id)),...result.items]);if(!cursorLoaded){setOlderCursor(result.next_cursor);cursorLoaded=true;}setPending(result.items.some(item=>["queued","running"].includes(item.status)));}}catch(err){if(alive){setLoading(false);setError(errorMessage(err));}}finally{inFlight=false;}};
     void poll();const timer=window.setInterval(()=>void poll(),1000);return()=>{alive=false;window.clearInterval(timer);};
   },[conversationId]);
   const parsed=data.documents.filter(doc=>["ready","partial"].includes(doc.parse_status));
-  const versions=parsed.filter(doc=>scope==="all"||scope===doc.doc_version_id).map(doc=>doc.doc_version_id);
+  const newest = new Map<string,string>();
+  for(const doc of [...parsed].sort((a,b)=>b.created_at.localeCompare(a.created_at)||a.doc_version_id.localeCompare(b.doc_version_id))) if(!newest.has(doc.document_id))newest.set(doc.document_id,doc.doc_version_id);
+  const versions=parsed.filter(doc=>scope==="compare"||(scope==="all"?newest.get(doc.document_id)===doc.doc_version_id:scope===doc.doc_version_id)).map(doc=>doc.doc_version_id);
   const effectiveStrategy=data.index?.ready?strategy:"keyword";
   function isSystemInformationQuestion(value:string){const normalized=value.normalize("NFKC").toLowerCase().replace(/[\s\p{P}]+/gu,"");return Object.values(data.health.system_question_forms??{}).some(forms=>forms.includes(normalized));}
   const systemQuestion=isSystemInformationQuestion(question);
   const available=systemQuestion||model==="extractive"||(model==="local"?data.generator?.configured:provider?.can_answer);
   async function submit(event:FormEvent) {
-    event.preventDefault();if(submitting.current||busy||pending||!question.trim()||question.length>4000||(!systemQuestion&&!versions.length)||!available)return;
-    submitting.current=true;setAwaitingResult(true);setBusy(true);setPending(true);setError("");
-    try{const run=await askQuestion({question,version_ids:versions,project_id:null,mode:model==="extractive"?"extractive":"generative",strategy:effectiveStrategy,conversation_id:conversationId||null,provider_id:provider?.id??null,provider_revision:provider?.revision,per_paper_limit:3});onConversation(run.conversation_id);onSelected(run.id);setQuestion("");await onCreated();}
-    catch(err){setError(errorMessage(err));setPending(false);}finally{submitting.current=false;setBusy(false);}
+    event.preventDefault();if(submitting.current||busy||pending||!question.trim()||question.length>4000||(!systemQuestion&&!versions.length)||!available||archived||loading||creatingConversation)return;
+    const submittingConversation=conversationId;submittedConversation.current=conversationId;
+    submitting.current=true;scrollIntent.current="pending";setPendingQuestion({text:question});setAwaitingResult(true);setBusy(true);setPending(true);setError("");
+    try{const run=await askQuestion({question,version_ids:versions,project_id:null,mode:model==="extractive"?"extractive":"generative",strategy:effectiveStrategy,conversation_id:conversationId||null,provider_id:provider?.id??null,provider_revision:provider?.revision,per_paper_limit:3,version_policy:scope==="all"?"latest_imported":"explicit_versions"});if(current.current!==submittingConversation){await onCreated();return;}submittedConversation.current=run.conversation_id;setPendingQuestion(previous=>previous?{...previous,runId:run.id}:null);onConversation(run.conversation_id);onSelected(run.id);setQuestion("");await onCreated();}
+    catch(err){setError(errorMessage(err));setPendingQuestion(null);setAwaitingResult(false);setPending(false);}finally{submitting.current=false;setBusy(false);}
   }
   async function open(evidence:Evidence,owner:AnswerRun|null=answer) {
     try{setError("");const file=await readSource(evidence.source_anchor_id);const document=data.documents.find(doc=>doc.doc_version_id===file.anchor.doc_version_id);const claim=owner?.claims.find(item=>item.evidence_ids.includes(evidence.id));onRead({...file,evidence_quote:evidence.quote},{title:document?.title??"引用文献",authors:document?.authors??[],year:document?.year??null,evidence,claim:claim?.text,question:owner?.question});}
     catch(err){setError(errorMessage(err));}
   }
-  const sources=answer?.evidence.filter((item,index,rows)=>rows.findIndex(other=>other.source_anchor_id===item.source_anchor_id)===index)??[];
-  const documentFor=(evidence:Evidence)=>{try{return data.documents.find(doc=>doc.doc_version_id===JSON.parse(evidence.anchor_json).doc_version_id);}catch{return undefined;}};
   return <section className="chat-page">
-    <div className="chat-center"><header className="page-heading chat-heading"><div><h1>与文献对话</h1><p>基于你的 PDF 文献，进行问答、总结与知识探索</p></div><div className="chat-scope"><label><Icon name="book"/><select aria-label="问答文献范围" value={scope} onChange={e=>setScope(e.target.value)}><option value="all">全部文献</option>{parsed.map(doc=><option key={doc.doc_version_id} value={doc.doc_version_id}>{doc.title}</option>)}</select></label><span className="count-badge"><Icon name="database"/>{parsed.length} 篇可检索</span></div></header>
-      <div className="chat-scroll" aria-live="polite">
+    <div className="chat-center"><header className="page-heading chat-heading"><div><h1>与文献对话</h1><p>基于你的 PDF 文献，进行问答、总结与知识探索</p></div><div className="chat-scope"><label><Icon name="book"/><select aria-label="问答文献范围" value={scope} onChange={e=>setScope(e.target.value)}><option value="all">全部文献（每篇最近导入的可检索版本）</option><option value="compare">显式比较全部可检索版本</option>{parsed.map(doc=><option key={doc.doc_version_id} value={doc.doc_version_id}>{doc.title} · {doc.file_sha256.slice(0,8)} · 导入 {doc.created_at}</option>)}</select></label><span className="count-badge"><Icon name="database"/>{versions.length} 个版本已选</span></div></header>
+      <div className="chat-scroll" ref={chat} aria-label="对话消息" aria-live="polite">
         {!answers.length&&!loading&&<div className="chat-start"><span className="round-icon"><Icon name="chat" size={34}/></span><h2>从文献出发，找到有据可查的答案</h2><p>输入你的问题，或选择左侧的历史对话继续核查。<br/>每条引用都能回到本地 PDF 原文。</p><div className="prompt-examples"><button onClick={()=>setQuestion("这篇论文采用了什么研究方法？")}>论文采用了什么研究方法？</button><button onClick={()=>setQuestion("论文中的主要实验结论是什么？")}>论文的主要实验结论是什么？</button></div></div>}
         {loading&&!answers.length&&<p className="loading-text" role="status">正在读取本地对话…</p>}
-        {olderCursor&&<button onClick={()=>void conversationTurns(conversationId,olderCursor).then(page=>{setAnswers(previous=>[...page.items.filter(item=>!previous.some(old=>old.id===item.id)),...previous]);setOlderCursor(page.next_cursor);}).catch(err=>setError(errorMessage(err)))}>加载更早消息</button>}
-        {answers.map(answer=>{const sources=answer.evidence.filter((item,index,rows)=>rows.findIndex(other=>other.source_anchor_id===item.source_anchor_id)===index);return <div key={answer.id} className="conversation-turn" data-run-id={answer.id} onClick={()=>{setAwaitingResult(false);onSelected(answer.id);}}><div className="user-message"><span className="user-avatar">U</span><div><h3>{answer.question}</h3></div></div><div className="assistant-message"><span className="assistant-avatar"><Icon name="robot" size={23}/></span><article className="answer-card"><small className="text-muted">{answer.result?.kind==="system_info"?"本机配置（未调用模型）":answer.mode==="extractive"?"原文摘录":String(answer.model_history?.find(attempt=>attempt.stage==="generation")?.fingerprint.model??"未调用回答模型")} · {answer.status}</small><h2><span className="mini-icon"><Icon name="database" size={18}/></span>{answer.result?.kind==="system_info"?"系统运行信息":answer.mode==="extractive"?"检索到的原文证据":"基于检索证据的回答"}</h2>
-          {["queued","running"].includes(answer.status)&&<p role="status" className="loading-text">{isSystemInformationQuestion(answer.question)?"正在读取本机配置…":"正在查找来源并整理回答…"}</p>}
-          {answer.result?.kind==="system_info"&&<p className="system-answer">{answer.result.text}</p>}
-          {answer.result?.intent==="mixed"&&answer.result.system_information?.map((info,index)=><p className="system-answer" key={index}>{info.text}</p>)}
-          {answer.status==="refused"&&<p className="notice">{answer.evidence.length?"候选证据，尚不足以支持结论。":"本轮没有检索命中，没有可展示的文献证据。"}</p>}
-          {answer.status==="refused"&&answer.result?.refusal_reason&&<p className="text-muted">{answer.result.refusal_reason}</p>}
-          {["failed","cancelled"].includes(answer.status)&&<p className="job-error" role="alert">{answer.result?.outcome==="generation_failed"?"检索已完成，生成或引用核验失败：":"本轮问答失败："}{errorMessage(answer.error_code??answer.status)}</p>}
-          {answer.mode==="extractive"&&answer.evidence.length>0&&<p className="answer-intro">以下是相关原文摘录，未生成综合结论。</p>}
-          {answer.status==="completed"&&answer.claims.filter(claim=>claim.model_support==="supported").map(claim=><section className="answer-claim" key={claim.id}><p>{claim.text}</p><div className="claim-status">原文引用：已精确核验<span>同一模型自检：{claim.model_support==="supported"?"认为支持":claim.model_support==="contradicted"?"相矛盾":"不确定"}</span><span>人工核对：{claim.human_status==="confirmed"?"已核对":claim.human_status==="rejected"?"存在歧义":"待核对"}</span></div><div className="citation-cards">{claim.evidence_ids.map(id=>{const evidence=answer.evidence.find(e=>e.id===id);if(!evidence)return null;const doc=documentFor(evidence);return <button key={id} disabled={evidence.current_source_status!=="verified"} onClick={()=>void open(evidence,answer)}><Icon name="file"/><span>{doc?.title??"引用文献"}<small>{evidencePage(evidence)?`第 ${evidencePage(evidence)} 页`:"页码未验证"}{doc?.year?` · ${doc.year}`:""}</small></span><Icon name="chevron" size={16}/></button>;})}</div></section>)}
-          {answer.claims.some(claim=>claim.model_support!=="supported")&&<p className="notice">部分草稿被模型标记为相矛盾或不确定，未作为回答结论展示。候选原文不能替代科学支持，请核对缺失的实验条件、数据和结论依据。</p>}
-          {(answer.mode==="extractive"||answer.status==="refused")&&sources.slice(0,3).map((evidence,index)=><section className="answer-excerpt" key={evidence.id}><div><Icon name="file" size={17}/><strong>{documentFor(evidence)?.title??"引用文献"}</strong></div><blockquote>{evidence.quote}</blockquote><button className="text-button" disabled={evidence.current_source_status!=="verified"} onClick={()=>void open(evidence,answer)}>查看引用 {index+1}{evidencePage(evidence)?` · 第 ${evidencePage(evidence)} 页`:""}<Icon name="chevron" size={15}/></button></section>)}
-          {answer.result?.kind!=="system_info"&&answer.mode==="generative"&&answer.status==="completed"&&<p className="answer-note"><Icon name="info" size={16}/>模型生成的回答，请结合引用核对。</p>}
-          {answer.evidence.some(e=>e.current_source_status!=="verified")&&<p className="notice">部分来源已变化或不可用，请重新提问获取当前引用。</p>}
-          <PipelineDiagnostics result={answer.result}/>
-        </article></div></div>;})}
+        {olderCursor&&<button onClick={()=>void conversationTurns(conversationId,olderCursor).then(page=>{if(current.current!==conversationId)return;const node=chat.current;if(node)prepend.current={height:node.scrollHeight,top:node.scrollTop};setAnswers(previous=>[...page.items.filter(item=>!previous.some(old=>old.id===item.id)),...previous]);setOlderCursor(page.next_cursor);}).catch(err=>setError(errorMessage(err)))}>加载更早消息</button>}
+        {visibleAnswers.map(turn=>{const paragraphs=answerParagraphs(turn,isSystemInformationQuestion(turn.question));return <div key={turn.id} className={`conversation-turn ${answer?.id===turn.id?"selected-turn":""}`} data-run-id={turn.id} onClick={()=>{setAwaitingResult(false);onSelected(turn.id);}}>
+          <div className="user-message"><span className="user-avatar">U</span><div className="question-content"><button className="turn-question" aria-label={`查看本轮检索：${turn.question}`} onClick={()=>{setAwaitingResult(false);onSelected(turn.id);}}><h3>{turn.question}</h3></button><div className="turn-actions"><CopyButton text={turn.question} label="复制问题"/></div></div></div>
+          <div className="assistant-message"><span className="assistant-avatar"><Icon name="robot" size={23}/></span><article className="answer-card" aria-label="回答正文">
+          {paragraphs.map((part,index)=><p key={index} className={part.className} role={part.role}>{part.text}</p>)}
+          {!["queued","running"].includes(turn.status)&&paragraphs.length>0&&<div className="turn-actions"><CopyButton text={paragraphs.map(part=>part.text).join("\n\n")} label="复制回答"/></div>}
+          </article></div>
+        </div>;})}
+        {pendingQuestion&&!answers.some(item=>item.id===pendingQuestion.runId)&&<div className="conversation-turn" data-pending-question><div className="user-message"><span className="user-avatar">U</span><div className="turn-question"><h3>{pendingQuestion.text}</h3></div></div><p role="status">正在提交问题…</p></div>}
       </div>
-      <form className="chat-composer" onSubmit={event=>void submit(event)}><label className="sr-only" htmlFor="chat-question">你的问题</label><textarea id="chat-question" aria-label="你的问题" value={question} onCompositionStart={()=>{composing.current=true;}} onCompositionEnd={()=>{composing.current=false;}} onKeyDown={event=>{if(event.key!=="Enter"||event.shiftKey)return;if(composing.current||event.nativeEvent.isComposing||event.keyCode===229)return;event.preventDefault();event.currentTarget.form?.requestSubmit();}} onChange={event=>setQuestion(event.target.value)} maxLength={4000} required placeholder="询问你的 PDF 文献…" rows={2}/>
+      <form className="chat-composer" onSubmit={event=>void submit(event)}><label className="sr-only" htmlFor="chat-question">你的问题</label><textarea id="chat-question" aria-label="你的问题" disabled={loading||creatingConversation} value={question} onCompositionStart={()=>{composing.current=true;}} onCompositionEnd={()=>{composing.current=false;}} onKeyDown={event=>{if(event.key!=="Enter"||event.shiftKey)return;if(composing.current||event.nativeEvent.isComposing||event.keyCode===229)return;event.preventDefault();event.currentTarget.form?.requestSubmit();}} onChange={event=>setQuestion(event.target.value)} maxLength={4000} required placeholder="询问你的 PDF 文献…" rows={2}/>
 
+        {archived&&<p className="notice">此对话已归档。<button type="button" onClick={()=>void manageConversation(conversationId,"restore").then(async()=>{setArchived(false);await onCreated();}).catch(err=>setError(errorMessage(err)))}>恢复后继续提问</button></p>}
         {error&&<p role="alert" className="job-error">{error}</p>}
-        <div className="composer-toolbar"><div className="composer-left"><button type="button" className="icon-button" aria-label="导入 PDF" title="导入 PDF" onClick={onImport} disabled={busy||pending}><Icon name="folder"/></button><button type="button" className="icon-button" aria-label="配置模型" title="配置模型" onClick={onSettings}><Icon name="settings"/></button><small>Enter 发送 · Shift+Enter 换行</small></div><div className="composer-controls"><label><Icon name="sliders" size={18}/><select aria-label="检索策略" value={effectiveStrategy} onChange={e=>onStrategy(e.target.value)}><option value="hybrid" disabled={!data.index?.ready}>混合检索</option><option value="keyword">关键词检索</option><option value="vector_exact" disabled={!data.index?.ready}>向量检索</option></select></label><label><Icon name="monitor" size={18}/><select aria-label="生成模型" value={model} onChange={e=>onModel(e.target.value)}><option value="extractive">原文摘录（不调用模型）</option><option value="local" disabled={!data.generator?.configured}>本地 Qwen{data.generator?.configured?"":"（未配置）"}</option>{providers.map(item=><option key={item.id} value={item.id} disabled={!item.can_answer}>{item.name} · {item.model}{!item.configured?"（需配置凭据）":!item.document_qa_enabled?"（未启用文献问答）":""}</option>)}</select></label><button className="primary" disabled={busy||pending||(!systemQuestion&&!versions.length)||!question.trim()||!available}><Icon name="send" size={19}/>{busy||pending?"处理中…":"发送问题"}</button></div></div>
+        <div className="composer-toolbar"><div className="composer-left"><button type="button" className="icon-button" aria-label="导入 PDF" title="导入 PDF" onClick={onImport} disabled={busy||pending}><Icon name="folder"/></button><button type="button" className="icon-button" aria-label="配置模型" title="配置模型" onClick={onSettings}><Icon name="settings"/></button><small>Enter 发送 · Shift+Enter 换行</small></div><div className="composer-controls"><label><Icon name="sliders" size={18}/><select aria-label="检索策略" value={effectiveStrategy} onChange={e=>onStrategy(e.target.value)}><option value="hybrid" disabled={!data.index?.ready}>混合检索</option><option value="keyword">关键词检索</option><option value="vector_exact" disabled={!data.index?.ready}>向量检索</option></select></label><label><Icon name="monitor" size={18}/><select aria-label="生成模型" value={model} onChange={e=>onModel(e.target.value)}><option value="extractive">原文摘录（不调用模型）</option><option value="local" disabled={!data.generator?.configured}>本地 Qwen{data.generator?.configured?"":"（未配置）"}</option>{providers.map(item=><option key={item.id} value={item.id} disabled={!item.can_answer}>{item.name} · {item.model}{!item.configured?"（需配置凭据）":!item.document_qa_enabled?"（未启用文献问答）":""}</option>)}</select></label><button className="primary" disabled={loading||creatingConversation||archived||busy||pending||(!systemQuestion&&!versions.length)||!question.trim()||!available}><Icon name="send" size={19}/>{busy||pending?"处理中…":"发送问题"}</button></div></div>
+        {!systemQuestion&&effectiveStrategy==="keyword"&&data.index?.ready&&<p className="composer-hint">关键词检索依赖原文词语；中文提问英文文献时可使用混合检索。<button type="button" className="text-button" onClick={()=>onStrategy("hybrid")}>切换混合检索</button></p>}
         {systemQuestion?<p className="composer-hint">此问题读取本机配置，不执行文献检索或模型推理。</p>:!data.index?.ready&&<p className="composer-hint">当前使用关键词检索；在设置中准备本地索引后启用混合检索。</p>}
       </form>
     </div>
-    <aside className="chat-evidence" data-answer-run={answer?.id??""}><section className="panel connection-card"><span className="round-icon"><Icon name="database" size={28}/></span><div><h2><span className="online-dot"/>本地资料库已连接</h2><p>索引状态：<span className={data.index?.ready?"text-green":"text-muted"}>{data.index?.ready?"就绪":data.index?.configured?"需更新":"尚未建立"}</span></p></div></section><section className="panel evidence-list"><div className="evidence-list-heading"><h2>{answer?.result?.kind==="system_info"?"系统信息":answer?.status==="refused"&&sources.length?"候选证据":"本次检索"}</h2><Icon name="down" size={18}/></div>
-      {answer&&<p className="evidence-question">当前问题：{answer.question}</p>}
-      {answer?.result?.kind==="system_info"?<p className="text-muted">此回答读取本机运行配置，未执行文献检索或调用生成模型，没有论文引用。</p>:<>
-      {sources.length>0&&<p className={answer?.status==="refused"?"notice":"text-muted"}>{answer?.status==="refused"?"候选证据，尚不足以支持结论。":answer?.mode==="extractive"?`检索到 ${sources.length} 条原文片段，未生成综合结论。`:`本轮 ${sources.length} 条来源；检索候选与获模型支持的结论分别标识。`}</p>}
-      <div className="evidence-items">{(allSources?sources:sources.slice(0,4)).map((evidence,index)=>{const supported=answer?.claims.some(claim=>claim.model_support==="supported"&&claim.evidence_ids.some(id=>answer.evidence.find(item=>item.id===id)?.source_anchor_id===evidence.source_anchor_id));return <button key={evidence.id} className="evidence-result" disabled={evidence.current_source_status!=="verified"} aria-label={`打开证据 ${index+1}`} onClick={()=>void open(evidence)}><span className="evidence-number">{index+1}</span><Icon name="file" size={18}/><div><strong>{documentFor(evidence)?.title??"引用文献"}</strong><small className={supported?"text-green":"text-muted"}>{supported?"关联获模型支持的结论，仍需人工核对":"候选原文片段，非已支持结论"}</small><p>{evidence.quote}</p></div><small>{evidencePage(evidence)?`p.${evidencePage(evidence)}`:"—"}</small></button>;})}</div>
-      {sources.length>4&&<button className="all-evidence" onClick={()=>setAllSources(!allSources)}><Icon name="list" size={17}/>{allSources?"收起检索结果":"查看全部检索结果"}<Icon name="chevron" size={16}/></button>}
-      {!sources.length&&<div className="evidence-placeholder"><Icon name="file" size={32}/><p>{awaitingResult||pending?"正在处理当前问题，来源尚未就绪。":answer?.status==="failed"?"本轮处理失败，未发布可核验结果。":answer?.status==="refused"?"本轮无检索结果，没有来源证据。":"提问后在这里查看本轮原文证据。"}</p></div>}
-      </>}</section></aside>
+    <TurnEvidence answer={answer} data={data} pending={awaitingResult||pending} onOpen={evidence=>void open(evidence)}/>
   </section>;
 }

@@ -5,11 +5,13 @@ export interface Health {
   components?:Record<string,Record<string,unknown>>;
   status: "starting" | "ready" | "degraded";
   sidecar_version: string;
+  build?: {label: string; built_at: string|null; source_sha256: string|null};
   schema_version: string;
   capabilities: string[];
   disabled_reasons: string[];
 }
 export interface DocumentRow {
+  created_at: string;
   document_id: string;
   doc_version_id: string;
   title: string;
@@ -59,7 +61,7 @@ export interface Snapshot {
   ocr?: ParsingCandidateStatus;
   docling?: ParsingCandidateStatus;
 }
-export interface IndexStatus {configured: boolean; ready: boolean; visible_chunks: number; indexed_chunks: number; backend: string | null; model: string | null; generation: string | null; candidate_only: boolean}
+export interface IndexStatus {backends?: Record<string, {available: boolean; reason: string | null}>; configured: boolean; ready: boolean; visible_chunks: number; indexed_chunks: number; backend: string | null; model: string | null; generation: string | null; candidate_only: boolean}
 export async function chooseEmbeddingModel(backend: string): Promise<{job_id: string} | null> {requireDesktop(); return invoke("choose_embedding_model", {backend});}
 export interface BackupRecord {id: string; kind: "backup" | "restored"; label: string; document_count: number; embedding_count: number; manifest_sha256: string; created_at: string}
 export async function listBackups(): Promise<{records: BackupRecord[];incomplete?:{id:string;kind:string;state:string;error_code:string|null}[]}> {requireDesktop(); return invoke("list_backups");}
@@ -132,12 +134,22 @@ const errors: Record<string, string> = {
   METADATA_CANDIDATE_CHANGED: "自动候选已变化，请重新打开文献详情核对。",
   METADATA_EXTRACTION_FAILED: "元数据提取失败，原件与正文仍然可用，可重试该任务。",
   CONVERSATION_BUSY: "当前会话已有问答正在执行，请等待完成。",
+  CONVERSATION_ARCHIVED: "此对话已归档，请先恢复后继续提问。",
+  CONVERSATION_REFERENCED: "此对话的证据仍被研究记录引用，无法删除；可以归档保留。",
+  INVALID_CONVERSATION_TITLE: "请输入1至160字的对话名称。",
+  PROVIDER_EXISTS: "已有有效远程配置，请读取并编辑现有连接；不会新增配置。",
+  PROVIDER_RETIRED: "此配置已停用，请在历史配置中明确恢复后使用。",
   PROVIDER_KEY_INVALID: "密钥格式无效，请检查是否包含换行。",
   PROVIDER_AUTH_FAILED: "模型服务拒绝了认证，请核对当前会话密钥。",
   PROVIDER_QUOTA_EXCEEDED: "模型服务额度或余额不足，请检查账户配额及仅免费额度限制。当前会话密钥已保留。",
   PROVIDER_PERMISSION_DENIED: "当前账户无权访问该模型或资源，请检查服务权限。当前会话密钥已保留。",
   PROVIDER_RATE_LIMITED: "模型服务请求受限，请稍后手动重试；系统不会自动重试或切换服务。",
   PROVIDER_SERVER_ERROR: "模型服务端暂时异常，请稍后手动重试。当前会话密钥已保留。",
+  DOCUMENT_SELECTION_REQUIRED: "当前范围包含多篇文献或多个版本。请先在右上角选择“该文献”具体指哪一篇，再发送问题。",
+  PROVIDER_TLS_FAILED: "模型服务的 TLS 证书校验失败。请检查系统时间、系统证书和网络代理；不要关闭证书校验。",
+  PROVIDER_DNS_FAILED: "无法解析模型服务域名，请检查网络与接口地址。",
+  PROVIDER_CONNECTION_LOST: "模型服务连接在响应完成前中断，本次未自动重试。请检查网络后重新发送。",
+  MODEL_OUTPUT_TRUNCATED: "模型输出达到长度上限，未取得完整答案。请缩小问题范围后重试。",
   PROVIDER_UNAVAILABLE: "无法连接模型服务，请确认地址与服务状态后重试。",
   PROVIDER_TIMEOUT: "模型服务响应超时，请稍后重试。",
   PROVIDER_HTTP_ERROR: "模型服务返回错误，请检查服务端状态和接口兼容性。",
@@ -200,6 +212,9 @@ const errors: Record<string, string> = {
   PARSER_FINGERPRINT_CHANGED: "排队期间解析配置变化，请重新提交解析任务。",
   INVALID_SEARCH: "请输入有意义的关键词或问题。",
   INVALID_REQUEST: "输入格式不正确，请检查各字段。",
+  MODEL_INPUT_METADATA_INVALID: "模型实际输入的审计信息缺失或不一致，回答未发布。",
+  VECTOR_BACKEND_UNAVAILABLE: "当前运行时无法加载此向量后端，请选择可用后端或修复安装。",
+  INVALID_FILTER: "筛选条件无效，请检查年份区间和标签。",
   SCOPE_FILTER_CHANGED: "文献元数据或筛选范围已有变化，请刷新后重新检索。",
   SCOPE_NOT_AVAILABLE: "文献范围已变化，请刷新后重新检索。",
   NOT_FOUND: "文献或来源已不可用，请刷新列表。",
@@ -261,7 +276,7 @@ export interface ScopeDocument {document_id?: string; doc_version_id: string; fi
 export interface Evidence {table_candidates?:{table_id:string;cell_id:string;row_start:number;column_start:number}[];text_origin?:string;id: string; source_anchor_id: string; quote: string; anchor_json: string; human_status: string; review_note: string; reviews?: {id:string;status:string;note:string;created_at:string}[]; current_source_status: string}
 export interface Claim {id: string; text: string; evidence_ids: string[]; source_status: string; model_support: string; comparability: string; human_status: string}
 export interface ModelAttempt {stage?: string;job_id: string; created_at: string; fingerprint: Record<string,unknown>}
-export interface AnswerRun {model_history?: ModelAttempt[];id: string; conversation_id: string; question: string; status: string; mode: string; strategy: string; error_code: string | null; scope: ScopeDocument[]; claims: Claim[]; evidence: Evidence[]; result: {model_context?:{included_chunk_ids?:string[];dropped_chunk_ids?:string[];excerpt_lengths?:{is_partial:boolean}[];usage?:{total_tokens?:number}|null};context_policy?:{retrieval_query:string;strategy:string};retrieval?:{strategy:string;candidate_counts?:Record<string,number>;hits?:{chunk_id:string}[]};pipeline_trace?:{version:string;model_attempts:{answer:number;support:number;relevance:number};stages:{stage:string;status:string;elapsed_ms?:number}[]};refusal_reason?:string;outcome?:string;failure_stage?:string;system_information?:{system_topic:string;text:string;configuration:Record<string,unknown>}[];intent?:string;retrieval_status?:string;text?:string;system_topic?:string;configuration?:Record<string,unknown>;relevance_review?:Record<string,unknown>|null; kind: string; coverage: string; support_checks?: {claim_id: string; status: string; reason: string}[]} | null}
+export interface AnswerRun {model_history?: ModelAttempt[];id: string; conversation_id: string; question: string; status: string; mode: string; strategy: string; error_code: string | null; scope: ScopeDocument[]; claims: Claim[]; evidence: Evidence[]; result: {model_context?:{included_chunk_ids?:string[];dropped_chunk_ids?:string[];excerpt_lengths?:{is_partial:boolean}[];usage?:{total_tokens?:number}|null};context_policy?:{retrieval_query:string;strategy:string};retrieval?:{strategy:string;candidate_counts?:Record<string,number>;hits?:{chunk_id:string;rrf_score?:number;lexical_rank?:number;vector_rank?:number}[]};pipeline_trace?:{version:string;model_attempts:{answer:number;support:number;relevance:number};stages:{stage:string;status:string;elapsed_ms?:number}[]};refusal_reason?:string;outcome?:string;failure_stage?:string;system_information?:{system_topic:string;text:string;configuration:Record<string,unknown>}[];intent?:string;retrieval_status?:string;text?:string;system_topic?:string;configuration?:Record<string,unknown>;relevance_review?:Record<string,unknown>|null; kind: string; coverage: string; support_checks?: {claim_id: string; status: string; reason: string}[]} | null}
 export interface Observation {model_fingerprint?: Record<string,unknown> | null;field: string; value: string; unit: string; evidence_id: string; experiment_id: string; conditions_status: string; meaning_status: string; value_origin: string; conditions: Record<string,string>; revision: number}
 export interface ResearchItem {observation_count?:number;observation_offset?:number;observation_next_offset?:number|null;field_counts?:Record<string,number>;doc_version_id: string; status: string; processed_chunks: number; total_chunks: number; error_code: string | null; observations: Observation[]}
 export interface Report {source_warnings?:{doc_version_id:string;state:string;parse_changed?:boolean}[];id: string; revision: number; body: string; created_at: string}
@@ -271,7 +286,7 @@ export interface HistoryPage {items:HistoryEntry[];next_cursor:string|null;total
 export interface WorkbenchSnapshot {answer_index:HistoryPage;research_index:HistoryPage;answers: AnswerRun[]; plans: ResearchPlan[]; generator: GeneratorStatus}
 export async function workbenchSnapshot(projectId: string | null, selection?:{answerId:string|null;planId:string|null;paperOffset:number;observationOffset:number}): Promise<WorkbenchSnapshot> {requireDesktop();return invoke("workbench_snapshot",{projectId,...selection});}
 export async function chooseGeneratorModel(): Promise<{job_id: string} | null> {requireDesktop(); return invoke("choose_generator_model");}
-export async function askQuestion(body: {question: string; version_ids: string[]; project_id: string | null; mode: string; strategy: string; conversation_id: string | null; provider_id?: string | null; allow_external?: boolean; provider_revision?: number; per_paper_limit?: number}): Promise<{id: string; conversation_id: string}> {requireDesktop();return invoke("ask_question",{body});}
+export async function askQuestion(body: {question: string; version_ids: string[]; project_id: string | null; mode: string; strategy: string; conversation_id: string | null; provider_id?: string | null; allow_external?: boolean; provider_revision?: number; per_paper_limit?: number; version_policy?: "latest_imported" | "explicit_versions"}): Promise<{id: string; conversation_id: string}> {requireDesktop();return invoke("ask_question",{body});}
 export async function createResearchPlan(body: {question: string; fields: string[]; version_ids: string[]; project_id: string | null; mode: string}): Promise<{id: string}> {requireDesktop();return invoke("create_research_plan",{body});}
 export async function runResearchPlan(planId: string): Promise<{job_id: string}> {requireDesktop();return invoke("run_research_plan",{planId});}
 export async function reviewEvidence(targetId: string,status: string,note: string): Promise<void> {requireDesktop();return invoke("review_evidence",{targetId,body:{status,note}});}
@@ -308,13 +323,17 @@ export async function readResearchReport(reportId:string):Promise<Report>{requir
 
 export interface GenerationConnection {id:string; name:string; kind:"api"|"magpie"; base_url:string; model:string; revision:number; configured:boolean;can_answer:boolean;document_qa_enabled:boolean;authorization_revision:number|null;saved:boolean;vendor:"custom"|"deepseek"|"openai"|"magpie";auth_mode:"bearer"|"none";output_mode:string;token_parameter:string;credential_available:boolean;connection_verified:boolean;generation_verified:boolean;last_error:string|null}
 export async function generationConnections():Promise<{providers:GenerationConnection[]}>{requireDesktop();return invoke("list_generation_providers");}
+export type RetiredConnection=Pick<GenerationConnection,"id"|"name"|"kind"|"base_url"|"model"|"revision"|"vendor"|"auth_mode"|"output_mode"|"token_parameter"> & {retired_at:string};
+export async function retiredGenerationConnections():Promise<{providers:RetiredConnection[]}>{requireDesktop();return invoke("retired_generation_providers");}
+export async function restoreGenerationConnection(item:RetiredConnection,active:GenerationConnection|null):Promise<GenerationConnection>{requireDesktop();return invoke("restore_generation_provider",{identifier:item.id,expectedRevision:item.revision,activeId:active?.id??null,activeRevision:active?.revision??0});}
 export async function saveGenerationConnection(body:{id:string|null;name:string;kind:string;base_url:string;model:string;expected_revision:number;api_key:string;vendor?:string;auth_mode?:string;output_mode?:string;token_parameter?:string;credential_token?:string|null;enable_for_documents?:boolean|null}):Promise<GenerationConnection>{requireDesktop();return invoke("save_generation_provider",{body});}
 export async function probeGenerationConnection(identifier:string):Promise<{models:{id:string;name:string}[]}>{requireDesktop();return invoke("probe_generation_provider",{identifier});}
 
 export async function previewGenerationConnection(body:{kind:string;base_url:string;api_key:string;auth_mode?:string}):Promise<{models:{id:string;name:string}[];credential_token:string;connection_verified:boolean;warning:string|null}>{requireDesktop();return invoke("preview_generation_provider",{body});}
 
-export interface ConversationTurns {items:AnswerRun[];total:number;next_cursor:string|null;conversation:{id:string;title:string}}
+export interface ConversationTurns {items:AnswerRun[];total:number;next_cursor:string|null;conversation:{id:string;title:string;archived_at?:string|null}}
 export async function createConversation():Promise<{id:string}>{requireDesktop();return invoke("create_conversation");}
+export async function manageConversation(conversationId:string,action:"rename"|"archive"|"restore"|"delete",title:string|null=null,projectId:string|null=null):Promise<{id:string;deleted?:boolean}>{requireDesktop();return invoke("manage_conversation",{conversationId,action,title,projectId});}
 export async function conversationTurns(conversationId:string,cursor=""):Promise<ConversationTurns>{requireDesktop();return invoke("conversation_turns",{conversationId,cursor});}
 
 export async function authorizeGenerationConnection(identifier:string,expectedRevision:number,enabled:boolean):Promise<GenerationConnection>{requireDesktop();return invoke("authorize_generation_provider",{identifier,expectedRevision,enabled});}

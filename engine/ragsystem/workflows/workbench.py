@@ -9,9 +9,12 @@ from ragsystem.jobs.repository import Jobs
 from ragsystem.library.lifecycle import Lifecycle
 from ragsystem.library.repository import Library
 from ragsystem.models.generation_service import GenerationService
+from ragsystem.models.provider import validate_answer, validate_input_metadata
 from ragsystem.parsing.tables import matching_cells
+from ragsystem.retrieval.document_overview import overview_topic, section_candidates
 from ragsystem.retrieval.reranking import REVIEW_POOL_LIMIT, review_order, review_pool
 from ragsystem.retrieval.source_search import Sources
+from ragsystem.retrieval.title_scope import named_versions
 from ragsystem.retrieval.tokenizer import search_terms
 from ragsystem.storage.database import utc_now
 from ragsystem.verification.quotes import validate_quote
@@ -71,7 +74,7 @@ class Workbench:
 
     @staticmethod
     def require_scope(conn, scope, versions=None):
-        versions = versions or [value["doc_version_id"] for value in scope["versions"]]
+        versions = versions if versions is not None else [value["doc_version_id"] for value in scope["versions"]]
         placeholders = ",".join("?" for _ in versions)
         suffix, params = "", []
         if scope["project_id"] is not None:
@@ -252,6 +255,7 @@ class Workbench:
         allow_external=False,
         provider_revision=None,
         per_paper_limit=3,
+        version_policy="latest_imported",
     ):
         if (
             not question.strip()
@@ -299,6 +303,16 @@ class Workbench:
                     (scope_id, project_id, "[]", utc_now()),
                 )
         else:
+            with self.db.connection() as conn:
+                self.require_scope(conn, {"project_id": project_id}, versions)
+            versions = Library(self.db).select_qa_versions(versions, version_policy)
+            named = named_versions(self.db, literature_question, versions, project_id) if len(versions) > 1 else []
+            if named:
+                versions = named
+            if overview_topic(literature_question) and re.search(
+                r"该文献|这篇|该论文|本文|\bthis (?:paper|document)\b", literature_question, re.I
+            ) and len(versions) > 1:
+                raise EngineError("DOCUMENT_SELECTION_REQUIRED", status=409)
             scope_id = self.freeze(versions, project_id)
         run_id = identifier()
         with self.db.transaction() as conn:
@@ -308,6 +322,8 @@ class Workbench:
                 ).fetchone()
                 if row is None or row["project_id"] != project_id:
                     raise EngineError("CONVERSATION_SCOPE_MISMATCH", status=409)
+                if row["archived_at"] is not None:
+                    raise EngineError("CONVERSATION_ARCHIVED", status=409)
                 if conn.execute(
                     "SELECT 1 FROM answer_runs a JOIN jobs j ON j.id=a.job_id WHERE a.conversation_id=? AND j.status IN ('queued','running')",
                     (conversation_id,),
@@ -325,7 +341,7 @@ class Workbench:
                 else self.conversation_context(conn, conversation_id, self.scope(scope_id))
             )
             conn.execute(
-                "UPDATE conversations SET updated_at=?,title=CASE WHEN NOT EXISTS(SELECT 1 FROM answer_runs WHERE conversation_id=?) THEN ? ELSE title END WHERE id=?",
+                "UPDATE conversations SET updated_at=?,title=CASE WHEN renamed_at IS NULL AND NOT EXISTS(SELECT 1 FROM answer_runs WHERE conversation_id=?) THEN ? ELSE title END WHERE id=?",
                 (utc_now(), conversation_id, question[:80], conversation_id),
             )
             job = self.jobs.enqueue(
@@ -341,6 +357,7 @@ class Workbench:
                     ),
                     "conversation_context": context,
                     "per_paper_limit": per_paper_limit,
+                    "version_policy": version_policy,
                     **({"generation_provider": provider} if provider else {}),
                 },
                 connection=conn,
@@ -439,11 +456,13 @@ class Workbench:
                     payload["system_topic"],
                     payload["selected_generation_model"],
                     run["strategy"],
+                    self.scope(run["scope_id"])["project_id"],
                 )
                 if len(payload.get("system_topics", [])) > 1:
                     sections = [
                         runtime_information(
-                            self, topic, payload["selected_generation_model"], run["strategy"]
+                            self, topic, payload["selected_generation_model"], run["strategy"],
+                            self.scope(run["scope_id"])["project_id"]
                         )
                         for topic in payload["system_topics"]
                     ]
@@ -513,13 +532,31 @@ class Workbench:
                 **({"include_candidates": True} if run["strategy"].endswith("_review") else {}),
             )
             hits = retrieval["results"]
+            topic = overview_topic(question)
+            if topic and (len(versions) == 1 or topic == "comparison" and 2 <= len(versions) <= 4):
+                lanes = [section_candidates(self.db, [version], scope["project_id"], topic) for version in versions]
+                # Interleave papers before the existing quota/budget, so one
+                # paper cannot consume the bounded comparison context.
+                structural = [lane[index] for index in range(12) for lane in lanes if index < len(lane)]
+                if structural:
+                    baseline = [hit["chunk_id"] for hit in hits]
+                    seen = {hit["chunk_id"] for hit in structural}
+                    merged = structural + [hit for hit in hits if hit["chunk_id"] not in seen]
+                    hits = self.search.paper_quota(merged, 8, payload.get("per_paper_limit", 3))
+                    hits = [hit | {"rank": index + 1} for index, hit in enumerate(hits)]
+                    retrieval["overview"] = {"topic": topic, "policy": "bounded-document-sections-v2",
+                                              "baseline_chunk_ids": baseline,
+                                              "section_chunk_ids": [hit["chunk_id"] for hit in structural]}
+                    retrieval["candidates"] = merged
+                scope_gate()
             result = {
                 "kind": "evidence_only",
                 "intent": "mixed" if payload.get("system_topics") else "literature",
                 "literature_question": question,
                 "system_information": [
                     runtime_information(
-                        self, topic, payload["selected_generation_model"], run["strategy"]
+                        self, topic, payload["selected_generation_model"], run["strategy"],
+                            self.scope(run["scope_id"])["project_id"]
                     )
                     for topic in payload.get("system_topics", [])
                 ],
@@ -592,6 +629,8 @@ class Workbench:
                                 "version_label": f"V{versions.index(anchor['doc_version_id']) + 1}",
                                 "title": document["title"],
                                 "page_number": anchor["page_number"],
+                                "doc_version_id": anchor["doc_version_id"],
+                                "pdf_sha256": document["file_sha256"],
                             },
                         }
                     )
@@ -610,50 +649,11 @@ class Workbench:
                         "chunks": input_chunks,
                     },
                 )
-                raw_claims = raw.get("claims") if isinstance(raw, dict) else None
-                if not isinstance(raw_claims, list) or len(raw_claims) > 6:
-                    raise EngineError("MODEL_OUTPUT_INVALID")
+                raw_claims = validate_answer(raw)
                 result["kind"] = "generated_draft"
                 result["model_fingerprint"] = generator.fingerprint
                 result["model_context"] = raw.get("context_metadata")
-                if (
-                    isinstance(result["model_context"], dict)
-                    and "included_chunk_ids" in result["model_context"]
-                ):
-                    included = result["model_context"]["included_chunk_ids"]
-                    if (
-                        not isinstance(included, list)
-                        or any(not isinstance(key, str) or key not in pool for key in included)
-                        or len(set(included)) != len(included)
-                    ):
-                        raise EngineError("MODEL_OUTPUT_INVALID")
-                    quote_pool = {key: pool[key] for key in included}
-                    lengths = result["model_context"].get("excerpt_lengths")
-                    if lengths is not None:
-                        if not isinstance(lengths, list):
-                            raise EngineError("MODEL_OUTPUT_INVALID")
-                        measured = {}
-                        for item in lengths:
-                            if (
-                                not isinstance(item, dict)
-                                or not isinstance(item.get("chunk_id"), str)
-                                or item["chunk_id"] not in quote_pool
-                                or item["chunk_id"] in measured
-                                or type(item.get("included_characters")) is not int
-                                or not 0
-                                <= item["included_characters"]
-                                <= len(pool[item["chunk_id"]])
-                                or item.get("original_characters") != len(pool[item["chunk_id"]])
-                            ):
-                                raise EngineError("MODEL_OUTPUT_INVALID")
-                            measured[item["chunk_id"]] = pool[item["chunk_id"]][
-                                : item["included_characters"]
-                            ]
-                        if set(measured) != set(included):
-                            raise EngineError("MODEL_OUTPUT_INVALID")
-                        quote_pool = measured
-                else:
-                    quote_pool = pool
+                quote_pool = validate_input_metadata(result["model_context"], input_chunks)
             else:
                 quote_pool = pool
             checked = []
@@ -710,8 +710,11 @@ class Workbench:
                 self.jobs.require_lease(conn, job["id"], token)
                 self.require_scope(conn, scope)
                 for hit in hits:
+                    if run["mode"] == "generative" and hit["chunk_id"] not in quote_pool:
+                        continue
+                    quote = quote_pool[hit["chunk_id"]] if run["mode"] == "generative" else hit["preview"]
                     result["evidence_ids"].append(
-                        self.evidence(conn, run_id, hit["chunk_id"], hit["preview"], pool)
+                        self.evidence(conn, run_id, hit["chunk_id"], quote, pool)
                     )
                 for claim, support in checked:
                     if (
@@ -783,10 +786,18 @@ class Workbench:
                     else "evidence_only"
                 )
                 if status == "refused":
+                    reason = "no_hits" if not hits else "no_claims" if not checked else "unsupported_claims"
+                    result["refusal_detail"] = {
+                        "reason": reason, "retrieved_chunks": len(hits),
+                        "generated_claims": len(checked),
+                        "supported_claims": sum(check[1]["status"] == "supported" for check in checked),
+                    }
                     result["refusal_reason"] = (
                         "当前文献范围没有检索命中，请调整问题或补充相关文献。"
                         if not hits
-                        else "当前候选未形成可发布的获支持草稿。请补充能直接回答问题、包含必要实验条件和数据的原文；模型支持性意见仍需人工核对。"
+                        else "已检索到原文，但模型未生成可引用的结论，因此未执行支持性检查。请查看右侧片段是否覆盖问题；比较文献时需各篇的研究目的、方法或结果。"
+                        if not checked
+                        else "模型生成了草稿，但没有结论通过支持性检查。具体原因见右侧对应引用；这不等于PDF解析失败，也不代表论文没有相关结论。"
                     )
                 result["evidence_assessment"] = {
                     "source_validation": "exact_current_chunk_quote",

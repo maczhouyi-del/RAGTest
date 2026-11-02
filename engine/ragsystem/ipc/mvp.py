@@ -48,12 +48,32 @@ class ConnectionProbe(BaseModel):
     api_key: str = Field(default="", max_length=4096, repr=False)
 
 
+class ProviderRestore(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    expected_revision: int = Field(ge=1)
+    active_id: str | None = None
+    active_revision: int = Field(ge=0)
+
+
 def register_mvp(app, db, root, search, work, jobs, slot):
     prepare = Preparation(db, root, search)
 
     @app.get("/v0/generation-providers")
     def providers():
         return {"providers": work.generation.providers.list()}
+
+    @app.get("/v0/generation-providers/retired")
+    def retired_providers():
+        return {"providers": work.generation.providers.retired()}
+
+    @app.post("/v0/generation-providers/{identifier}/restore")
+    def restore_provider(identifier: str, body: ProviderRestore):
+        if not slot.acquire(blocking=False):
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
+        try:
+            return work.generation.providers.restore(identifier, body.expected_revision, body.active_id, body.active_revision)
+        finally:
+            slot.release()
 
     @app.post("/v0/generation-provider-probe")
     def preview_provider(body: ConnectionProbe):

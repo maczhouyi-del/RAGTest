@@ -30,9 +30,17 @@ jobs:
       - name: Locked dependencies (fresh CI workspace only)
         run: |
           python -m pip install uv==0.11.16
-          uv sync --frozen --extra vector-lab --project engine
-          npm --prefix apps/desktop install --ignore-scripts --no-audit --no-fund
+          uv sync --frozen --extra vector-lab --project engine --managed-python --python 3.12.13
           git diff --exit-code -- engine/uv.lock apps/desktop/package-lock.json apps/desktop/src-tauri/Cargo.lock
+      # Use the extension-enabled standalone runtime also used for freezing.
+      # setup-python macOS framework builds can omit SQLite extension loading.
+      - name: Locked frontend dependencies
+        working-directory: apps/desktop
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          git diff --exit-code -- package-lock.json
+      - name: SQLite extension runtime preflight (no skipped backend tests)
+        run: uv run --frozen --extra vector-lab --project engine python -c 'from ragsystem.vector_adapters.sqlite_vec import availability; result = availability(); print(result); assert result["available"]'
       - name: Public fixtures only, pinned SHA; no user corpus
         run: uv run --frozen --extra vector-lab --project engine python tools/fetch_public_fixtures.py --fetch
       - name: Python source, static checks and tests
@@ -40,7 +48,8 @@ jobs:
           uv run --frozen --extra vector-lab --project engine ruff check --config engine/pyproject.toml engine/ragsystem tests
           uv run --frozen --extra vector-lab --project engine pytest -c engine/pyproject.toml -q
       - name: TypeScript source build
-        run: npm --prefix apps/desktop run build
+        working-directory: apps/desktop
+        run: npm run build
       - name: Model-free test sidecar (not an installer)
         run: uv run --frozen --extra vector-lab --project engine python packaging/build_sidecar.py
       - name: Rust tests with current source sidecar
@@ -53,7 +62,8 @@ jobs:
           cargo test --locked --manifest-path apps/desktop/src-tauri/Cargo.toml -- --test-threads=1
           cargo clippy --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
       - name: npm vulnerability gate
-        run: npm --prefix apps/desktop audit --package-lock-only --audit-level=moderate --registry=https://registry.npmjs.org
+        working-directory: apps/desktop
+        run: npm audit --package-lock-only --audit-level=moderate --registry=https://registry.npmjs.org
       - name: Gate boundary
         run: echo 'Model-specific skips are NOT EXECUTED. CI is not a clean-user install, signing, scientific gold or release approval.'
   lock-audit:

@@ -12,7 +12,7 @@ from ragsystem.indexing.incremental import embed_visible
 from ragsystem.indexing.integrity import checked_path, manifest, stamp
 from ragsystem.jobs.repository import Jobs
 from ragsystem.models.local_onnx import LocalE5
-from ragsystem.retrieval.metadata_scope import require_metadata_scope
+from ragsystem.retrieval.metadata_scope import filter_metadata_scope, require_metadata_snapshot
 from ragsystem.retrieval.source_search import Sources
 from ragsystem.retrieval.tokenizer import TOKENIZER_VERSION
 from ragsystem.storage.database import utc_now
@@ -44,6 +44,11 @@ class HybridSearch:
             return json.loads(row[0]) if row else None
 
     def status(self):
+        from importlib.util import find_spec
+
+        from ragsystem.vector_adapters.sqlite_vec import availability
+
+        backends = {"sqlite-vec": availability(), "lancedb": {"available": find_spec("lancedb") is not None, "reason": None}}
         config = self.config()
         with self.db.connection() as conn:
             count = len(self.chunks(conn))
@@ -63,7 +68,10 @@ class HybridSearch:
                     reason = None
             except (EngineError, OSError, ValueError, KeyError, sqlite3.DatabaseError):
                 reason = "INDEX_INVALID"
+        if config and not backends.get(config["backend"], {}).get("available"):
+            ready, reason = False, "VECTOR_BACKEND_UNAVAILABLE"
         return {
+            "backends": backends,
             "configured": bool(config),
             "ready": ready,
             "reason": reason,
@@ -252,11 +260,25 @@ class HybridSearch:
         versions = list(dict.fromkeys(versions))
         search_started = time.perf_counter()
         timings = {}
-        if strategy in {"vector_exact", "hybrid"} and not self.config():
+        if not filters and strategy in {"vector_exact", "hybrid"} and not self.config():
             raise EngineError("EMBEDDING_NOT_CONFIGURED", status=409)
         with self.db.connection() as conn:
             self.sources.require_scope(conn, versions, project_id)
-        require_metadata_scope(self.db, versions, filters)
+        authorized_versions = versions
+        versions, metadata_snapshot = filter_metadata_scope(self.db, authorized_versions, filters)
+
+        def validate_scope():
+            with self.db.connection() as conn:
+                self.sources.require_scope(conn, authorized_versions, project_id)
+            require_metadata_snapshot(self.db, authorized_versions, filters, metadata_snapshot)
+
+        if not versions:
+            validate_scope()
+            return {"results": [], "candidates": [], "scope_status": "NO_FILTER_MATCH", "strategy": strategy,
+                    "per_paper_limit": paper_quota, "candidate_counts": {"lexical": 0, "vector_embeddings": 0},
+                    "timings_ms": {"total_ms": (time.perf_counter() - search_started) * 1000}}
+        if strategy in {"vector_exact", "hybrid"} and not self.config():
+            raise EngineError("EMBEDDING_NOT_CONFIGURED", status=409)
         timings["scope_validation_ms"] = (time.perf_counter() - search_started) * 1000
         candidate_limit = max(k, 50)
         phase_started = time.perf_counter()
@@ -275,7 +297,7 @@ class HybridSearch:
         if strategy != "vector_exact":
             timings["lexical_ms"] = (time.perf_counter() - phase_started) * 1000
         if strategy in {"fts_only", "keyword"}:
-            require_metadata_scope(self.db, versions, filters)
+            validate_scope()
             phase_started = time.perf_counter()
             selected = self.paper_quota(lexical, k, paper_quota)
             timings["context_selection_ms"] = (time.perf_counter() - phase_started) * 1000
@@ -373,7 +395,7 @@ class HybridSearch:
         else:
             results = self.fuse(lexical, vector_hits)
         timings["fusion_ms"] = (time.perf_counter() - phase_started) * 1000
-        require_metadata_scope(self.db, versions, filters)
+        validate_scope()
         with self.db.connection() as conn:
             conn.execute("BEGIN")
             self.sources.require_scope(conn, versions, project_id)

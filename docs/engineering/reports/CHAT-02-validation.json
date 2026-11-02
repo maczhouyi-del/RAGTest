@@ -1,0 +1,464 @@
+{
+  "task": "CHAT-02",
+  "date": "2026-11-01",
+  "platform": "macOS arm64",
+  "functional_status": "PASS",
+  "python": {
+    "passed": 353,
+    "failed": 0,
+    "skipped": 0
+  },
+  "new_frozen_lifecycle": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  "rust": {
+    "passed": 10,
+    "failed": 0,
+    "ignored": 0
+  },
+  "browser_assertions": 46,
+  "snapshot_replay_cases": 3,
+  "ruff": "PASS",
+  "clippy": "PASS",
+  "typescript_vite": "PASS",
+  "schema": 20,
+  "new_migrations": 0,
+  "dependency_locks_unchanged": true,
+  "frozen_sources_verified": 99,
+  "app": {
+    "app": "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/macos-chat02-final-20261101T144616691467Z/RAGSystem.app",
+    "executable_sha256": "f9f4d56dde99e3d72fa49fef9ba9f315af6a4d691a401846e48e9820317bc46f",
+    "sidecar_sha256": "e01d6803c6c185019f5b7ff4a7dcd0e8072835aee8ead6612d2782d970fbac64",
+    "scope": "local development only; ad-hoc signed, no notarization/installer/publication",
+    "previous_app_preserved": "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/apps/desktop/src-tauri/target/debug/bundle/macos/RAGSystem.app"
+  },
+  "native": {
+    "status": "PASS",
+    "schema": 20,
+    "copy_question_clipboard_verified": true,
+    "copy_answer_clipboard_verified": true,
+    "direct_restore_verified": true,
+    "test_conversation_rearchived": true,
+    "preserved_tables": {
+      "chunks": true,
+      "embedding_records": true,
+      "document_versions": true
+    },
+    "original_turn_ids_preserved": true,
+    "original_conversation_ids_preserved": true,
+    "added_native_extractive_turns": 1,
+    "last_run_id": "805d3d1c-db8c-4878-8b1d-47be4e204a62",
+    "last_run_status": "completed",
+    "overview_policy": "bounded-document-sections-v2",
+    "integrity": [
+      [
+        "ok"
+      ]
+    ],
+    "foreign_keys": [],
+    "network_generation_calls": 0
+  },
+  "official_catalog": {
+    "checked_at": "2026-11-01T14:40:57.891449+00:00",
+    "endpoint": "https://api.deepseek.com/v1/models",
+    "method": "GET",
+    "status": "PASS",
+    "models": [
+      {
+        "id": "deepseek-flash",
+        "name": "DeepSeek-V4.1-Flash"
+      },
+      {
+        "id": "deepseek-v4-pro",
+        "name": "DeepSeek-V4-Pro"
+      }
+    ],
+    "count": 2,
+    "generation_requests": 0,
+    "pdf_or_question_sent": false,
+    "credential_handling": "no-echo stdin; process memory only; not recorded"
+  },
+  "limits": {
+    "additional_native_gui_restart": "NOT EXECUTED: mac locked after successful UI checks",
+    "windows": "NOT EXECUTED",
+    "scientific_gold": "NOT EXECUTED",
+    "new_real_generation": "NOT EXECUTED",
+    "dependency_osv": "prior CHAT-01 FAIL unchanged, not rerun",
+    "release": "NO-GO"
+  },
+  "commands": [
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T090534009882Z-feedback-before.json",
+      "sha256": "163236de1709ec96b88f497feb8889a0c8a89d81bc85cc966b7ba40bed63bc9e",
+      "started_at": "2026-11-01T09:05:34.009882+00:00",
+      "finished_at": "2026-11-01T09:05:36.410679+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 1,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_feedback_followup.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T090645099449Z-feedback-first.json",
+      "sha256": "bda140187ded31b3040958d27ea0bd270410255f3cc01dbbb9dd59faafea59e6",
+      "started_at": "2026-11-01T09:06:45.099449+00:00",
+      "finished_at": "2026-11-01T09:06:51.261821+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 1,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_feedback_followup.py",
+        "tests/integration/test_user_reported_questions.py",
+        "tests/integration/test_answer_pipeline.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T090825900902Z-frontend-first.json",
+      "sha256": "64198acdb8ac4e8b4cb1ed1af753449bfdcb2ef87de6084125ba868731595e32",
+      "started_at": "2026-11-01T09:08:25.900902+00:00",
+      "finished_at": "2026-11-01T09:08:26.398531+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T090826433718Z-targeted-fixed.json",
+      "sha256": "5a0a484303990ade82d40797ca9ca1e1314c542e778e3ce266c4393e0bc6c7fa",
+      "started_at": "2026-11-01T09:08:26.433718+00:00",
+      "finished_at": "2026-11-01T09:08:32.703089+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_feedback_followup.py",
+        "tests/integration/test_user_reported_questions.py",
+        "tests/integration/test_answer_pipeline.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T090915918720Z-static-first.json",
+      "sha256": "9d10e184cb4e60c37b213e8d54e523d1eacce7a41a40927c5bd98c0ea5db986a",
+      "started_at": "2026-11-01T09:09:15.918720+00:00",
+      "finished_at": "2026-11-01T09:09:15.977599+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 1,
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T091000028280Z-native-offline-replay.json",
+      "sha256": "840242b102c6e75f9122cdca4c499eebaaa7b8986de76b023248769131dc4904",
+      "started_at": "2026-11-01T09:10:00.028280+00:00",
+      "finished_at": "2026-11-01T09:10:01.148269+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/diagnose_chat_feedback.py",
+        "--root",
+        "/Users/kabudamac/Library/Application Support/RAGSystem",
+        "--output",
+        "docs/engineering/evidence/CHAT-02/native-replay.json"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T091043637156Z-browser-first.json",
+      "sha256": "7b4902566c005ab2f312be016841f2c169760360fe53e4df9e17cab97900683e",
+      "started_at": "2026-11-01T09:10:43.637156+00:00",
+      "finished_at": "2026-11-01T09:11:08.921296+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 1,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T091044760458Z-static-final.json",
+      "sha256": "aae210c910ed48603d9ea39c679eee45472b9e5de638082f9aab4a75f3f03194",
+      "started_at": "2026-11-01T09:10:44.760458+00:00",
+      "finished_at": "2026-11-01T09:10:44.816234+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/diagnose_chat_feedback.py"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T143729918214Z-python-full.json",
+      "sha256": "f0759ecbfc37e295f857888ea7bb95d17d6b1a4e89b30cc631035b1eaed5d94f",
+      "started_at": "2026-11-01T14:37:29.918214+00:00",
+      "finished_at": "2026-11-01T14:39:28.860788+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T143731020685Z-freeze.json",
+      "sha256": "c24bfdac6800da2bd57f45bb12e0884a25f62cb93125f7e727446be3d8d2f9df",
+      "started_at": "2026-11-01T14:37:31.020685+00:00",
+      "finished_at": "2026-11-01T14:39:50.834025+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--build-label",
+        "CHAT-02",
+        "--include-vector-lab",
+        "--include-generation-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab",
+        "--output-directory",
+        ".tools/build/CHAT-02-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/CHAT-02"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T143845176530Z-frontend-final.json",
+      "sha256": "d034d019825dfadcdb826158963c960335d18686814f9c0c64e2acc190ba2093",
+      "started_at": "2026-11-01T14:38:45.176530+00:00",
+      "finished_at": "2026-11-01T14:38:45.912232+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T143854823771Z-browser-final.json",
+      "sha256": "520782058e696957db5c744f9471448f7e7ca9e2bbc44c7ce7b22e53c856d2ef",
+      "started_at": "2026-11-01T14:38:54.823771+00:00",
+      "finished_at": "2026-11-01T14:39:20.069522+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 1,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144116478127Z-browser-verified.json",
+      "sha256": "e18d0a79ccbf9008aa834f33331a03ce27c8c444fd61256de9af6cc19a74c3a8",
+      "started_at": "2026-11-01T14:41:16.478127+00:00",
+      "finished_at": "2026-11-01T14:41:57.409745+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 1,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144117599489Z-tauri-build.json",
+      "sha256": "32da0e95220e8a65406e4af178374250eef0c926cf0500109e3094d75115ebf9",
+      "started_at": "2026-11-01T14:41:17.599489+00:00",
+      "finished_at": "2026-11-01T14:41:28.318289+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "tauri",
+        "--",
+        "build",
+        "--debug",
+        "--no-bundle",
+        "--",
+        "--locked",
+        "--offline"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144201471270Z-rust-frozen.json",
+      "sha256": "74773eaaadada9a53f92255b7bfd9b4e0d73e173d1d1ebd4f38ec3867a2babff",
+      "started_at": "2026-11-01T14:42:01.471270+00:00",
+      "finished_at": "2026-11-01T14:45:46.922114+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144202616363Z-frozen-lifecycle.json",
+      "sha256": "c01bc8e242fdec443da09deb02b907ce3612f6a6602cd233eeb78fb0af87bc30",
+      "started_at": "2026-11-01T14:42:02.616363+00:00",
+      "finished_at": "2026-11-01T14:42:23.465454+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_sidecar_lifecycle.py",
+        "-q"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144223880122Z-stage-app.json",
+      "sha256": "cf86a78aee22623587bc3efe9329d695ba4e90fd3f81799d2aef3d97ed143751",
+      "started_at": "2026-11-01T14:42:23.880122+00:00",
+      "finished_at": "2026-11-01T14:42:26.006889+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/stage_macos_development.py",
+        "--task-label",
+        "chat02",
+        "--sidecar",
+        ".tools/build/CHAT-02-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "--evidence-directory",
+        "docs/engineering/evidence/CHAT-02/native"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144225032396Z-clippy.json",
+      "sha256": "fc0535edc9fea8aa83f01553bee2cebbddac0c417a9e844561b217ac5b3be3ec",
+      "started_at": "2026-11-01T14:42:25.032396+00:00",
+      "finished_at": "2026-11-01T14:42:33.329522+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144540451959Z-frontend-acceptance.json",
+      "sha256": "6cc1cf4bf6bc6c876889dbc6df126d8b24b36ca8edfb10fbdf975a383bc4ac5e",
+      "started_at": "2026-11-01T14:45:40.451959+00:00",
+      "finished_at": "2026-11-01T14:45:41.274583+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144541315530Z-browser-acceptance.json",
+      "sha256": "a4435ef3a00eb28099d8b43868b7a92d9114c9f0e80d2ec16c5285e55075aa40",
+      "started_at": "2026-11-01T14:45:41.315530+00:00",
+      "finished_at": "2026-11-01T14:46:34.165693+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144554384534Z-tauri-acceptance.json",
+      "sha256": "9e5884973b3df3e6d3a19a646906494ab7a5033030f0b13be7ac6b93abc5c045",
+      "started_at": "2026-11-01T14:45:54.384534+00:00",
+      "finished_at": "2026-11-01T14:46:10.555929+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "tauri",
+        "--",
+        "build",
+        "--debug",
+        "--no-bundle",
+        "--",
+        "--locked",
+        "--offline"
+      ]
+    },
+    {
+      "path": "docs/engineering/evidence/CHAT-02/20261101T144616670062Z-stage-final.json",
+      "sha256": "de747392a8cc7c18c3cf9ae1ee9eebeac934119bbe66325be5c14ea68186f72b",
+      "started_at": "2026-11-01T14:46:16.670062+00:00",
+      "finished_at": "2026-11-01T14:46:18.402441+00:00",
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "exit_code": 0,
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/stage_macos_development.py",
+        "--task-label",
+        "chat02-final",
+        "--sidecar",
+        ".tools/build/CHAT-02-sidecar/ragsystem-engine-aarch64-apple-darwin",
+        "--evidence-directory",
+        "docs/engineering/evidence/CHAT-02/native-final"
+      ]
+    }
+  ]
+}

@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from ragsystem import __version__
+from ragsystem.build_identity import build_identity
 from ragsystem.domain.errors import EngineError
 from ragsystem.ingestion.import_pdf import PdfImporter
 from ragsystem.ipc.directories import Directories
@@ -221,6 +222,13 @@ class AnswerRequest(StrictModel):
     allow_external: bool = False
     provider_revision: int | None = Field(default=None, ge=1)
     per_paper_limit: int = Field(default=3, ge=1, le=8)
+    version_policy: str = Field(default="latest_imported", pattern="^(latest_imported|explicit_versions)$")
+
+
+class ConversationAction(StrictModel):
+    action: str = Field(pattern="^(rename|archive|restore|delete)$")
+    project_id: str | None = Field(default=None, min_length=1, max_length=100)
+    title: str | None = Field(default=None, min_length=1, max_length=160)
 
 
 class ResearchRequest(StrictModel):
@@ -391,6 +399,7 @@ def create_app(token: str, data_root: Path):
         return {
             "status": "ready" if database_ready and index["ready"] and eligible else "degraded",
             "sidecar_version": __version__,
+            "build": build_identity(),
             "api_revision": "0.5-local",
             "system_question_forms": system_question_forms(),
             "schema_version": str(schema) if schema is not None else "unavailable",
@@ -996,6 +1005,10 @@ def create_app(token: str, data_root: Path):
     ):
         return History(workbench).turns(conversation_id, project_id, cursor, limit)
 
+    @app.post("/v0/conversations/{conversation_id}/manage")
+    def manage_conversation(conversation_id: str, body: ConversationAction):
+        return History(workbench).manage_conversation(conversation_id, body.action, body.project_id, body.title)
+
     @app.get("/v0/answers/{run_id}")
     def answer_detail(run_id: str, project_id: str | None = None):
         return History(workbench).answer(run_id, project_id)
@@ -1038,6 +1051,7 @@ def create_app(token: str, data_root: Path):
                 body.allow_external,
                 body.provider_revision,
                 body.per_paper_limit,
+                body.version_policy,
             )
             background.add_task(run_workflow, "answer", row["id"])
             return row

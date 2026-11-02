@@ -5,9 +5,14 @@ from pathlib import Path
 from ragsystem.domain.errors import EngineError
 from ragsystem.models.provider import (
     EVIDENCE_ANSWER_RULES,
-    excerpt_audit,
+    MAX_CITATIONS,
+    MAX_CLAIM_CHARACTERS,
+    MAX_CLAIMS,
+    MAX_COMPLETION_TOKENS,
+    input_metadata,
     model_usage,
     numbered_excerpts,
+    validate_answer,
 )
 
 GENERATOR_REVISION = "91cad51170dc346986eccefdc2dd33a9da36ead9"
@@ -67,6 +72,7 @@ class LocalGenerator:
             + (EVIDENCE_ANSWER_RULES if task == "answer" else "")
             + instructions[task]
         )
+        input_chunks = data.get("chunks", [])
         citations = {}
         if task in {"answer", "research"}:
             citations, excerpts = numbered_excerpts(data.get("chunks", []))
@@ -90,14 +96,14 @@ class LocalGenerator:
                 {
                     "claims": {
                         "type": "array",
-                        "maxItems": 2 if citations else 0,
+                        "maxItems": MAX_CLAIMS if citations else 0,
                         "items": obj(
                             {
-                                "text": text,
+                                "text": {"type": "string", "minLength": 1, "maxLength": MAX_CLAIM_CHARACTERS},
                                 "evidence": {
                                     "type": "array",
                                     "minItems": 1,
-                                    "maxItems": 5,
+                                    "maxItems": MAX_CITATIONS,
                                     "items": obj({"citation_id": citation}),
                                 },
                             }
@@ -110,7 +116,7 @@ class LocalGenerator:
                 {
                     "observations": {
                         "type": "array",
-                        "maxItems": 2 if citations else 0,
+                        "maxItems": MAX_CLAIMS if citations else 0,
                         "items": obj(
                             {
                                 "field": {"type": "string", "enum": data["fields"]},
@@ -165,12 +171,12 @@ class LocalGenerator:
             content = json.dumps(data, ensure_ascii=False)
         citation["enum"] = list(citations) or ["NO_EVIDENCE"]
         context_metadata = {
+            **input_metadata(input_chunks, citations, data.get("excerpts", [])),
             "included_chunk_ids": [item["chunk_id"] for item in citations.values()],
             "dropped_chunk_ids": dropped,
             "context_limit": 4096,
             "completion_reserve": 1000,
             "excerpt_policy": "numbered-source-spans-v1",
-            "excerpt_lengths": excerpt_audit(citations, data.get("excerpts", [])),
         }
         from llama_cpp import LogitsProcessorList
 
@@ -183,7 +189,7 @@ class LocalGenerator:
             messages=[{"role": "system", "content": system}, {"role": "user", "content": content}],
             response_format={"type": "json_object", "schema": schema},
             temperature=0,
-            max_tokens=900,
+            max_tokens=MAX_COMPLETION_TOKENS,
             logits_processor=LogitsProcessorList([check_cancel]),
         )
         try:
@@ -192,12 +198,13 @@ class LocalGenerator:
             if not isinstance(value, dict):
                 raise ValueError("not object")
             if task == "answer":
+                validate_answer(value, numbered=True)
                 claims = value.get("claims")
-                if not isinstance(claims, list) or len(claims) > 6:
+                if not isinstance(claims, list) or len(claims) > MAX_CLAIMS:
                     raise ValueError("invalid claims")
                 for claim in claims:
                     evidence = claim.get("evidence")
-                    if not isinstance(evidence, list) or not 1 <= len(evidence) <= 5:
+                    if not isinstance(evidence, list) or not 1 <= len(evidence) <= MAX_CITATIONS:
                         raise ValueError("invalid citations")
                     claim["evidence"] = [dict(citations[item["citation_id"]]) for item in evidence]
             elif task == "research":

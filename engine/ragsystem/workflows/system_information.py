@@ -4,6 +4,12 @@ import re
 import unicodedata
 
 FORMS = {
+    "library": (
+        "当前文献库中拥有多少篇文献", "当前文献库有多少篇文献",
+        "文献库里有多少篇论文", "我的文献库有几篇论文", "一共导入了多少篇文献",
+        "当前文献库有几篇文献", "文献库中有多少篇文献", "当前有多少篇文献",
+        "How many papers are in my library", "How many documents are in the library",
+    ),
     "generation": (
         "你是什么模型",
         "当前是什么模型",
@@ -121,8 +127,17 @@ def question_parts(question):
     return topics, literature
 
 
-def runtime_information(work, topic, selection, strategy="keyword"):
-    if topic in {"embedding", "index", "retrieval"}:
+def runtime_information(work, topic, selection, strategy="keyword", project_id=None):
+    if topic == "library":
+        from ragsystem.library.repository import Library
+
+        documents = Library(work.db).list_documents(project_id)
+        count = len({row["document_id"] for row in documents})
+        parsed = len({row["document_id"] for row in documents if row["parse_status"] in {"ready", "partial"}})
+        configuration = {"document_count": count, "visible_version_count": len(documents),
+                         "parsed_document_count": parsed, "project_id": project_id}
+        text = f"当前{'项目' if project_id else '本地文献库'}有 {count} 篇可见文献（{len(documents)} 个文件版本），其中 {parsed} 篇已有可检索解析结果。隐藏文献不计入；按逻辑论文去重。"
+    elif topic in {"embedding", "index", "retrieval"}:
         value = work.search.status()
         configuration = {
             key: value[key]

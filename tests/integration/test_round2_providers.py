@@ -74,9 +74,11 @@ def test_draft_preserves_secret_for_save_but_never_persists_and_states_are_real(
 def test_offline_presets_empty_key_noauth_and_catalog_fallback(tmp_path):
     _root, db, _version = store(tmp_path)
     registry = ProviderRegistry(db)
+    saved = None
     for vendor in ["deepseek", "openai"]:
         saved = registry.save(
-            values(f"https://api.{vendor}.com/v1", vendor=vendor, name=vendor), ""
+            values(f"https://api.{vendor}.com/v1", vendor=vendor, name=vendor,
+                   id=saved['id'] if saved else None, expected_revision=saved['revision'] if saved else 0), ""
         )
         assert saved["saved"] and not saved["configured"]
         with pytest.raises(EngineError, match="PROVIDER_CREDENTIALS_REQUIRED"):
@@ -88,7 +90,8 @@ def test_offline_presets_empty_key_noauth_and_catalog_fallback(tmp_path):
         preview = registry.preview({"kind": "api", "base_url": url, "auth_mode": "none"}, "")
         assert preview["models"] == [] and not preview["connection_verified"]
         saved = registry.save(
-            values(url, auth_mode="none", credential_token=preview["credential_token"]),
+            values(url, auth_mode="none", credential_token=preview["credential_token"],
+                   id=saved['id'], expected_revision=saved['revision']),
             "",
         )
         assert (

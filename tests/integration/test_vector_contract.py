@@ -53,3 +53,33 @@ def test_l2_matches_independent_distance_and_invalid_rebuild_preserves_index(tmp
     assert adapter.ids() == {"distance_five"}
     with pytest.raises(EngineError, match="SPACE_MISMATCH"):
         backend(adapter.path, "l2_fixture", 4, "l2")
+
+
+def test_missing_sqlite_extension_api_fails_closed_without_attribute_error():
+    from ragsystem.vector_adapters.sqlite_vec import load_extension
+
+    with pytest.raises(EngineError, match="VECTOR_BACKEND_UNAVAILABLE"):
+        load_extension(object())
+
+
+def test_sqlite_extension_loading_is_disabled_after_use(tmp_path):
+    adapter = SQLiteVec(tmp_path / "index.db", "test", 3)
+    with adapter._connect() as conn:
+        with pytest.raises(Exception, match="not authorized"):
+            conn.execute("SELECT load_extension('untrusted')")
+    adapter.upsert([("a", [1, 0, 0])])
+    assert adapter.search_exact([1, 0, 0], {"a"}, 1)[0]["distance"] == pytest.approx(0)
+
+
+def test_corrupt_index_is_not_silently_overwritten(tmp_path):
+    import sqlite3
+
+    path = tmp_path / "corrupt.db"
+    path.write_bytes(b"corrupted original index" * 100)
+    before = path.read_bytes()
+    with pytest.raises(sqlite3.DatabaseError):
+        SQLiteVec(path, "test", 3)
+    assert path.read_bytes() == before
+    recovered = SQLiteVec(tmp_path / "rebuilt.db", "test", 3)
+    assert recovered.rebuild([("authoritative", [1, 0, 0])])["ok"]
+    assert SQLiteVec(recovered.path, "test", 3).check_integrity(["authoritative"])["ok"]

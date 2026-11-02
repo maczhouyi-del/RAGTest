@@ -20,26 +20,29 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "engine"))
 
-from ragsystem.domain.errors import EngineError
-from ragsystem.ingestion.import_pdf import PdfImporter
-from ragsystem.models.network_provider import NetworkProvider, endpoint
-from ragsystem.models.provider_registry import ProviderRegistry
-from ragsystem.parsing.pipeline import Parser
-from ragsystem.retrieval.hybrid import HybridSearch
-from ragsystem.storage.database import Database
-from ragsystem.workflows.workbench import Workbench
 
 
 def main():
+    from ragsystem.domain.errors import EngineError
+    from ragsystem.ingestion.import_pdf import PdfImporter
+    from ragsystem.models.network_provider import NetworkProvider, endpoint
+    from ragsystem.models.provider_registry import ProviderRegistry
+    from ragsystem.parsing.pipeline import Parser
+    from ragsystem.retrieval.hybrid import HybridSearch
+    from ragsystem.storage.database import Database
+    from ragsystem.workflows.workbench import Workbench
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True)
     parser.add_argument(
         "--model", help="Must be present in the authenticated model catalog"
     )
+    parser.add_argument("--scenario", choices=["pretraining", "reported"], default="pretraining")
+    parser.add_argument("--evidence-directory", default="docs/engineering/evidence/MVP-03-2026-10-26")
     args = parser.parse_args()
     base = endpoint(args.base_url)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
-    evidence = ROOT / "docs/engineering/evidence/MVP-03-2026-10-26"
+    evidence = ROOT / args.evidence_directory
     evidence.mkdir(parents=True, exist_ok=True)
     root = ROOT / ".tools/test-data" / ("real-api-" + str(uuid4()))
     record = {
@@ -195,10 +198,13 @@ def main():
         }
         conversation = work.create_conversation()["id"]
         answers = []
-        for question in [
+        questions = [
             "Which two pre-training tasks does BERT use? Answer only using the supplied evidence.",
             "What is the difference between these two tasks? Use the current evidence only.",
-        ]:
+        ] if args.scenario == "pretraining" else [
+            "当前文献库中拥有多少篇文献", "该文献中主要的贡献是什么", "BERT这篇文献主要解决什么问题",
+        ]
+        for question in questions:
             queued = work.create_answer(
                 question,
                 [version],
@@ -229,18 +235,24 @@ def main():
             if answer["status"] != "completed":
                 break
         record["answers"] = answers
+        record["scenario"] = args.scenario
+        if args.scenario == "reported":
+            record["checks"]["library_count_without_inference"] = (
+                "PASS" if answers and answers[0]["result"].get("configuration", {}).get("document_count") == 1
+                and not answers[0]["evidence"] and not answers[0]["model_history"] else "FAIL"
+            )
         record["checks"]["cited_generation"] = (
             "PASS"
             if answers
             and all(
-                a["status"] == "completed" and a["claims"] and a["evidence"]
+                a["status"] == "completed" and ((a["claims"] and a["evidence"]) or a["result"].get("kind") == "system_info")
                 for a in answers
             )
             else "FAIL"
         )
         record["checks"]["two_turn_conversation"] = (
             "PASS"
-            if len(answers) == 2
+            if len(answers) == len(questions)
             and all(a["conversation_id"] == conversation for a in answers)
             else "NOT_EXECUTED"
         )

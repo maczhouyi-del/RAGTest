@@ -1,3 +1,4 @@
+
 """Answer-boundary engineering fixtures, never human scientific validation."""
 
 import pytest
@@ -6,6 +7,7 @@ from ragsystem.ingestion.import_pdf import PdfImporter
 from ragsystem.library.identity import Identity
 from ragsystem.library.lifecycle import Lifecycle
 from ragsystem.library.repository import Library
+from ragsystem.models.provider import input_metadata, numbered_excerpts
 from ragsystem.parsing.pipeline import Parser
 from ragsystem.retrieval.hybrid import HybridSearch
 from ragsystem.workflows.workbench import Workbench
@@ -50,7 +52,7 @@ class GeneratorFixture:
         claim = {"text": "Engineering fixture claim", "evidence": [evidence]}
         if self.state == "invalid_conditions":
             claim["conditions"] = []
-        return {"claims": [claim]}
+        return {"claims": [claim], "context_metadata": input_metadata(data["chunks"], *numbered_excerpts(data["chunks"]))}
 
 
 def test_default_quota_is_three_even_for_one_paper(work):

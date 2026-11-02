@@ -10,6 +10,7 @@ from ragsystem.ingestion.import_pdf import PdfImporter
 from ragsystem.ipc.server import create_app
 from ragsystem.jobs.repository import Jobs
 from ragsystem.library.repository import Library
+from ragsystem.models.provider import input_metadata, numbered_excerpts
 from ragsystem.parsing.pipeline import Parser
 from ragsystem.retrieval.hybrid import HybridSearch
 from ragsystem.storage.database import Database
@@ -43,6 +44,7 @@ class StructuredFixtureGenerator:
             return {"status": "uncertain", "reason": "fixture cannot certify scientific support"}
         chunk = data["chunks"][0]
         return {
+            "context_metadata": input_metadata(data["chunks"], *numbered_excerpts(data["chunks"])),
             "claims": [
                 {
                     "text": "Fixture draft",
@@ -104,6 +106,7 @@ def test_generated_draft_separates_support_and_refuses_forged_quotes_atomically(
     class Forged(StructuredFixtureGenerator):
         def generate(self, task, data):
             return {
+                "context_metadata": input_metadata(data["chunks"], *numbered_excerpts(data["chunks"])),
                 "claims": [
                     {
                         "text": "injected",

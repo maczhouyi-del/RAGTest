@@ -7,6 +7,33 @@ from ragsystem.domain.errors import EngineError
 from ragsystem.vector_adapters.base import ExactAdapter
 
 
+def load_extension(conn):
+    """Load the pinned packaged extension only; never use a user-supplied SQL path."""
+    try:
+        import sqlite_vec
+        if not callable(getattr(conn, "enable_load_extension", None)):
+            raise EngineError("VECTOR_BACKEND_UNAVAILABLE", status=503)
+        conn.enable_load_extension(True)
+        try:
+            sqlite_vec.load(conn)
+        finally:
+            conn.enable_load_extension(False)
+    except (ImportError, AttributeError, sqlite3.Error, OSError) as exc:
+        raise EngineError("VECTOR_BACKEND_UNAVAILABLE", status=503) from exc
+    conn.execute("SELECT vec_version()").fetchone()
+
+
+def availability():
+    conn = sqlite3.connect(":memory:")
+    try:
+        load_extension(conn)
+        return {"available": True, "reason": None}
+    except EngineError as exc:
+        return {"available": False, "reason": exc.code}
+    finally:
+        conn.close()
+
+
 class SQLiteVec(ExactAdapter):
     def __init__(self, path: Path, space_id: str, dimension: int, metric="cosine"):
         super().__init__(space_id, dimension, metric)
@@ -28,15 +55,9 @@ class SQLiteVec(ExactAdapter):
 
         @contextmanager
         def open_connection():
-            import sqlite_vec
-
             conn = sqlite3.connect(self.path)
             try:
-                conn.enable_load_extension(True)
-                try:
-                    sqlite_vec.load(conn)
-                finally:
-                    conn.enable_load_extension(False)
+                load_extension(conn)
                 yield conn
                 conn.commit()
             except BaseException:

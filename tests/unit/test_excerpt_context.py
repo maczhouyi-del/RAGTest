@@ -82,3 +82,23 @@ def test_network_and_local_inputs_share_exact_numbering_and_source_metadata(monk
     assert remote["claims"] == actual["claims"]
     assert remote["context_metadata"]["usage"]["total_tokens"] == 30
     assert remote["context_metadata"]["excerpt_lengths"][0]["is_partial"] is True
+
+
+@pytest.mark.parametrize("damage", ["three", "unknown", "long", "citations", "empty"])
+def test_shared_answer_contract_rejects_invalid_outputs(damage):
+    from ragsystem.domain.errors import EngineError
+    from ragsystem.models.provider import validate_answer
+    claim = {"text": "fixture", "evidence": [{"citation_id": "E1"}]}
+    value = {"claims": [claim]}
+    if damage == "three":
+        value["claims"] *= 3
+    elif damage == "unknown":
+        claim["executable"] = "untrusted"
+    elif damage == "long":
+        claim["text"] = "x" * 2001
+    elif damage == "citations":
+        claim["evidence"] *= 6
+    else:
+        claim["text"] = " "
+    with pytest.raises(EngineError, match="MODEL_OUTPUT_INVALID"):
+        validate_answer(value, numbered=True)

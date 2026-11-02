@@ -13,8 +13,8 @@ export default function SourceSearch({documents, projectId}: {documents: Documen
   const [file, setFile] = useState<SourceFile | null>(null);
   const alive = useRef(true);
   useEffect(() => {alive.current = true; return () => {alive.current = false;};}, []);
-  const versions = documents.filter(d => ["ready", "partial"].includes(d.parse_status) && (!tag||d.tags.includes(tag)) && (!yearFrom||(d.year!==null&&d.year>=Number(yearFrom))) && (!yearTo||(d.year!==null&&d.year<=Number(yearTo)))).map(d => d.doc_version_id);
-  const scopeKey = versions.slice().sort().join("|") + strategy;
+  const versions = documents.filter(d => ["ready", "partial"].includes(d.parse_status)).map(d => d.doc_version_id);
+  const scopeKey = versions.slice().sort().join("|") + strategy + JSON.stringify([tag,yearFrom,yearTo]);
   const activeScope = useRef(scopeKey);
   activeScope.current = scopeKey;
   useEffect(() => {setHits([]); setSearched(false); setFile(null); setError("");}, [scopeKey]);

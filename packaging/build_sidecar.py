@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 import platform
 import shutil
 import subprocess
@@ -16,6 +17,7 @@ def main():
     parser.add_argument("--include-vector-lab", action="store_true")
     parser.add_argument("--include-generation-lab", action="store_true")
     parser.add_argument("--include-ocr-lab", action="store_true")
+    parser.add_argument("--build-label", default="local-development", help="Displayed identity for the actual frozen build")
     parser.add_argument("--include-docling-lab", action="store_true")
     parser.add_argument("--output-directory", default="apps/desktop/src-tauri/binaries", help="Use a fresh project-local directory for isolated source-build testing")
     parser.add_argument(
@@ -23,6 +25,11 @@ def main():
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
+    if args.include_vector_lab:
+        from ragsystem.vector_adapters.sqlite_vec import availability
+
+        if not availability()["available"]:
+            raise RuntimeError("VECTOR_BUILD_RUNTIME_UNAVAILABLE")
     source_files = sorted(
         p for p in (root / "engine/ragsystem").rglob("*") if p.suffix in {".py", ".sql"}
     ) + [
@@ -54,6 +61,11 @@ def main():
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     work = root / ".tools" / "build" / ("sidecar-" + stamp)
     work.mkdir(parents=True)
+    build_identity = work / "ragsystem-build.json"
+    build_identity.write_text(json.dumps({
+        "built_at": stamp, "label": args.build_label,
+        "source_sha256": hashlib.sha256(json.dumps(frozen_sources, sort_keys=True).encode()).hexdigest(),
+    }))
     command = [
         sys.executable,
         "-m",
@@ -64,6 +76,8 @@ def main():
         "ragsystem-engine",
         "--paths",
         str(root / "engine"),
+        "--add-data",
+        str(build_identity) + os.pathsep + ".",
         "--collect-all",
         "ragsystem",
         "--collect-submodules",

@@ -102,8 +102,8 @@ def test_metadata_and_visibility_are_rechecked_after_real_query_encoding(tmp_pat
         "sqlite-vec",
     )
     assert jobs.get(row["id"])["status"] == "completed"
-    with pytest.raises(EngineError, match="SCOPE_FILTER_CHANGED"):
-        search.search("BERT", [version], 5, None, "keyword", filters={"year_from": 2020})
+    empty = search.search("BERT", [version], 5, None, "keyword", filters={"year_from": 2020})
+    assert empty["results"] == [] and empty["scope_status"] == "NO_FILTER_MATCH"
     assert search.search(
         "BERT",
         [version],

@@ -3750,3 +3750,64 @@ body {
 
 .settings-category-content .model-mode-tabs small { white-space:normal; line-height:1.6; }
 .settings-category-content .model-mode-tabs button>span { min-width:0; }
+
+/* CHAT-01: independent turn evidence and persistent conversation controls. */
+.conversation-row { position:relative; display:flex; align-items:center; min-width:0; }
+.studio .conversation-row .recent-conversation { flex:1; min-width:0; padding-right:30px; }
+.studio .conversation-menu-toggle { position:absolute; right:2px; top:10px; border:0; padding:4px 8px; background:transparent; font-size:20px; }
+.conversation-menu { position:absolute; right:4px; top:42px; z-index:15; display:flex; flex-direction:column; background:white; border:1px solid var(--line); border-radius:9px; box-shadow:0 6px 24px #24394b22; padding:5px; min-width:110px; }
+.studio .conversation-menu button { text-align:left; border:0; background:white; padding:9px 14px; }
+.conversation-management { display:flex; flex-wrap:wrap; gap:5px; margin:8px 0; }
+.studio .conversation-management button { font-size:11px; padding:5px; }
+.conversation-modal-backdrop { position:fixed; inset:0; z-index:100; background:#14253655; display:grid; place-items:center; padding:20px; }
+.conversation-modal-backdrop.confirmation { z-index:110; }
+.conversation-dialog { background:white; color:var(--text); padding:24px; border-radius:16px; width:min(560px,90vw); max-height:80dvh; display:flex; flex-direction:column; gap:15px; box-shadow:0 12px 60px #14253633; }
+.conversation-dialog header,.conversation-dialog footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.conversation-dialog-list { overflow:auto; min-height:0; padding-bottom:100px; }
+.conversation-dialog p { white-space:normal; line-height:1.7; }
+.conversation-dialog input { width:100%; }
+.studio .danger-button { color:#a12323; border-color:#d9aaaa; }
+.studio .chat-page { overflow:hidden; grid-template-columns:minmax(0,1fr) minmax(285px,32%); }
+.studio .chat-center { height:100%; min-height:0; }
+.studio .chat-scroll { overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; overflow-anchor:none; }
+.studio .chat-evidence { display:block; overflow:auto; overscroll-behavior:contain; min-height:0; height:100%; padding:20px 16px; }
+.studio .chat-evidence>section { border-top:1px solid var(--line); padding-top:14px; margin-top:18px; }
+.studio .chat-evidence h3 { font-size:14px; margin:10px 0; }
+.studio .chat-evidence h4 { font-size:12px; margin:10px 0 5px; }
+.turn-scope ul { padding-left:18px; }
+.turn-scope li { margin-bottom:10px; }
+.turn-scope small,.turn-source>small { display:block; margin-top:5px; overflow-wrap:anywhere; color:var(--muted); }
+.turn-source { padding:14px 0; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+.studio .source-link { color:#007f84; text-align:left; background:transparent; border:0; padding:0; font-weight:600; line-height:1.6; }
+.turn-source blockquote { margin:12px 0; padding:10px; background:#eef6fa; border-left:3px solid #84cad0; white-space:pre-wrap; font-size:12px; max-height:220px; overflow:auto; }
+.turn-source p,.turn-scope p,.chat-evidence>p { font-size:12px; line-height:1.65; }
+.pipeline-diagnostics pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:240px; overflow:auto; }
+.pipeline-diagnostics table { width:100%; font-size:11px; }
+.studio .answer-card { border:0; box-shadow:none; background:transparent; padding:12px 16px; }
+.studio .answer-card>p { white-space:pre-wrap; line-height:1.8; }
+.studio .turn-question { border:0; text-align:left; width:100%; background:#e9f3ff; padding:14px 18px; border-radius:14px; color:inherit; }
+.studio .turn-question h3 { font-size:14px; margin:0; white-space:pre-wrap; }
+.conversation-turn.selected-turn .turn-question { box-shadow:inset 3px 0 #0b9fa5; }
+@media(max-width:760px) {
+ .studio .chat-page { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) minmax(150px,32%); height:100%; overflow:hidden; }
+ .studio .chat-center { min-height:0; height:100%; padding:12px; }
+ .studio .chat-evidence { min-height:0; height:100%; padding:12px; border-top:1px solid var(--line); }
+ .studio .conversation-management { flex-direction:column; }
+ .studio .conversation-management button { font-size:10px; white-space:normal; }
+ .studio .conversation-dialog .recent-conversation span { display:block; }
+}
+.chat-scroll>.conversation-turn:last-child { min-height:100%; }
+.provider-form>fieldset { border:0; padding:0; margin:0; min-width:0; display:contents; }
+
+/* CHAT-02 explicit recovery and message copy controls */
+.question-content { flex:1; min-width:0; }
+.turn-actions { display:flex; align-items:center; gap:8px; margin-top:6px; }
+.user-message .turn-actions { justify-content:flex-end; }
+.copy-control { display:inline-flex; align-items:center; gap:5px; min-height:26px; }
+.studio .message-copy { display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; color:var(--muted); padding:5px; border-radius:6px; }
+.studio .message-copy:hover,.studio .message-copy:focus-visible { background:#e6f3f4; color:#007f84; }
+.copy-control [role=status] { font-size:11px; color:var(--muted); }
+.studio .restore-conversation { flex-shrink:0; margin-right:36px; color:#007f84; border:1px solid #b9dadd; border-radius:7px; padding:6px 10px; }
+.conversation-manager-tabs { display:flex; gap:8px; margin:12px 0; }
+.conversation-manager-tabs [aria-pressed=true] { background:#e0f2f3; color:#007f84; }
+.conversation-dialog>p { font-size:13px; line-height:1.6; }

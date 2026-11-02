@@ -74,3 +74,11 @@ Chunk级指标Recall@5/10、MRR、分级nDCG@10；相同ID重复不重复得分�
 检索/回答时延缺失、人工无支持审查缺失均登记缺口。索引构建耗时/磁盘/内存用既有`capacity_benchmark.py`，真实与synthetic分开；真实样本数不足时exit2/BLOCKED。无法用少数查询、合成1000页或模型自审宣布科研/1000篇容量合格。
 
 RAG-02（2026-10-28）：quoted_phrase_then_OR为显式引号词元短语策略；应单独标注有/无引号、中文连续词、重复词、标识符与参数题，不能把合成干扰词测试当成普遍准确率提升。可选review比较改用共享的baseline8+扩展至12、每批6条流程，评估仍最终Top10/无论文配额；应用Top8/每篇3及完整API生成另测。跨批Qwen分数未校准，默认关闭。新增API输入来源/部分截取/调用前范围复查和阶段trace是工程证据；真实同义改写、跨语言、多轮指代、冲突、拒答质量与真实端到端时延继续待人工集，不增加虚构金标。
+
+## REMEDIATE-01 本地语料与覆盖
+
+`python tools/local_corpus_manifest.py --directory <明确指定的本地PDF目录> --license-description <使用许可说明> --output <新的manifest.json>`：只生成本地文件哈希/绝对路径清单，不联网、不上传、不自行宣布许可已审批。符号链接越界拒绝；输出不覆盖现有文件。将人工核对后的清单交给capacity_benchmark.py或离线评分器。不得把路径清单提交Git。
+
+scientific-gold.schema v0.2增加ordinary_qa/conflicting_evidence/experimental_conditions/low_relevance_distractors，保留原类别；可记录acceptable_conclusions/refusal_expectation。SHA+页+quote绑定实际文件版本，JSONL范围内另保存doc_version_id以便复现。新类别属于本次用户要求的覆盖，不降低现有阈值。当前仍0个人工裁定样本，thresholds.proposed.json仍pending。
+
+重排比较使用v3批内名次交织，不跨批比较原分数。需同时评估候选遗漏、最终配额后Recall、MRR/nDCG、候选顺序扰动稳定性；合成分数平移不变测试不能证明真实增益。真实千篇不足时仍exit2，禁止重复两篇PDF冒充1000篇。

@@ -2,6 +2,7 @@
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -62,9 +63,15 @@ def run_worker(request, *, timeout=40, check=None, log_directory=None):
     started = time.monotonic()
     with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
         process = subprocess.Popen(
-            command, stdin=subprocess.PIPE, stdout=output, stderr=errors, env=environment
+            command, stdin=subprocess.PIPE, stdout=output, stderr=errors, env=environment,
+            start_new_session=sys.platform != "win32"
         )
+        job = None
         try:
+            if sys.platform == "win32":
+                from ragsystem.parsing.windows_job import ParserJob
+
+                job = ParserJob(process, docling=bool(request.get("docling_directory")))
             process.stdin.write(payload + b"\n")
             process.stdin.close()
             while process.poll() is None:
@@ -114,6 +121,13 @@ def run_worker(request, *, timeout=40, check=None, log_directory=None):
                 raise EngineError(code if code in allowed else "PDF_EXTRACTION_FAILED")
             return result
         finally:
+            if job is not None:
+                job.close()
+            if sys.platform != "win32":
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
             if process.poll() is None:
                 process.kill()
             process.wait(timeout=5)

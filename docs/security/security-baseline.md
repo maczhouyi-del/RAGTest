@@ -52,3 +52,12 @@
 本轮不引入未经实测的伪沙箱。解除P1至少需：Windows11普通账户实机Job Object/受限权限与重解析点实测；支持Mac版本的维护方案、原生越权/联网尝试与内存耗尽测试；代表性恶意/压缩炸弹语料在隔离测试机验证。当前测试使用本地合成异常和许可公开PDF，不运行会破坏主机的真实exploit。父路径前后身份校验会缩小TOCTOU窗口，但不是OS隔离或全平台原子路径解析证明。
 
 冻结运行时环境白名单例外仅限PyInstaller的四个指定进程交接变量（_PYI_ARCHIVE_FILE、_PYI_PARENT_PROCESS_LEVEL、_PYI_APPLICATION_HOME_DIR、_PYI_LINUX_PROCESS_NAME），仅sys.frozen时原值传递；不按_PYI_前缀批量继承，不继承Key/代理/任意Python路径。全部剥离会令onefile再次创建父进程，触发已有watch_parent身份检查，实际冻结回归已复现；不以关闭该检查解决兼容。交接语义核对[PyInstaller 6.22.3官方说明](https://pyinstaller.org/en/stable/advanced-topics.html#private-environment-variables)。这不提供额外的OS权限隔离保证。
+
+## REMEDIATE-01 增量（2026-10-29）
+
+- Windows parser supervisor 新增无名 Job Object，在发送任何 PDF 请求前附加进程，配置每进程240秒CPU、作业内存1GiB（Docling 4GiB）、KILL_ON_JOB_CLOSE，失败拒绝发送输入。不允许breakaway。实现于parsing/windows_job.py；目标Windows实测BLOCKED，不能声称已验证。启动引导本身在附加前运行，尚未实现受限token/AppContainer。
+- POSIX supervisor 为解析器建立独立会话，正常结束/异常/取消时回收进程组，防止正常监督路径的后代残留；worker增加RLIMIT_CORE=0、RLIMIT_FSIZE=16MiB，原CPU限制保留。当前macOS实际超限/异常PDF/回收测试有本轮日志。文件大小限制不是工作区总磁盘配额，也不是文件访问权限；macOS内存硬限制仍缺失。
+- 文件授权/私有管道/环境白名单/父进程监视仍保留。解析器和生成worker均不向模型开放工具，但仍与用户同权限。未建立OS文件/网络隔离；Python socket封禁不计完整沙箱。Linux非当前声明的打包目标，已有RLIMIT_AS不等于支持Linux产品。
+- 完整安全隔离P1仍BLOCKED：Windows普通用户实机验证Job Object CPU/内存/进程树/父崩溃，受限权限及重解析点；Mac支持版本上的原生越权文件/网络与内存限制方案；隔离测试机恶意语料。不能在本机常规开发环境运行真实exploit来代替此门禁。
+
+参考：Microsoft [Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)明确资源管理不替代进程安全权限；本轮没有把Job Object称为完整权限沙箱。

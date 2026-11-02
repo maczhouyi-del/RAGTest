@@ -153,3 +153,32 @@ def test_batch_import_idempotency_project_and_duplicate_sha(tmp_path):
             ).status_code
             == 400
         )
+
+
+def test_qa_latest_imported_is_scoped_and_explicit_versions_preserve_identity(tmp_path):
+    from ragsystem.retrieval.hybrid import HybridSearch
+    from ragsystem.workflows.workbench import Workbench
+    root = tmp_path / "store"
+    db = Database(root / "data/research.db")
+    importer = PdfImporter(db, root)
+    one = importer.import_path_for_test(ROOT / "tests/fixtures/public/N19-1423.pdf", "one")["doc_version_id"]
+    two = importer.import_path_for_test(ROOT / "tests/fixtures/public/2020.emnlp-main.550.pdf", "two")["doc_version_id"]
+    library = Library(db)
+    documents = {row['doc_version_id']: row['document_id'] for row in library.list_documents()}
+    # Engineering identity fixture: these two real public PDFs are NOT revisions of the same paper.
+    Identity(db).merge(documents[one], documents[two], [one, two])
+    with db.transaction() as conn:
+        conn.execute("UPDATE document_versions SET created_at='2026-01-01' WHERE id=?", (one,))
+        conn.execute("UPDATE document_versions SET created_at='2026-02-01' WHERE id=?", (two,))
+    assert library.select_qa_versions([one, two]) == [two]
+    assert library.select_qa_versions([one]) == [one]  # never adds a version outside authorization
+    assert library.select_qa_versions([one, two], "explicit_versions") == [one, two]
+    bench = Workbench(db, root, HybridSearch(db, root))
+    run = bench.create_answer("BERT", [one, two], None, "extractive", "keyword")
+    assert [row['doc_version_id'] for row in bench.scope(bench.answers(run_id=run['id'])[0]['scope_id'])['versions']] == [two]
+    explicit = bench.create_answer("BERT", [one, two], None, "extractive", "keyword", version_policy="explicit_versions")
+    assert len(bench.answers(run_id=explicit['id'])[0]['scope']) == 2
+    with db.transaction() as conn:
+        conn.execute("UPDATE document_versions SET visibility='hidden' WHERE id=?", (two,))
+    with pytest.raises(EngineError, match="SCOPE_NOT_AVAILABLE"):
+        bench.create_answer("BERT", [one, two], None, "extractive", "keyword")

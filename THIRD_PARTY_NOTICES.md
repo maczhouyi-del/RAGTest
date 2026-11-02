@@ -20,3 +20,7 @@ OCR候选tesseract-ocr/tessdata_fast 4.1.0，固定commit `65727574dfcd264acbb0c
 OCR工程样本从上述已许可BERT原PDF第1页在本机以200dpi灰度栅格化，形成只含图像的派生PDF。原始论文PDF未改写；派生样本及试验输出保留原作者/题目、CC BY4.0、原件SHA和页码、转换参数及派生SHA，详见continuous证据OCR记录与工具。栅格化和OCR文字属于测试转换，不能把OCR转写当原始PDF逐字符无误。
 
 Docling候选补充（用户已明确批准）：docling-slim2.142.1/docling-core2.104.0/docling-ibm-models4.0.4，以及锁内PyTorch/torchvision/Transformers/OpenCV-headless等可选运行时，实际96项Python及原文许可见docs/legal/dependency-inventory-20261024T150911846052Z.json。固定Heron与TableFormer fast的资源、SHA和下载来源见docs/legal/docling-model-register.json，模型卡/Apache-2.0全文/CDLA-Permissive-2.0官方HTML见docs/legal/models/docling-candidates/。两个仓库元数据通过hf-mirror取得，直接官方HF TLS失败，不能声称独立验证了镜像元数据。docling-models仓库级多许可证未逐文件映射，TableFormer最终再分发范围仍待审；所有模型权重均不随.app打包，未对外分发或最终选型。
+
+## REMEDIATE-01 发行物映射状态
+
+新增tools/binary_inventory.py读取实际PyInstaller侧车归档，记录外层可执行文件及各归档成员SHA256/大小/类型。只认可hash绑定的逐文件许可来源/再分发义务/审查人映射；无映射为BLOCKED。本轮生成的是测试侧车清单，**不是已完成的正式发行SBOM/许可证审查**；PYZ内部模块、bootloader、Python运行时、PDFium以及目标OS动态库仍需逐项归属。默认测试侧车不带模型权重，完整候选包内OCR/Docling权重的许可义务不因不在该测试包中而被关闭。
