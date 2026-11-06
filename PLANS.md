@@ -268,3 +268,5 @@ Python全量336 PASS/1 SKIP（冻结变量未提供），随后冻结生命周�
 CODE-CLEANUP结果：修改前Python353/Rust10，修改后Python354/Rust10、新冻结生命周期4、浏览器46断言通过；TS/Ruff/Clippy通过。三处等价去重及分页边界测试完成，保留隐藏兼容功能；中间测试失败和复测边界见报告。按用户最新指令拆分提交后普通同步main、不创建PR；Windows/科研/正式发布未验收。
 
 VERIFY-CLEAN-SYNC 远端复核（2026-11-07）：8f2bf79 已同步 main。macOS CI PASS；OSV FAIL（6 个锁依赖/8 条公告记录），Windows CI cancelled 且含 Python 失败。已修复大响应测试参数 ID 超过 Windows 环境变量限制的问题，本机定向 12 PASS；继续取得 Windows 完整结果，不宣称跨平台已验收。详见 VERIFY-CLEAN-SYNC 报告。
+
+Windows 跟进：第二轮确认 6 FAIL / 372 PASS / 17 SKIP；修复备份/迁移连接释放和 Windows 测试进程归属、退出码假设，增加独立 Windows 生命周期前置回归（仍保留全量套件）。本机新冻结侧车及完整 Python 396 PASS / 0 FAIL / 0 SKIP，Windows 后续结果单独核对。

@@ -1,4 +1,5 @@
 import json
+import sqlite3
 
 import pytest
 from ragsystem.domain.errors import EngineError
@@ -54,3 +55,31 @@ def test_untrusted_manifest_cannot_escape_restore_root(tmp_path):
     with pytest.raises(EngineError, match="BACKUP_MANIFEST_INVALID"):
         manager.restore(snapshot, tmp_path / "target")
     assert not (tmp_path / "outside.pdf").exists()
+
+
+def test_backup_connections_close_before_return_and_failure(tmp_path, monkeypatch):
+    """Retain references so GC cannot hide handles that block Windows quarantine."""
+    root, db = make_store(tmp_path)
+    connections = []
+    connect = sqlite3.connect
+
+    def retained_connect(*args, **kwargs):
+        connection = connect(*args, **kwargs)
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", retained_connect)
+    manager = Backups(db, root)
+    snapshot = manager.create(tmp_path / "snapshots")
+    assert manager.inspect(snapshot)["document_count"] == 1
+
+    def fail_copy(*args):
+        raise OSError("injected copy failure")
+
+    monkeypatch.setattr("ragsystem.storage.backup.copy_new", fail_copy)
+    with pytest.raises(OSError, match="injected copy failure"):
+        manager.create(tmp_path / "failed")
+    assert connections
+    for connection in connections:
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            connection.execute("SELECT 1")

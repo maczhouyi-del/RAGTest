@@ -64,6 +64,14 @@ npm 首次审计因 TLS 连接失败，显式传入系统 HTTPS proxy 后返回 
 
 Windows source 最终 cancelled，Python 阶段出现失败和 setup error，不是通过。日志已确认超大响应测试的自动参数 ID 将 1 MiB payload 写入 PYTEST_CURRENT_TEST，触发 Windows 32767 字符环境变量限制，并产生超长 traceback。为四个响应边界样本设置简短稳定 ID，保留原始 payload、断言及全部测试；本机定向 12 passed。其他失败尚须在修复后的 Windows CI 取得完整信息，不能把这一次修复当作 Windows 全量通过。原始日志保存在本机 evidence/VERIFY-CLEAN-SYNC/github-windows-initial.log。
 
+第二轮 main `2e789b9` / Actions 42265283048 得到完整 Windows Python 结果：372 passed / 6 failed / 17 skipped。明确失败为 backup_copy 隔离进入 manual_review、Job Object 退出码假设、三个侧车 readiness、父进程被杀后 worker 管道未关闭；参数 ID 错误已消失。保留 `github-windows-after-test-ids.log`。
+
+后续修复：备份创建、只读核验、迁移前备份均显式关闭 SQLite connection，同时保留事务上下文；sqlite3 的事务上下文本身不会关闭连接，Windows 仍持有文件句柄时不能重命名目录。新增强引用保留连接的回归用例，使垃圾回收不能掩盖泄漏；备份/迁移定向 20 passed。进程测试采用 CPython multiprocessing 同款 Windows base executable + `__PYVENV_LAUNCHER__` 交接，保留 venv 包路径并让测试控制实际解释器 PID；父监督测试传递实际父 PID。Job Object 测试检查 30 秒子进程在关闭 job 后 5 秒内退出，不再假定必须非零退出码，并保证失败也回收子进程。readiness 失败只记录 HTTP 状态/异常类型和退出码，不记录凭据或文献。
+
+参考：[CPython Windows spawn 实现](https://github.com/python/cpython/blob/main/Lib/multiprocessing/popen_spawn_win32.py)、[Windows Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)。侧车 readiness 根因仍待后续 Windows 结果确认，未通过增加等待时间或跳过测试处理。
+
+本机补测：新冻结 VERIFY-CLEAN-SYNC-WIN 侧车构建成功；使用该侧车及已批准 E5/OCR/Docling 资源，完整 Python **396 passed / 0 failed / 0 skipped**（126.60 秒），Ruff PASS。原始记录 `20261106T180502363718Z-python-windows-fixes.json`。CI 新增独立 Windows 生命周期前置回归，便于快速保留跨平台失败；成功后仍运行原全量套件，未删除或缩减验收。
+
 ## 状态与剩余事项
 
 功能测试：**PASS**。真实 Windows 安装：**NOT EXECUTED**。科研质量：**BLOCKED**。OSV 安全审计：**BLOCKED**。批量构建清理：**待用户按清单手动处理**。本轮不做 Release/发行承诺，无架构 ADR 变更，原 schema21 和既有 0001–0020 保持。

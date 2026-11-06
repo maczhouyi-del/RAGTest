@@ -3,6 +3,7 @@ import json
 import re
 import shutil
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from ragsystem import __version__
@@ -51,7 +52,7 @@ class Backups:
         (snapshot / "papers").mkdir()
         target_db = snapshot / "data/research.db"
         progress(0, 1)
-        with self.db.connection() as source, sqlite3.connect(target_db) as backup:
+        with self.db.connection() as source, closing(sqlite3.connect(target_db)) as backup, backup:
             source.backup(
                 backup, pages=256, progress=lambda status, remaining, total: progress(0, 1)
             )
@@ -156,7 +157,7 @@ class Backups:
             if "data/research.db" not in seen:
                 raise ValueError("database missing")
             uri = (snapshot / "data/research.db").resolve().as_uri() + "?mode=ro"
-            with sqlite3.connect(uri, uri=True) as conn:
+            with closing(sqlite3.connect(uri, uri=True)) as conn, conn:
                 conn.execute("PRAGMA trusted_schema=OFF")
                 if (
                     conn.execute("PRAGMA integrity_check").fetchone()[0] != "ok"

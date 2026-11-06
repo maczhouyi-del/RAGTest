@@ -1,25 +1,31 @@
 import os
 import queue
 import subprocess
-import sys
 import threading
 from pathlib import Path
+
+from process_helpers import source_python
 
 
 def test_worker_exits_when_supervisor_is_killed():
     """Exercise the real parent watchdog; no PDF duration or process-list guesses."""
     root = Path(__file__).resolve().parents[2]
     worker_code = (
-        "import os,time; from ragsystem.parsing.worker import watch_parent; "
-        "watch_parent(os.getppid()); print('WATCHING',flush=True); time.sleep(60)"
+        "import sys,time; from ragsystem.parsing.worker import watch_parent; "
+        "watch_parent(int(sys.argv[1])); print('WATCHING',flush=True); time.sleep(60)"
     )
     parent_code = (
-        "import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',sys.argv[1]]); "
+        "import os,subprocess,sys,time; from process_helpers import source_python; "
+        "exe,env=source_python(); "
+        "subprocess.Popen([exe,'-c',sys.argv[1],str(os.getpid())],env=env); "
         "time.sleep(60)"
     )
-    env = {**os.environ, "PYTHONPATH": str(root / "engine")}
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(
+        (str(root / "engine"), str(Path(__file__).parent))
+    )}
+    executable, env = source_python(env)
     parent = subprocess.Popen(
-        [sys.executable, "-c", parent_code, worker_code],
+        [executable, "-c", parent_code, worker_code],
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

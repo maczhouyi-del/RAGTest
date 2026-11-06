@@ -2,12 +2,12 @@ import json
 import os
 import secrets
 import subprocess
-import sys
 import time
 from pathlib import Path
 
 import httpx
 import pytest
+from process_helpers import source_python
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -15,8 +15,9 @@ ROOT = Path(__file__).resolve().parents[2]
 def start_sidecar(tmp_path, command=None):
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT / "engine")
+    executable, env = source_python(env) if command is None else (None, env)
     process = subprocess.Popen(
-        command or [sys.executable, "-m", "ragsystem"],
+        command or [executable, "-m", "ragsystem"],
         cwd=ROOT,
         env=env,
         stdin=subprocess.PIPE,
@@ -45,14 +46,19 @@ def start_sidecar(tmp_path, command=None):
         port = handshake["port"]
         client = httpx.Client(base_url=f"http://127.0.0.1:{port}", trust_env=False, timeout=3)
         deadline = time.monotonic() + 10
+        last_result = "no response"
         while True:
             try:
-                if client.get("/v0/health", headers={"X-RAG-Session": token}).status_code == 200:
+                response = client.get("/v0/health", headers={"X-RAG-Session": token})
+                last_result = f"HTTP {response.status_code}"
+                if response.status_code == 200:
                     return process, client, token
-            except httpx.TransportError:
-                pass
+            except httpx.TransportError as exc:
+                last_result = type(exc).__name__
             if time.monotonic() >= deadline:
-                raise AssertionError("sidecar failed readiness")
+                raise AssertionError(
+                    f"sidecar failed readiness: {last_result}; exit={process.poll()}"
+                )
             time.sleep(0.05)
     except BaseException:
         process.kill()

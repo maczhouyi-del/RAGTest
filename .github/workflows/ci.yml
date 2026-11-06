@@ -43,6 +43,15 @@ jobs:
         run: uv run --frozen --extra vector-lab --project engine python -c 'from ragsystem.vector_adapters.sqlite_vec import availability; result = availability(); print(result); assert result["available"]'
       - name: Public fixtures only, pinned SHA; no user corpus
         run: uv run --frozen --extra vector-lab --project engine python tools/fetch_public_fixtures.py --fetch
+      - name: Windows lifecycle regressions (also covered by full suite)
+        if: runner.os == 'Windows'
+        run: >-
+          uv run --frozen --extra vector-lab --project engine pytest -c engine/pyproject.toml -q --tb=short
+          tests/integration/test_backup_restore.py
+          tests/integration/test_hardening_backup_failures.py
+          tests/integration/test_hardening_parser_limits.py::test_actual_worker_file_resource_limit
+          tests/integration/test_worker_parent.py
+          tests/integration/test_sidecar_lifecycle.py
       - name: Python source, static checks and tests
         run: |
           uv run --frozen --extra vector-lab --project engine ruff check --config engine/pyproject.toml engine/ragsystem tests

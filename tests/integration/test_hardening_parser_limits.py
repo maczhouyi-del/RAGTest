@@ -176,11 +176,24 @@ def test_frozen_worker_keeps_only_named_bootloader_state(tmp_path, monkeypatch):
 def test_actual_worker_file_resource_limit(tmp_path):
     if sys.platform == "win32":
         # The production supervisor must attach an OS job before sending any PDF input.
+        from process_helpers import source_python
         from ragsystem.parsing.windows_job import ParserJob
-        child = subprocess.Popen([sys.executable, "-c", "import time;time.sleep(30)"])
-        job = ParserJob(child)
-        job.close()
-        assert child.wait(timeout=5) != 0
+
+        executable, environment = source_python()
+        child = subprocess.Popen(
+            [executable, "-c", "import time;time.sleep(30)"], env=environment
+        )
+        try:
+            job = ParserJob(child)
+            assert child.poll() is None
+            job.close()
+            # KILL_ON_JOB_CLOSE need not return a nonzero exit code. Its contract
+            # is termination: the 30-second child must end within five seconds.
+            child.wait(timeout=5)
+        finally:
+            if child.poll() is None:
+                child.kill()
+                child.wait(timeout=5)
         return
     target = tmp_path / "bounded-spool"
     result = subprocess.run(

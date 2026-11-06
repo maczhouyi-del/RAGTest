@@ -1,6 +1,6 @@
 import hashlib
 import sqlite3
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 from importlib.resources import files
 from pathlib import Path
@@ -35,7 +35,7 @@ class Database:
                 backup_dir = self.path.parent / "migration-backups"
                 backup_dir.mkdir(exist_ok=True)
                 backup_path = backup_dir / f"before-v{version}-{uuid4()}.db"
-                with sqlite3.connect(backup_path) as backup:
+                with closing(sqlite3.connect(backup_path)) as backup, backup:
                     conn.backup(backup)
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("BEGIN IMMEDIATE")
