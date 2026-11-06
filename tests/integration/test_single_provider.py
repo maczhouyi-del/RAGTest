@@ -104,7 +104,7 @@ def test_old_multiple_configs_migrate_without_loss_and_restore_fenced(tmp_path):
     ids = legacy_database(path)
     db = Database(path)
     registry = ProviderRegistry(db)
-    assert db.schema_version() == 20
+    assert db.schema_version() == 21
     assert registry.list()[0]["id"] == ids[-1]
     assert len(registry.retired()) == 2
     backup = list((tmp_path / "migration-backups").glob("before-v18-*.db"))

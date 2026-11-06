@@ -1,6 +1,7 @@
 import hashlib
 from pathlib import Path
 
+from ragsystem.chunking.publication import metadata
 from ragsystem.domain.errors import EngineError
 from ragsystem.retrieval.tokenizer import index_terms, quoted_phrases, search_terms, tokenize
 from ragsystem.storage.database import Database
@@ -109,6 +110,7 @@ class Sources:
                     "lexical_rank": rank + 1,
                     "content_sha256": row["content_sha256"],
                     "bm25_score": row["score"],
+                    "structure": metadata(conn, row["id"]),
                     "lexical_stage": row["lexical_stage"],
                     "lexical_stage_rank": row["lexical_stage_rank"],
                     "location_confidence": "unknown",
@@ -136,6 +138,7 @@ class Sources:
                 WHERE c.id=? AND c.visible=1 AND v.visibility='visible'""",
                 (anchor_id,),
             ).fetchone()
+            structure = metadata(conn, anchor_id)
         if row is None:
             raise EngineError("NOT_FOUND", status=404)
         if row["raw_text"][row["start_offset"] : row["end_offset"]] != row["clean_text"]:
@@ -150,6 +153,7 @@ class Sources:
             raise EngineError("OBJECT_CORRUPT", status=409)
         return {
             "schema_version": "0.1-draft",
+            "structure": structure,
             "source_anchor_id": row["id"],
             "doc_version_id": row["doc_version_id"],
             "file_sha256": row["file_sha256"],

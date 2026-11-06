@@ -51,6 +51,12 @@ def numbered_excerpts(chunks):
                 if type(source["page_number"]) is not int or source["page_number"] < 1:
                     raise EngineError("MODEL_INPUT_INVALID")
                 public["page_number"] = source["page_number"]
+            if "section_path" in source:
+                path = source["section_path"]
+                if not isinstance(path, list) or any(not isinstance(p, str) for p in path):
+                    raise EngineError("MODEL_INPUT_INVALID")
+                # Context metadata only: never prefix the verifiable quote.
+                public["section_path"] = [p[:100] for p in path[:3]]
             excerpt["source"] = public
         excerpts.append(excerpt)
     return citations, excerpts

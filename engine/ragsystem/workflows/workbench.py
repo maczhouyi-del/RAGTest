@@ -629,6 +629,7 @@ class Workbench:
                                 "version_label": f"V{versions.index(anchor['doc_version_id']) + 1}",
                                 "title": document["title"],
                                 "page_number": anchor["page_number"],
+                                "section_path": anchor.get("structure", {}).get("section_path", []),
                                 "doc_version_id": anchor["doc_version_id"],
                                 "pdf_sha256": document["file_sha256"],
                             },

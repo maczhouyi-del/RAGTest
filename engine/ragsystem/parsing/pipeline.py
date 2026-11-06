@@ -4,7 +4,9 @@ import time
 from pathlib import Path
 from uuid import uuid4
 
-from ragsystem.chunking.mapping import chunk_page
+from ragsystem.chunking.publication import publish_structure
+from ragsystem.chunking.structure import CONFIG as CHUNK_CONFIG
+from ragsystem.chunking.structure import structured_chunks
 from ragsystem.domain.errors import EngineError
 from ragsystem.jobs.repository import Jobs
 from ragsystem.parsing.docling import POLICY as DOCLING_POLICY
@@ -25,12 +27,13 @@ from ragsystem.retrieval.tokenizer import index_terms
 from ragsystem.storage.database import Database, utc_now
 
 PARSER_CONFIG = {
-    "pipeline": "pdfium-page-chunks-v2",
+    "pipeline": "section-paragraph-v1",
+    "chunk_strategy": CHUNK_CONFIG,
     "max_pages": 500,
     "max_page_chars": 50000,
-    "chunk_max_chars": 400,
-    "chunk_overlap_chars": 80,
-    "chunk_boundaries": "page-sentence-newline-v2",
+    "chunk_max_chars": CHUNK_CONFIG["max_chars"],
+    "chunk_overlap_chars": CHUNK_CONFIG["overlap_chars"],
+    "chunk_boundaries": "paragraph-sentence-boundaries-v1",
     "offset_unit": "unicode_codepoint",
 }
 
@@ -276,7 +279,7 @@ class Parser:
                             "INSERT INTO parse_page_structure VALUES(?,?)",
                             (element_id, json.dumps(page["blocks"], ensure_ascii=False)),
                         )
-                    for chunk in chunk_page(page["text"]):
+                    for chunk in structured_chunks(page["text"], page.get("blocks")):
                         chunk_id = str(uuid4())
                         conn.execute(
                             "INSERT INTO chunks VALUES(?,?,?,?,?,?,?,?,?,1)",
@@ -316,6 +319,7 @@ class Parser:
                     > DOCLING_POLICY["max_cells"]
                 ):
                     raise EngineError("DOCLING_STRUCTURE_LIMIT")
+                publish_structure(conn, doc_version_id, run_id, expected + 1)
                 status = finish_publish(
                     conn,
                     doc_version_id,

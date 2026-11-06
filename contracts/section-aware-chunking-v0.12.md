@@ -1,0 +1,13 @@
+# 章节段落切块 v0.12（2026-11-05）
+
+新增schema21元数据表，保留0001—0020不变、chunks布局/content_sha256与Embedding缓存语义不变。结构指纹包含section_paragraph_v1、标题/段落/回退规则版本、400字符/80重叠、关闭短段合并。原有解析器资源上限不变。
+
+section metadata是候选注释，不是论文事实或可引用文本。SourceAnchor新增可选structure；旧JSON仍合法。section_path只进入生成source元数据（最多3层/层100字符），不拼接quote，不进入Embedding；实际输入收据、引用校验不变。检索hit增加可选structure，不改变排名/配额。默认PDFium不伪造字体/框坐标；Docling使用已序列化label和经过验证的start/end。无法识别时明确section_unclassified，旧数据为legacy_unclassified。
+
+每次发布创建structure_publications（ParseRun、revision），document_sections保存父子/路径/页范围/方法与未校准置信值；document_paragraphs保存单页原文区间；chunk_structure链接Chunk/段落/章节。长段的子Chunk共享段落；跨页段落因缺可靠续接证据保留独立页片段，不假定相同ID。
+
+部分解析保持原page pointers/Chunk/向量复用；在同一个原发布事务顺序扫描当前所有已发布页面，为本次revision生成完整结构快照，未选页使用现存text/blocks，重新归属章节。旧Chunk跨新段落边界时标legacy_or_unresolved_boundary，不强行指定章节。旧结构快照保持，新结构/页指针随lease/revision和事务一起发布或回滚。读取metadata以parse_state.revision绑定当前快照；历史Evidence保存当时anchor JSON。
+
+旧文献不会自动重切；用户显式完整重解析后更新索引才采用新Chunk。部分重解析可混合新旧Chunk，但metadata边界不可靠时会降级。schema21旧库升级自动备份；旧程序拒绝高版本库，回退使用升级前独立备份，不覆盖真实库。无真实用户库批量更新。
+
+检测器 conservative-headings-v2 校验数字/附录编号祖先关系；无法找到匹配父编号时不补造节点。标题元数据可压缩空白，原文不变。段落长块只在句末优先，视觉换行不充当强边界；未分类段落仍受单页/400字符/80重叠限制。PDFium 原生路径没有新字体/几何推断，跨行标题和段落边界仍须质量评估。结构发布依赖 chunks_by_element_offsets 索引，查询计划测试防止逐页全表扫描。

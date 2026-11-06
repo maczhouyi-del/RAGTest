@@ -13,6 +13,7 @@
   ],
   "properties": {
     "schema_version": {"const": "0.1-draft"},
+    "structure": {"type": "object", "description": "Optional section-paragraph-v1 metadata, not source quotation or verified scientific evidence. Older anchors omit it.", "required": ["section_path", "fallback_reason"], "properties": {"section_path": {"type": "array", "items": {"type": "string"}}, "fallback_reason": {"type": ["string", "null"]}}},
     "source_anchor_id": {"type": "string", "minLength": 1},
     "doc_version_id": {"type": "string", "minLength": 1},
     "file_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},

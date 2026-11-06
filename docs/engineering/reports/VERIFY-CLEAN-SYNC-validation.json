@@ -1,0 +1,250 @@
+{
+  "task": "VERIFY-CLEAN-SYNC",
+  "date": "2026-11-06",
+  "base": "9d301b3c4be0425d5d78561a35a12ec6c2a9c3c8",
+  "commands": [
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T123831787339Z-typescript.json",
+      "sha256": "809b7dad1602ce04a99117dcdf2975fab9922cbe6aa71d55f78eefec1f0340f6",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build",
+        "--",
+        "--emptyOutDir=false"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:38:31.787339+00:00",
+      "finished_at": "2026-11-06T12:38:35.235062+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T123831787353Z-ruff.json",
+      "sha256": "bd12728d0719e4501dbfea6fc175c2461a8700dc18e1e72129f3b95a167f0b2f",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "tools/compare_section_chunking.py"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:38:31.787353+00:00",
+      "finished_at": "2026-11-06T12:38:31.863135+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T123832938696Z-freeze.json",
+      "sha256": "138dda17b92978f832c95d302f135b907eeec90c4b0d1d9499db030291999304",
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--build-label",
+        "VERIFY-CLEAN-SYNC",
+        "--include-vector-lab",
+        "--include-generation-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab",
+        "--output-directory",
+        ".tools/build/VERIFY-CLEAN-SYNC-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/VERIFY-CLEAN-SYNC"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:38:32.938696+00:00",
+      "finished_at": "2026-11-06T12:40:40.760792+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T123909504451Z-browser.json",
+      "sha256": "f76739b99ee256d5bed6ca39cdade62f640199c9f33468c70b9a33930a6f6049",
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:39:09.504451+00:00",
+      "finished_at": "2026-11-06T12:40:07.769967+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T123946342915Z-npm-audit.json",
+      "sha256": "cd6639e80e5053e692fee73c3b45b603bb0d7d6cfe03760e081df2bc89c01650",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "audit",
+        "--package-lock-only",
+        "--audit-level=moderate",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:39:46.342915+00:00",
+      "finished_at": "2026-11-06T12:39:56.772498+00:00",
+      "exit_code": 1
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T123947497668Z-dependency-audit.json",
+      "sha256": "a35d6fea78cdf114aea3f50d179aa57e16fc501a09e6ed6fc3412c1bd8eaf28c",
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/dependency_gate.py",
+        "--output",
+        "docs/engineering/evidence/VERIFY-CLEAN-SYNC/dependencies",
+        "--online"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:39:47.497668+00:00",
+      "finished_at": "2026-11-06T12:39:52.603438+00:00",
+      "exit_code": 2
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T124220482164Z-clippy.json",
+      "sha256": "24773eb9effccf99b4579c1800aae273eb7bad0103926c7ed78cb173d92a5808",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:42:20.482164+00:00",
+      "finished_at": "2026-11-06T12:42:26.330717+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T124257637502Z-rust.json",
+      "sha256": "500c825f88fa01be8f1ea878dcd543a69326682f82005dd00fcb51e0ac6fee37",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:42:57.637502+00:00",
+      "finished_at": "2026-11-06T12:46:35.400236+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T124257637503Z-python.json",
+      "sha256": "895e14d52c5390c710132dc606006ad804a6a8e6acfb49c83bbe7143f626e199",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:42:57.637503+00:00",
+      "finished_at": "2026-11-06T12:45:11.647417+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T124421710810Z-npm-audit-proxy.json",
+      "sha256": "7b0a696b72fd46fb2f2da37028e8222cac14456a2c341726aed11e659c9ca9dc",
+      "argv": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "audit",
+        "--package-lock-only",
+        "--audit-level=moderate",
+        "--registry=https://registry.npmjs.org",
+        "--https-proxy=http://127.0.0.1:7897"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:44:21.710810+00:00",
+      "finished_at": "2026-11-06T12:44:23.995018+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T124501413802Z-dependency-audit-proxy.json",
+      "sha256": "dec5992eac27e658c1008c3a76e2b05ec025859183b1c8962a629edc149e6e87",
+      "argv": [
+        "engine/.venv/bin/python",
+        ".tools/test-data/audit_with_system_proxy.py",
+        "--output",
+        "docs/engineering/evidence/VERIFY-CLEAN-SYNC/dependencies-proxy",
+        "--online"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:45:01.413802+00:00",
+      "finished_at": "2026-11-06T12:45:06.525155+00:00",
+      "exit_code": 2
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T124947342186Z-scientific-gate.json",
+      "sha256": "f4162f0be407c224b19274bf12d1966ca43eb269006296d557fff58bc812b3dd",
+      "argv": [
+        "engine/.venv/bin/python",
+        "tools/evaluate_scientific_quality.py",
+        "--gold",
+        "docs/evaluation/gold-cases.template.jsonl",
+        "--predictions",
+        "docs/evaluation/predictions.template.jsonl",
+        "--manifest",
+        "tests/fixtures/public/manifest.json",
+        "--thresholds",
+        "docs/evaluation/thresholds.proposed.json",
+        "--output",
+        "docs/engineering/evidence/VERIFY-CLEAN-SYNC/scientific-gate"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T12:49:47.342186+00:00",
+      "finished_at": "2026-11-06T12:49:47.401584+00:00",
+      "exit_code": 2
+    }
+  ],
+  "tests": {
+    "python": 395,
+    "rust": 10,
+    "browser_assertions": 46,
+    "failures": 0,
+    "skips": 0
+  },
+  "static": [
+    "Ruff PASS",
+    "TypeScript/Vite PASS",
+    "Clippy PASS"
+  ],
+  "npm_audit": "PASS: 0 vulnerabilities via configured system proxy",
+  "osv_audit": "BLOCKED: direct and system-proxy attempts URLError",
+  "scientific_quality": "BLOCKED: no gold",
+  "windows_install": "NOT EXECUTED",
+  "old_migrations_unchanged": 20,
+  "locks_unchanged": true,
+  "build_cleanup": {
+    "deleted_paths": 0,
+    "candidates": 11,
+    "GiB": 8.318,
+    "status": "manual handling required by user AGENTS deletion restriction"
+  },
+  "frozen": {
+    "manifest": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/sidecar-20261106T123833037975Z.json",
+    "binary": ".tools/build/VERIFY-CLEAN-SYNC-sidecar/ragsystem-engine-aarch64-apple-darwin",
+    "sha256": "fa6599ec78f9bfc86afb74eb07382372c0d2781858727573b53034b862dd5594",
+    "checked_sources": 102,
+    "status": "PASS"
+  }
+}

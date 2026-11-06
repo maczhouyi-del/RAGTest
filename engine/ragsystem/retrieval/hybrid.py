@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from uuid import uuid4
 
+from ragsystem.chunking.publication import metadata
 from ragsystem.domain.errors import EngineError
 from ragsystem.indexing.embeddings import Embeddings
 from ragsystem.indexing.incremental import embed_visible
@@ -381,6 +382,7 @@ class HybridSearch:
                             "source_anchor_id": row["id"],
                             "page_number": row["page_number"],
                             "preview": row["clean_text"],
+                            "structure": metadata(conn, row["id"]),
                             "rank": vector_rank,
                             "vector_rank": vector_rank,
                             "content_sha256": row["content_sha256"],

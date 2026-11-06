@@ -1,5 +1,9 @@
 # PLANS.md — 路线图、门禁与可执行工作机制
 
+VERIFY-CLEAN-SYNC（2026-11-06）：用户授权当前代码完整测试、清理审查并直接提交同步main，覆盖SECTION-AWARE历史不推送限制。按[计划](docs/engineering/execplans/VERIFY-CLEAN-SYNC-2026-11-06.md)执行：Python395/Rust10/浏览器46通过，TS/Ruff/Clippy/新冻结102项哈希通过，npm审计0漏洞；OSV网络阻塞、科研无金标、Windows未实机验收。按用户禁止批量删除要求，11个历史构建目录约8.318GiB仅列手动清理清单，实际删除0。见[报告](docs/engineering/reports/VERIFY-CLEAN-SYNC-2026-11-06.md)。源码正常提交同步main，不强推、不创建PR、不上传构建/模型/数据。
+
+SECTION-AWARE 本地工程验证完成（2026-11-06）：按[计划](docs/engineering/execplans/SECTION-AWARE.md)实现章节感知、段落优先、400字符/80重叠兜底、schema21增量结构快照和部分发布上下文重算。Python 395 PASS/0 FAIL/0 SKIP；新定向41 PASS，Ruff/冻结侧车102项源码哈希通过。公开PDF两篇29页：C方案574个Chunk全部切片一致，局部重解析后571条向量复用/0新增；B纯段落因上下文超限失败。科研金标仍BLOCKED、Windows NOT EXECUTED，不宣称检索质量提升。详见[报告](docs/engineering/reports/SECTION-AWARE-CHUNKING-IMPLEMENTATION.md)。独立分支保留未提交；未改前端/Rust、旧迁移或真实用户库，未付费调用、推送或部署旧App。
+
 CODE-CLEANUP本地验证完成（2026-11-02）：用户授权全仓证据审查与小范围等价重构，后续明确改为验证后直接提交推送main、不创建PR。基线c3b6d8a干净；按[计划](docs/engineering/execplans/CODE-CLEANUP-2026-11-02.md)实施，见[报告](docs/engineering/reports/CODE-CLEANUP-2026-11-02.md)。不改科研算法、契约、schema/迁移、依赖锁，不删用户数据；只复用已批准本地模型，禁止额外付费API或模型下载。
 
 2026-11-02源码同步授权：用户明确要求提交并推送GitHub main，按[GH-05计划](docs/engineering/execplans/GH-05-source-sync.md)将既有已验收本地源码、测试与工程文档正常同步origin/main；覆盖这些任务当时不提交/推送的限制，不包含模型/论文/数据库/凭据/原始日志/构建产物，不强推或发布。历史报告保持其当时状态。

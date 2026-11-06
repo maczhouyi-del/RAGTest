@@ -232,7 +232,7 @@ def test_quote_must_be_inside_the_actual_sent_excerpt_not_only_the_same_chunk(wo
         def generate(self, task, data):
             tasks.append(task)
             assert task == "answer"
-            chunk = data["chunks"][0]
+            chunk = next(c for c in data["chunks"] if len(c["text"]) > 100)
             # The quoted text exists in the same retrieved chunk, beyond the
             # claimed actual model input. Publishing it would invent provenance.
             citations, excerpts = numbered_excerpts([chunk])
@@ -250,7 +250,7 @@ def test_quote_must_be_inside_the_actual_sent_excerpt_not_only_the_same_chunk(wo
             }
 
     monkeypatch.setattr(bench.generation, "require", lambda: Generator())
-    run = bench.create_answer("BERT", [version], None, "generative", "keyword")
+    run = bench.create_answer("bidirectional pretraining", [version], None, "generative", "keyword")
     bench.run_answer(run["id"])
     answer = bench.answers(run_id=run["id"])[0]
     assert answer["status"] == "failed" and answer["error_code"] == "MODEL_CITATION_INVALID"
@@ -302,13 +302,13 @@ def test_published_generation_evidence_is_only_the_sent_prefix(work, monkeypatch
         def generate(self, task, data):
             if task == "support":
                 return {"status": "supported", "reason": "fixture only"}
-            chunk = data['chunks'][0]
+            chunk = next(c for c in data["chunks"] if len(c["text"]) > 100)
             citations, excerpts = numbered_excerpts([chunk])
             excerpts[0].update(quote=chunk['text'][:40], included_characters=40, is_partial=True)
             sent.update(chunk_id=chunk['chunk_id'], quote=chunk['text'][:40])
             return {'claims': [{'text': 'fixture', 'evidence': [sent.copy()]}], 'context_metadata': input_metadata(data['chunks'], citations, excerpts)}
     monkeypatch.setattr(bench.generation, "require", lambda: Generator())
-    run = bench.create_answer("BERT", [version], None, "generative", "keyword")
+    run = bench.create_answer("bidirectional pretraining", [version], None, "generative", "keyword")
     bench.run_answer(run['id'])
     answer = bench.answers(run_id=run['id'])[0]
     assert answer['status'] == 'completed' and answer['evidence']

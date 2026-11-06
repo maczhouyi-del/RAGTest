@@ -2,7 +2,7 @@ import hashlib
 import re
 
 
-def chunk_page(text: str, max_chars=400, *, overlap=None):
+def chunk_page(text: str, max_chars=400, *, overlap=None, sentence_only=False):
     """Keep exact Unicode code-point offsets; no lossy text cleaning or fake bbox."""
     if max_chars < 100:
         raise ValueError("max_chars must be at least 100")
@@ -14,7 +14,12 @@ def chunk_page(text: str, max_chars=400, *, overlap=None):
         end = min(start + max_chars, len(text))
         if end < len(text):
             boundaries = list(
-                re.finditer(r"\n|[。！？；]|[.!?](?=\s|$)", text[start + max_chars // 2 : end])
+                re.finditer(
+                    r"[。！？；]|[.!?](?=\s|$)"
+                    if sentence_only
+                    else r"\n|[。！？；]|[.!?](?=\s|$)",
+                    text[start + max_chars // 2 : end],
+                )
             )
             if boundaries:
                 end = start + max_chars // 2 + boundaries[-1].end()
