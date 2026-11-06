@@ -58,6 +58,12 @@ npm 首次审计因 TLS 连接失败，显式传入系统 HTTPS proxy 后返回 
 
 远端 Actions 触发后另行核对状态；本报告的本地 PASS 不表示全部跨平台/安全/科研门禁通过。
 
+### 2026-11-07 远端复核及 Windows 测试修复
+
+源码已提交并同步 main `8f2bf794ca535f786a64fbac40cf32d29993c740`，本地与远端 tree/commit SHA 一致。Actions 42220868088 的 macOS source 通过；lock-audit 失败，6 个锁依赖有 8 条公告记录（含别名），不是本次锁文件变更引入。diskcache、glib、proc-macro-error、zbus_names、zvariant、zvariant_derive 需要独立评估，未压制告警或据此宣称已确认运行时可利用。
+
+Windows source 最终 cancelled，Python 阶段出现失败和 setup error，不是通过。日志已确认超大响应测试的自动参数 ID 将 1 MiB payload 写入 PYTEST_CURRENT_TEST，触发 Windows 32767 字符环境变量限制，并产生超长 traceback。为四个响应边界样本设置简短稳定 ID，保留原始 payload、断言及全部测试；本机定向 12 passed。其他失败尚须在修复后的 Windows CI 取得完整信息，不能把这一次修复当作 Windows 全量通过。原始日志保存在本机 evidence/VERIFY-CLEAN-SYNC/github-windows-initial.log。
+
 ## 状态与剩余事项
 
 功能测试：**PASS**。真实 Windows 安装：**NOT EXECUTED**。科研质量：**BLOCKED**。OSV 安全审计：**BLOCKED**。批量构建清理：**待用户按清单手动处理**。本轮不做 Release/发行承诺，无架构 ADR 变更，原 schema21 和既有 0001–0020 保持。

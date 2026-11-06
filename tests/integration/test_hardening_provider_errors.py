@@ -88,6 +88,9 @@ def test_structured_errors_preserve_key_except_known_auth(
         (403, b"x" * 17000, "PROVIDER_RESPONSE_LIMIT"),
         (200, b"x" * (1024 * 1024 + 1), "PROVIDER_RESPONSE_LIMIT"),
     ],
+    # pytest exports the node ID via PYTEST_CURRENT_TEST; a raw 1 MiB payload
+    # exceeds Windows' environment-variable limit before the test can run.
+    ids=["http-invalid-json", "success-invalid-json", "error-body-limit", "success-body-limit"],
 )
 def test_malformed_and_oversized_no_body_leak(tmp_path, status, payload, expected):
     with errors(status, payload) as (url, calls):

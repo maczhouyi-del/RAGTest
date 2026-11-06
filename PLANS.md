@@ -266,3 +266,5 @@ MVP-03 A/B/C本轮完成：配置级启用及后端修订围栏、严格系统�
 Python全量336 PASS/1 SKIP（冻结变量未提供），随后冻结生命周期4 PASS覆盖该项，新增最终定向10 PASS；Rust含全部候选9 PASS；TS/Ruff/Clippy及模拟桥88项通过。真实API按测试前声明扩展预算至18次POST，仅公开BERT片段，原生6次完成两回答；数据库副本与真实库计数不同均按实际记录。最终独立app为 `.tools/build/macos-rag03-final-20261031T040823560658Z/RAGSystem.app`，已启动并核对RAG-03构建/96项源码哈希；普通cargo构建白屏和磁盘满等中途失败记录保留。详见[报告](docs/engineering/reports/RAG-03-2026-10-31.md)、[验证索引](docs/engineering/reports/RAG-03-validation.json)、[v0.9契约](contracts/retrieval-answer-v0.9.md)。本机场景交付PASS，不解除Windows/科研金标/千篇/安全发行正式门禁；无commit/push/Release。
 
 CODE-CLEANUP结果：修改前Python353/Rust10，修改后Python354/Rust10、新冻结生命周期4、浏览器46断言通过；TS/Ruff/Clippy通过。三处等价去重及分页边界测试完成，保留隐藏兼容功能；中间测试失败和复测边界见报告。按用户最新指令拆分提交后普通同步main、不创建PR；Windows/科研/正式发布未验收。
+
+VERIFY-CLEAN-SYNC 远端复核（2026-11-07）：8f2bf79 已同步 main。macOS CI PASS；OSV FAIL（6 个锁依赖/8 条公告记录），Windows CI cancelled 且含 Python 失败。已修复大响应测试参数 ID 超过 Windows 环境变量限制的问题，本机定向 12 PASS；继续取得 Windows 完整结果，不宣称跨平台已验收。详见 VERIFY-CLEAN-SYNC 报告。
