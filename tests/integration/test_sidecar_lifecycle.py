@@ -16,8 +16,14 @@ def start_sidecar(tmp_path, command=None):
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT / "engine")
     executable, env = source_python(env) if command is None else (None, env)
+    # A startup deadlock otherwise produces only a health timeout. Stack traces
+    # contain locations, not request bodies/locals, and stay in this test child.
+    source_command = [executable, "-c", (
+        "import faulthandler; faulthandler.dump_traceback_later(6); "
+        "from ragsystem.__main__ import main; raise SystemExit(main())"
+    )]
     process = subprocess.Popen(
-        command or [executable, "-m", "ragsystem"],
+        command or source_command,
         cwd=ROOT,
         env=env,
         stdin=subprocess.PIPE,
@@ -60,10 +66,18 @@ def start_sidecar(tmp_path, command=None):
                     f"sidecar failed readiness: {last_result}; exit={process.poll()}"
                 )
             time.sleep(0.05)
-    except BaseException:
+    except BaseException as exc:
         process.kill()
         process.wait(timeout=10)
-        raise
+        diagnostic = queue.Queue()
+        threading.Thread(
+            target=lambda: diagnostic.put(process.stderr.read(16384)), daemon=True
+        ).start()
+        try:
+            detail = diagnostic.get(timeout=1).decode(errors="replace").replace(token, "[redacted]")
+        except queue.Empty:
+            detail = "stderr pipe did not close"
+        raise AssertionError(f"{exc}; startup stderr: {detail}") from exc
 
 
 def stop_sidecar(process):
