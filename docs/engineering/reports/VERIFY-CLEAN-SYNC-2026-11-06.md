@@ -2,7 +2,7 @@
 
 Task ID / 阶段：VERIFY-CLEAN-SYNC，2026-11-06，macOS 26.2 ARM64。
 
-2026-11-07 最新本机复测：**Python 397 PASS / Rust 10 PASS / 浏览器 46 断言 PASS**，均无失败和跳过；新 VERIFY-CLEAN-SYNC-COLD 侧车及 102 项源码哈希核对通过。远端此前 macOS source 通过，Windows 剩余三项健康检查超时已定位并修复，须由修复后 CI 确认；OSV 明确 FAIL（6 个锁依赖、8 条公告记录）。历史构建实际删除仍为 0，待按清单手动处理。
+2026-11-07 最终结果：**本机 Python 398 PASS / Rust 10 PASS / 浏览器 46 断言 PASS**，均无失败和跳过；新 VERIFY-CLEAN-SYNC-FINAL 侧车及 102 项源码哈希核对通过。源码 `fcdaead` 的远端 macOS / Windows source CI 均全部通过；OSV 明确 FAIL（6 个锁依赖、8 条公告记录）。历史构建实际删除仍为 0，待按清单手动处理。
 
 用户本次明确授权完整测试、代码/构建清理及直接提交推送 GitHub main。覆盖 SECTION-AWARE 当时禁止提交推送的限制；不创建 PR、不强推、不发布 Release。本轮开始于 9d301b3，20 项既有未提交变更均为本会话的章节/段落改造，保留后纳入验收和提交。GitHub 当前 main 已独立确认为同一 9d301b3；本地 origin/main 落后只是 fetch 失败后的旧 tracking ref。
 
@@ -88,6 +88,12 @@ Windows source 最终 cancelled，Python 阶段出现失败和 setup error，不
 
 `01c8064` / Actions 42368420904 已正常同步，Windows 专项仍 16 passed / 1 failed / 1 skipped，但已通过批注保存，失败推进到空模型目录的索引任务未及时结束。LocalE5 在检查 manifest 前导入 NumPy/ONNX，导致无效资源也启动原生运行库；现将原有完整资源/哈希/维度验证前移到导入之前，校验规则和有效模型推理保持原样。新增禁止原生导入的缺失 manifest 回归；实际 E5 推理、源码侧车及调度定向 6 passed / 1 skipped（尚未提供新冻结侧车），Ruff PASS。原始日志 github-windows-index-invalid-model.log 保留。此修复不证明真实 Windows E5 首次原生加载已验收，该模型实机门禁仍待补。
 
+`fcdaead` 修复后本机最终回归使用新 VERIFY-CLEAN-SYNC-FINAL 侧车：Python **398 passed / 0 failed / 0 skipped**（126.03 秒），Rust **10 passed / 0 failed / 0 ignored**（210.06 秒），102 项源码及二进制哈希全部一致。原始命令和日志哈希已加入 validation.json。Actions 42368722463 的 Windows 生命周期专项已通过、macOS source 全部通过；完整 Windows source 仍待最终结果。
+
+最终远端结果：[Actions 42368722463](https://github.com/maczhouyi-del/RAGTest/actions/runs/42368722463)，验证源码提交 `fcdaead312eb61bdf4fd376277498d020c5e48af`。Windows source **PASS**：专项 17 passed / 1 skipped；全量 Python 381 passed / 17 skipped / 0 failed（534.32 秒）；Rust 7 passed / 3 ignored / 0 failed；TS 构建、冻结侧车、Ruff、Clippy、npm audit 0 漏洞均通过。macOS source **PASS**：Python 382 passed / 16 skipped / 0 failed；Rust 7 passed / 3 ignored / 0 failed，其余同样通过。跳过项为显式模型资源/可选运行时或平台专属测试，不当作通过；本机完整候选回归另为 398/10 全通过。Windows runner 为 Server 2025，仍不能替代干净 Windows 11 安装及模型实机验收。
+
+原始最终日志 `github-windows-final.log`、`github-macos-final.log` 保存在本机忽略证据目录。独立 lock-audit 仍 FAIL，整个 workflow 结论因而为 failure，不能描述为“全部 CI 通过”。本次收尾提交仅更新报告、验证索引和 PLANS，产品源码与上述已验证提交一致。
+
 ## 状态与剩余事项
 
-本机功能测试：**PASS**。Windows CI：**此前 FAIL，最新修复待远端确认**。真实 Windows 安装：**NOT EXECUTED**。科研质量：**BLOCKED**。OSV 安全审计：**FAIL**。批量构建清理：**待用户按清单手动处理**。本轮不做 Release/发行承诺，无架构 ADR 变更，原 schema21 和既有 0001–0020 保持。
+本机功能测试：**PASS**。macOS / Windows source CI：**PASS**。真实 Windows 安装：**NOT EXECUTED**。科研质量：**BLOCKED**。OSV 安全审计：**FAIL**。批量构建清理：**待用户按清单手动处理**。本轮不做 Release/发行承诺，无架构 ADR 变更，原 schema21 和既有 0001–0020 保持。

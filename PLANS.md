@@ -272,3 +272,5 @@ VERIFY-CLEAN-SYNC 远端复核（2026-11-07）：8f2bf79 已同步 main。macOS 
 Windows 跟进：第二轮确认 6 FAIL / 372 PASS / 17 SKIP；修复备份/迁移连接释放和 Windows 测试进程归属、退出码假设，增加独立 Windows 生命周期前置回归（仍保留全量套件）。本机新冻结侧车及完整 Python 396 PASS / 0 FAIL / 0 SKIP，Windows 后续结果单独核对。
 
 Windows 冷启动跟进：备份/Job/父监督已在 Windows 专项通过；三个 readiness 超时线程栈定位到 sqlite_vec 包附带 NumPy 原生导入。适配器改为定位同一安装包内 vec0 扩展直接加载，新增冷进程工作线程探测回归。最新本机新冻结102哈希、Python397/Rust10/浏览器46通过；远端最新修复待确认，OSV仍FAIL，实机/科研门禁不变。
+
+VERIFY-CLEAN-SYNC 最终收尾（2026-11-07）：源码 fcdaead 已同步 main；本机最终新冻结102哈希、Python398/Rust10/浏览器46通过。Actions42368722463 的 macOS/Windows source 均 PASS：Windows Python381 PASS/17 SKIP、macOS382 PASS/16 SKIP，两者Rust7 PASS/3 ignored，TS/Ruff/Clippy/冻结构建/npm审计均通过。缺模型跳过不作已验收；Windows11实机和科研金标仍未验收。OSV独立审计仍FAIL，历史构建按用户删除限制仅列11目录8.318GiB手动清单、实际删除0。收尾提交仅工程记录，源码与已验证提交一致。

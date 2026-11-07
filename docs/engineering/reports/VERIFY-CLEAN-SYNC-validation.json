@@ -358,10 +358,86 @@
       "started_at": "2026-11-07T03:54:20.700374+00:00",
       "finished_at": "2026-11-07T03:54:35.340289+00:00",
       "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261107T113649317654Z-rust-final-resources.json",
+      "sha256": "bc12e3a06ce2e57dabbb4f0a30a53d162bf8f7b33c0454bf8cdd92ef41cd1fca",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-07T11:36:49.317654+00:00",
+      "finished_at": "2026-11-07T11:40:20.752933+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261107T113342167299Z-freeze-model-validation.json",
+      "sha256": "90782f6d40eba5834383079ef959dd30fd088660781236a4064863cce71568f1",
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--build-label",
+        "VERIFY-CLEAN-SYNC-FINAL",
+        "--include-vector-lab",
+        "--include-generation-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab",
+        "--output-directory",
+        ".tools/build/VERIFY-CLEAN-SYNC-FINAL-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/VERIFY-CLEAN-SYNC"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-07T11:33:42.167299+00:00",
+      "finished_at": "2026-11-07T11:35:51.537449+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261107T113627884238Z-python-final-resources.json",
+      "sha256": "2d95a1a9612ee52c09265b18e4c452a56dc74c417c2f4362a2a2aeea2cfae1e8",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-07T11:36:27.884238+00:00",
+      "finished_at": "2026-11-07T11:38:34.391407+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261107T113328251855Z-model-validation-order.json",
+      "sha256": "746808a9be531a0fecb0f4a22c3dc9021c7de9664ffb32ffd804c48abe4a2b13",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_local_model.py",
+        "tests/integration/test_sidecar_lifecycle.py",
+        "tests/integration/test_hardening_scheduling.py",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-07T11:33:28.251855+00:00",
+      "finished_at": "2026-11-07T11:33:32.895133+00:00",
+      "exit_code": 0
     }
   ],
   "tests": {
-    "python": 397,
+    "python": 398,
     "rust": 10,
     "browser_assertions": 46,
     "failures": 0,
@@ -385,9 +461,9 @@
     "status": "manual handling required by user AGENTS deletion restriction"
   },
   "frozen": {
-    "manifest": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/sidecar-20261107T034118884125Z.json",
-    "binary": ".tools/build/VERIFY-CLEAN-SYNC-COLD-sidecar/ragsystem-engine-aarch64-apple-darwin",
-    "sha256": "7c18e25e5cd00471a01cc8faa1ab133d0346f19298d2686598071a23fb84f984",
+    "manifest": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/sidecar-20261107T113342216806Z.json",
+    "binary": ".tools/build/VERIFY-CLEAN-SYNC-FINAL-sidecar/ragsystem-engine-aarch64-apple-darwin",
+    "sha256": "82a771fa06bb29fc145f564ce9ba26490d6e28e4b2a45f4f4e555ac3cccaba17",
     "checked_sources": 102,
     "status": "PASS"
   },
@@ -428,7 +504,40 @@
         "skipped": 1
       },
       "finding": "Readiness fixed; explicit retriable worker-slot response raced parse completion in lifecycle test"
+    },
+    {
+      "id": 42368722463,
+      "source_commit": "fcdaead312eb61bdf4fd376277498d020c5e48af",
+      "macos": {
+        "status": "PASS",
+        "python_passed": 382,
+        "python_skipped": 16,
+        "rust_passed": 7,
+        "rust_ignored": 3
+      },
+      "windows": {
+        "status": "PASS",
+        "python_passed": 381,
+        "python_skipped": 17,
+        "rust_passed": 7,
+        "rust_ignored": 3,
+        "lifecycle_passed": 17,
+        "lifecycle_skipped": 1
+      },
+      "lock_audit": "FAIL",
+      "overall": "failure"
     }
   ],
-  "latest_windows_fix": "Cold vector probe readiness verified on Windows; lifecycle test now waits boundedly on contracted WORKER_BUSY, retains single-write and slot-release assertions; complete CI pending"
+  "latest_windows_fix": "PASS: Windows and macOS source jobs completed successfully in Actions 42368722463",
+  "validated_source_commit": "fcdaead312eb61bdf4fd376277498d020c5e48af",
+  "final_remote_evidence": [
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/github-windows-final.log",
+      "sha256": "67f87b1fd4cd8d8964889afade75cd6ae2674ccaf9252563f10037c61661d02b"
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/github-macos-final.log",
+      "sha256": "3f008eb74e1b1ffdabcacce63ee4e3752e69b7d6a0ae2a388d4e2039a038d5cc"
+    }
+  ]
 }
