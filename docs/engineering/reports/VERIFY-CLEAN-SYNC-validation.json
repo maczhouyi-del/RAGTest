@@ -340,6 +340,24 @@
       "started_at": "2026-11-07T03:44:34.203913+00:00",
       "finished_at": "2026-11-07T03:45:32.890577+00:00",
       "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261107T035420700374Z-lifecycle-busy-contract.json",
+      "sha256": "f3c74161b8e2d3fe234ed5eaaaedaf9bfa5725ead1bb0ca72bac6871565eac45",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/integration/test_sidecar_lifecycle.py",
+        "tests/integration/test_hardening_scheduling.py",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-07T03:54:20.700374+00:00",
+      "finished_at": "2026-11-07T03:54:35.340289+00:00",
+      "exit_code": 0
     }
   ],
   "tests": {
@@ -401,7 +419,16 @@
       },
       "macos": "PASS",
       "finding": "health worker imports NumPy through sqlite_vec; stack captured"
+    },
+    {
+      "id": 42335798435,
+      "windows_lifecycle": {
+        "passed": 16,
+        "failed": 1,
+        "skipped": 1
+      },
+      "finding": "Readiness fixed; explicit retriable worker-slot response raced parse completion in lifecycle test"
     }
   ],
-  "latest_windows_fix": "Directly load same packaged vec0 extension without Python package NumPy initialization; Windows CI pending new commit"
+  "latest_windows_fix": "Cold vector probe readiness verified on Windows; lifecycle test now waits boundedly on contracted WORKER_BUSY, retains single-write and slot-release assertions; complete CI pending"
 }

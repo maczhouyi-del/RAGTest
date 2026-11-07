@@ -84,6 +84,8 @@ Windows source 最终 cancelled，Python 阶段出现失败和 setup error，不
 
 最新完整 Python **397 passed / 0 failed / 0 skipped**（143.78 秒）；Rust 含候选 **10 passed / 0 failed / 0 ignored**（183.25 秒）；浏览器 **46 PASS**。三个执行日志及新冻结构建记录已加入 validation.json，不覆盖历史失败证据。Rust 真实冻结侧车验证包括 sqlite-vec/E5 索引、OCR、Docling、会话持久化和来源校验，证明直接扩展定位在打包运行中有效。没有修改 RAG 排序、模型、引用核验或数据库 schema。
 
+`5991567` / Actions 42335798435 的 Windows 专项进一步达到 16 passed / 1 failed / 1 skipped：三个启动握手/readiness 已全部跨过，唯一失败为提交批注时返回 429 WORKER_BUSY。解析在事务内发布 completed 后还需返回并执行后台 finally 释放工作槽；测试把可见完成误当作工作槽已释放，与已有 `contracts/mvp-v0.5.md` 的 WORKER_BUSY/retriable=true 契约不符。测试仅对该明确响应做最多 5 秒的客户端等待，其他错误立即失败，工作槽泄漏仍失败，并新增只保存一条批注的核对；没有修改服务器并发保护、引入应用自动重试或放宽答案/数据验收。临时 6 秒线程栈定时器已移除，避免长测试的 stderr 管道压力；失败状态码/退出码和有界脱敏 stderr 保留。新冻结侧车的生命周期与调度定向 **5 passed / 0 failed / 0 skipped**（14.45 秒）。
+
 ## 状态与剩余事项
 
 本机功能测试：**PASS**。Windows CI：**此前 FAIL，最新修复待远端确认**。真实 Windows 安装：**NOT EXECUTED**。科研质量：**BLOCKED**。OSV 安全审计：**FAIL**。批量构建清理：**待用户按清单手动处理**。本轮不做 Release/发行承诺，无架构 ADR 变更，原 schema21 和既有 0001–0020 保持。

@@ -16,14 +16,8 @@ def start_sidecar(tmp_path, command=None):
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT / "engine")
     executable, env = source_python(env) if command is None else (None, env)
-    # A startup deadlock otherwise produces only a health timeout. Stack traces
-    # contain locations, not request bodies/locals, and stay in this test child.
-    source_command = [executable, "-c", (
-        "import faulthandler; faulthandler.dump_traceback_later(6); "
-        "from ragsystem.__main__ import main; raise SystemExit(main())"
-    )]
     process = subprocess.Popen(
-        command or source_command,
+        command or [executable, "-m", "ragsystem"],
         cwd=ROOT,
         env=env,
         stdin=subprocess.PIPE,
@@ -164,6 +158,20 @@ def test_actual_http_annotation_then_index_releases_worker_slot(tmp_path):
         def post(endpoint, body):
             return client.post(endpoint, json=body, headers=headers)
 
+        def post_after_worker_release(endpoint, body):
+            # A committed terminal job can be observed before its background
+            # finally releases the slot. v0.5 explicitly returns retriable BUSY.
+            # Bound the client wait: a leaked slot must still fail this test.
+            deadline = time.monotonic() + 5
+            while True:
+                response = post(endpoint, body)
+                if response.status_code != 429:
+                    return response
+                assert response.json()["code"] == "WORKER_BUSY"
+                assert response.json()["retriable"] is True
+                assert time.monotonic() < deadline, "worker slot was not released"
+                time.sleep(0.05)
+
         grant = post(
             "/v0/internal/file-grants", {"path": str(ROOT / "tests/fixtures/public/N19-1423.pdf")}
         ).json()
@@ -186,7 +194,10 @@ def test_actual_http_annotation_then_index_releases_worker_slot(tmp_path):
         version = client.get("/v0/documents", headers=headers).json()["documents"][0][
             "doc_version_id"
         ]
-        parsed = post("/v0/documents/" + version + "/parse", {"idempotency_key": "http-parse"})
+        parsed = post_after_worker_release(
+            "/v0/documents/" + version + "/parse", {"idempotency_key": "http-parse"}
+        )
+        assert parsed.status_code == 202
         assert wait_job(parsed.json()["job_id"])["status"] == "completed"
         search = post(
             "/v0/search",
@@ -199,15 +210,19 @@ def test_actual_http_annotation_then_index_releases_worker_slot(tmp_path):
         )
         assert search.status_code == 200
         client.timeout = 10
-        saved = post(
+        saved = post_after_worker_release(
             "/v0/documents/" + version + "/annotations",
             {"page_number": 1, "note": "HTTP", "expected_revision": 0},
         )
         assert saved.status_code == 200
+        annotations = client.get(
+            "/v0/documents/" + version + "/annotations", headers=headers
+        ).json()["annotations"]
+        assert len(annotations) == 1 and annotations[0]["note"] == "HTTP"
         directory = post(
             "/v0/internal/directory-grants", {"path": str(tmp_path), "purpose": "embedding"}
         ).json()
-        indexed = post(
+        indexed = post_after_worker_release(
             "/v0/index",
             {
                 "model_grant_id": directory["directory_grant_id"],
