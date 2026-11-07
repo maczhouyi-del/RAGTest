@@ -17,11 +17,6 @@ class LocalE5:
     """The explicitly approved E5 ONNX candidate, CPU only, no Hub client calls."""
 
     def __init__(self, directory: Path):
-        import numpy as np
-        import onnxruntime as ort
-        import tokenizers
-        from tokenizers import Tokenizer
-
         directory = Path(directory)
         manifest = json.loads((directory / "manifest.json").read_text())
         if (
@@ -46,6 +41,12 @@ class LocalE5:
         self.dimension = config["hidden_size"]
         if self.dimension != 384:
             raise EngineError("MODEL_DIMENSION_INVALID")
+        # Reject missing/untrusted resources before initializing native runtimes.
+        import numpy as np
+        import onnxruntime as ort
+        import tokenizers
+        from tokenizers import Tokenizer
+
         self.tokenizer = Tokenizer.from_file(str(directory / "tokenizer.json"))
         self.tokenizer.enable_truncation(max_length=512)
         self.tokenizer.enable_padding(pad_id=config["pad_token_id"], pad_token="<pad>")

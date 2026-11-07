@@ -9,6 +9,21 @@ from ragsystem.models.local_onnx import LocalE5
 from ragsystem.storage.database import Database
 
 
+def test_missing_model_rejected_before_native_runtime_import(tmp_path, monkeypatch):
+    import builtins
+
+    original = builtins.__import__
+
+    def guarded(name, *args, **kwargs):
+        if name.split(".")[0] in {"numpy", "onnxruntime", "tokenizers"}:
+            raise AssertionError("invalid model must fail before native initialization")
+        return original(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded)
+    with pytest.raises(FileNotFoundError):
+        LocalE5(tmp_path)
+
+
 @pytest.mark.skipif(
     not os.environ.get("RAGSYSTEM_MODEL_DIR"),
     reason="Explicit local model path not supplied; no automatic download",
