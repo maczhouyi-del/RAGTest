@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import struct
+from importlib.util import find_spec
 from pathlib import Path
 
 from ragsystem.domain.errors import EngineError
@@ -10,12 +11,19 @@ from ragsystem.vector_adapters.base import ExactAdapter
 def load_extension(conn):
     """Load the pinned packaged extension only; never use a user-supplied SQL path."""
     try:
-        import sqlite_vec
+        # sqlite_vec.__init__ eagerly imports numpy.typing for an API we do not
+        # use. Loading that native runtime in a cold HTTP worker can block Windows
+        # readiness. Resolve the fixed package without executing its __init__,
+        # then load the same vec0 binary used by sqlite_vec.loadable_path().
+        spec = find_spec("sqlite_vec")
+        if spec is None or not spec.submodule_search_locations:
+            raise EngineError("VECTOR_BACKEND_UNAVAILABLE", status=503)
+        extension = Path(next(iter(spec.submodule_search_locations))) / "vec0"
         if not callable(getattr(conn, "enable_load_extension", None)):
             raise EngineError("VECTOR_BACKEND_UNAVAILABLE", status=503)
         conn.enable_load_extension(True)
         try:
-            sqlite_vec.load(conn)
+            conn.load_extension(str(extension))
         finally:
             conn.enable_load_extension(False)
     except (ImportError, AttributeError, sqlite3.Error, OSError) as exc:

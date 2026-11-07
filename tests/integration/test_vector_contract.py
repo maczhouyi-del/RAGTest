@@ -83,3 +83,32 @@ def test_corrupt_index_is_not_silently_overwritten(tmp_path):
     recovered = SQLiteVec(tmp_path / "rebuilt.db", "test", 3)
     assert recovered.rebuild([("authoritative", [1, 0, 0])])["ok"]
     assert SQLiteVec(recovered.path, "test", 3).check_integrity(["authoritative"])["ok"]
+
+
+def test_cold_extension_probe_in_http_worker_does_not_import_numpy():
+    """Exercise real native loading from a cold worker, without NumPy warm-up."""
+    import subprocess
+    from pathlib import Path
+
+    from process_helpers import source_python
+
+    executable, environment = source_python()
+    environment["PYTHONPATH"] = str(Path(__file__).resolve().parents[2] / "engine")
+    script = """
+import builtins, sys
+from concurrent.futures import ThreadPoolExecutor
+from ragsystem.vector_adapters.sqlite_vec import availability
+original = builtins.__import__
+def guarded(name, *args, **kwargs):
+    if name == 'sqlite_vec' or name == 'numpy' or name.startswith('numpy.'):
+        raise AssertionError('health probe must not import optional numerical runtime')
+    return original(name, *args, **kwargs)
+builtins.__import__ = guarded
+with ThreadPoolExecutor(max_workers=1) as pool:
+    assert pool.submit(availability).result(timeout=5)['available']
+assert 'numpy' not in sys.modules and 'sqlite_vec' not in sys.modules
+"""
+    result = subprocess.run(
+        [executable, "-c", script], env=environment, capture_output=True, timeout=15
+    )
+    assert result.returncode == 0, result.stderr.decode(errors="replace")

@@ -2,6 +2,8 @@
 
 Task ID / 阶段：VERIFY-CLEAN-SYNC，2026-11-06，macOS 26.2 ARM64。
 
+2026-11-07 最新本机复测：**Python 397 PASS / Rust 10 PASS / 浏览器 46 断言 PASS**，均无失败和跳过；新 VERIFY-CLEAN-SYNC-COLD 侧车及 102 项源码哈希核对通过。远端此前 macOS source 通过，Windows 剩余三项健康检查超时已定位并修复，须由修复后 CI 确认；OSV 明确 FAIL（6 个锁依赖、8 条公告记录）。历史构建实际删除仍为 0，待按清单手动处理。
+
 用户本次明确授权完整测试、代码/构建清理及直接提交推送 GitHub main。覆盖 SECTION-AWARE 当时禁止提交推送的限制；不创建 PR、不强推、不发布 Release。本轮开始于 9d301b3，20 项既有未提交变更均为本会话的章节/段落改造，保留后纳入验收和提交。GitHub 当前 main 已独立确认为同一 9d301b3；本地 origin/main 落后只是 fetch 失败后的旧 tracking ref。
 
 ## 实际代码清理
@@ -72,6 +74,16 @@ Windows source 最终 cancelled，Python 阶段出现失败和 setup error，不
 
 本机补测：新冻结 VERIFY-CLEAN-SYNC-WIN 侧车构建成功；使用该侧车及已批准 E5/OCR/Docling 资源，完整 Python **396 passed / 0 failed / 0 skipped**（126.60 秒），Ruff PASS。原始记录 `20261106T180502363718Z-python-windows-fixes.json`。CI 新增独立 Windows 生命周期前置回归，便于快速保留跨平台失败；成功后仍运行原全量套件，未删除或缩减验收。
 
+### Windows 冷启动探测定位
+
+`06acbd3` 的 Actions 42268823669：macOS source PASS，Windows 专项 14 passed / 3 failed / 1 skipped。备份隔离、Job Object 和父进程监督已通过；剩余三个失败均为握手后的健康检查 ReadTimeout，进程仍存活。`c946dff` 添加测试子进程限定长度、脱敏的启动线程栈；Actions 42334659360 在三个失败中均显示 `health → HybridSearch.status → sqlite_vec.load_extension → sqlite_vec.__init__ → numpy.typing → numpy._core.multiarray`，停在 NumPy 原生模块初始化。此证据定位触发链，不断言 NumPy 内部阻塞的具体底层原因。原始日志 `github-windows-startup-stacks.log` 保留。
+
+修复 `engine/ragsystem/vector_adapters/sqlite_vec.py`：通过固定包名的 `find_spec` 定位已安装/已打包的 sqlite_vec 目录，直接加载与原包装器相同的 `vec0` 扩展，不执行会附带导入 NumPy 的包初始化。没有用户路径输入、没有替换向量后端、依赖锁或距离算法；加载权限仍在 finally 中关闭，缺少扩展仍明确不可用。
+
+新增 `test_cold_extension_probe_in_http_worker_does_not_import_numpy`：在全新进程/工作线程实际加载扩展，禁止 NumPy 及 sqlite_vec Python 包导入，验证运行时可用且未隐式初始化 NumPy。既有精确距离、过滤、更新/删除、索引持久化与扩展授权关闭测试继续运行。定向 13 passed / 1 skipped（未提供冻结侧车），随后完整回归使用新 VERIFY-CLEAN-SYNC-COLD 侧车。浏览器 46 断言已复测通过，保留真实引擎/模拟 Tauri transport 的边界。
+
+最新完整 Python **397 passed / 0 failed / 0 skipped**（143.78 秒）；Rust 含候选 **10 passed / 0 failed / 0 ignored**（183.25 秒）；浏览器 **46 PASS**。三个执行日志及新冻结构建记录已加入 validation.json，不覆盖历史失败证据。Rust 真实冻结侧车验证包括 sqlite-vec/E5 索引、OCR、Docling、会话持久化和来源校验，证明直接扩展定位在打包运行中有效。没有修改 RAG 排序、模型、引用核验或数据库 schema。
+
 ## 状态与剩余事项
 
-功能测试：**PASS**。真实 Windows 安装：**NOT EXECUTED**。科研质量：**BLOCKED**。OSV 安全审计：**BLOCKED**。批量构建清理：**待用户按清单手动处理**。本轮不做 Release/发行承诺，无架构 ADR 变更，原 schema21 和既有 0001–0020 保持。
+本机功能测试：**PASS**。Windows CI：**此前 FAIL，最新修复待远端确认**。真实 Windows 安装：**NOT EXECUTED**。科研质量：**BLOCKED**。OSV 安全审计：**FAIL**。批量构建清理：**待用户按清单手动处理**。本轮不做 Release/发行承诺，无架构 ADR 变更，原 schema21 和既有 0001–0020 保持。

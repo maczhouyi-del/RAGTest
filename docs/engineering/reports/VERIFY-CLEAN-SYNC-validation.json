@@ -214,10 +214,136 @@
       "started_at": "2026-11-06T12:49:47.342186+00:00",
       "finished_at": "2026-11-06T12:49:47.401584+00:00",
       "exit_code": 2
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T180047472162Z-freeze-windows-fixes.json",
+      "sha256": "ebd19bffac7c67d27d2224720351bbb98e5807ec777673df1f889543a45cc49c",
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--build-label",
+        "VERIFY-CLEAN-SYNC-WIN",
+        "--include-vector-lab",
+        "--include-generation-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab",
+        "--output-directory",
+        ".tools/build/VERIFY-CLEAN-SYNC-WIN-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/VERIFY-CLEAN-SYNC"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T18:00:47.472162+00:00",
+      "finished_at": "2026-11-06T18:02:51.824344+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T180502363718Z-python-windows-fixes.json",
+      "sha256": "f1da956048c9f4517c55332480f4aa2707fb9b932b20d0a755d2eee5406cbe1f",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T18:05:02.363718+00:00",
+      "finished_at": "2026-11-06T18:07:09.319101+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261106T180910470256Z-rust-windows-fixes.json",
+      "sha256": "67bf6ed81e6a634485863819e7d31544b2c09edd731b84e92971ce27cd49593e",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-06T18:09:10.470256+00:00",
+      "finished_at": "2026-11-06T18:12:27.094439+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261107T034118838286Z-freeze-cold-probe-fix.json",
+      "sha256": "94314577a9ba5ef84228c1f4b382af1c0d1952f07393428bc919cb202dd850a9",
+      "argv": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--build-label",
+        "VERIFY-CLEAN-SYNC-COLD",
+        "--include-vector-lab",
+        "--include-generation-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab",
+        "--output-directory",
+        ".tools/build/VERIFY-CLEAN-SYNC-COLD-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/VERIFY-CLEAN-SYNC"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-07T03:41:18.838286+00:00",
+      "finished_at": "2026-11-07T03:43:29.470864+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261107T034420702383Z-python-cold-probe-fix.json",
+      "sha256": "b3a6cafa9420fcbd0a6fb3ff8bdebd1f094908648210202521a0f4a0e7d9a4f5",
+      "argv": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-07T03:44:20.702383+00:00",
+      "finished_at": "2026-11-07T03:46:45.895772+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261107T034421821016Z-rust-cold-probe-fix.json",
+      "sha256": "15ca527727b0d9dd0c4be61b37f9e626413a55601af81706f6fd08d575d86784",
+      "argv": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-07T03:44:21.821016+00:00",
+      "finished_at": "2026-11-07T03:47:26.593371+00:00",
+      "exit_code": 0
+    },
+    {
+      "path": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/20261107T034434203913Z-browser-cold-probe-fix.json",
+      "sha256": "8e415849526d97073c6762a50eda1561bac63a6daf51b40c04b611ad6359ae77",
+      "argv": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "started_at": "2026-11-07T03:44:34.203913+00:00",
+      "finished_at": "2026-11-07T03:45:32.890577+00:00",
+      "exit_code": 0
     }
   ],
   "tests": {
-    "python": 395,
+    "python": 397,
     "rust": 10,
     "browser_assertions": 46,
     "failures": 0,
@@ -229,7 +355,7 @@
     "Clippy PASS"
   ],
   "npm_audit": "PASS: 0 vulnerabilities via configured system proxy",
-  "osv_audit": "BLOCKED: direct and system-proxy attempts URLError",
+  "osv_audit": "FAIL: remote OSV found 8 advisory records across 6 locked dependencies; no suppression or lock change",
   "scientific_quality": "BLOCKED: no gold",
   "windows_install": "NOT EXECUTED",
   "old_migrations_unchanged": 20,
@@ -241,10 +367,41 @@
     "status": "manual handling required by user AGENTS deletion restriction"
   },
   "frozen": {
-    "manifest": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/sidecar-20261106T123833037975Z.json",
-    "binary": ".tools/build/VERIFY-CLEAN-SYNC-sidecar/ragsystem-engine-aarch64-apple-darwin",
-    "sha256": "fa6599ec78f9bfc86afb74eb07382372c0d2781858727573b53034b862dd5594",
+    "manifest": "docs/engineering/evidence/VERIFY-CLEAN-SYNC/sidecar-20261107T034118884125Z.json",
+    "binary": ".tools/build/VERIFY-CLEAN-SYNC-COLD-sidecar/ragsystem-engine-aarch64-apple-darwin",
+    "sha256": "7c18e25e5cd00471a01cc8faa1ab133d0346f19298d2686598071a23fb84f984",
     "checked_sources": 102,
     "status": "PASS"
-  }
+  },
+  "followup_date": "2026-11-07",
+  "remote_runs": [
+    {
+      "id": 42265283048,
+      "windows_python": {
+        "passed": 372,
+        "failed": 6,
+        "skipped": 17
+      }
+    },
+    {
+      "id": 42268823669,
+      "windows_lifecycle": {
+        "passed": 14,
+        "failed": 3,
+        "skipped": 1
+      },
+      "macos": "PASS"
+    },
+    {
+      "id": 42334659360,
+      "windows_lifecycle": {
+        "passed": 14,
+        "failed": 3,
+        "skipped": 1
+      },
+      "macos": "PASS",
+      "finding": "health worker imports NumPy through sqlite_vec; stack captured"
+    }
+  ],
+  "latest_windows_fix": "Directly load same packaged vec0 extension without Python package NumPy initialization; Windows CI pending new commit"
 }

@@ -270,3 +270,5 @@ CODE-CLEANUP结果：修改前Python353/Rust10，修改后Python354/Rust10、新
 VERIFY-CLEAN-SYNC 远端复核（2026-11-07）：8f2bf79 已同步 main。macOS CI PASS；OSV FAIL（6 个锁依赖/8 条公告记录），Windows CI cancelled 且含 Python 失败。已修复大响应测试参数 ID 超过 Windows 环境变量限制的问题，本机定向 12 PASS；继续取得 Windows 完整结果，不宣称跨平台已验收。详见 VERIFY-CLEAN-SYNC 报告。
 
 Windows 跟进：第二轮确认 6 FAIL / 372 PASS / 17 SKIP；修复备份/迁移连接释放和 Windows 测试进程归属、退出码假设，增加独立 Windows 生命周期前置回归（仍保留全量套件）。本机新冻结侧车及完整 Python 396 PASS / 0 FAIL / 0 SKIP，Windows 后续结果单独核对。
+
+Windows 冷启动跟进：备份/Job/父监督已在 Windows 专项通过；三个 readiness 超时线程栈定位到 sqlite_vec 包附带 NumPy 原生导入。适配器改为定位同一安装包内 vec0 扩展直接加载，新增冷进程工作线程探测回归。最新本机新冻结102哈希、Python397/Rust10/浏览器46通过；远端最新修复待确认，OSV仍FAIL，实机/科研门禁不变。
