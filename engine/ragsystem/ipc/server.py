@@ -779,7 +779,12 @@ def create_app(token: str, data_root: Path):
 
     @app.get("/v0/internal/restored-workspaces/{identifier}")
     def restored_workspace(identifier: str):
-        return {"data_root": str(backups.restored_path(identifier))}
+        if not slot.acquire(blocking=False):
+            raise EngineError("WORKER_BUSY", status=429, retriable=True)
+        try:
+            return {"data_root": str(backups.restored_path(identifier))}
+        finally:
+            slot.release()
 
     def run_retry(row):
         try:

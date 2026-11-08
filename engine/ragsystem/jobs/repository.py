@@ -191,6 +191,10 @@ class Jobs:
                     (utc_now(), job_id),
                 )
                 self.event(conn, job_id, "cancelled")
+                conn.execute(
+                    "UPDATE answer_runs SET status='cancelled',error_code='JOB_CANCELLED' "
+                    "WHERE job_id=? AND status IN ('queued','running')", (job_id,),
+                )
         return self.get(job_id)
 
     def recover_expired(self, *, now=None):

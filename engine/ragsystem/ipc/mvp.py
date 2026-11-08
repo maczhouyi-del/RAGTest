@@ -107,9 +107,12 @@ def register_mvp(app, db, root, search, work, jobs, slot):
     def probe_provider(identifier: str):
         return work.generation.providers.probe(identifier)
 
-    def run(job_id, versions):
+    def run(job_id):
         try:
-            prepare.run(job_id, versions)
+            prepare.run(job_id, prepare.versions(job_id))
+        except EngineError as exc:
+            jobs.fail_pending(job_id, exc.code)
+            raise
         finally:
             slot.release()
 
@@ -122,16 +125,8 @@ def register_mvp(app, db, root, search, work, jobs, slot):
         if not slot.acquire(blocking=False):
             raise EngineError("WORKER_BUSY", status=429, retriable=True)
         try:
-            row = jobs.enqueue(
-                "verify",
-                body.idempotency_key,
-                {
-                    "action": "mvp_prepare",
-                    "display_name": "mvp_prepare",
-                    "versions": sorted(body.version_ids),
-                },
-            )
-            background.add_task(run, row["id"], sorted(body.version_ids))
+            row = prepare.enqueue(body.version_ids, body.idempotency_key)
+            background.add_task(run, row["id"])
             return {"job_id": row["id"], "status": row["status"]}
         except BaseException:
             slot.release()

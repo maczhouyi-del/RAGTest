@@ -14,7 +14,7 @@
 - 本轮命令：run_logged A-red-corrected：7 FAIL/7 PASS；A-green：19 PASS；A-integration：25 PASS/1 SKIP。首轮A-red中的9个导入错误是测试实现问题，已修正并保留日志。
 - 业务断言：坏头/有效PDF替换的启动与手动恢复被隔离，正常对象完成；共同run重核哈希；真实源码侧车启动可读正常文献；DB错误仍传播。配置claim/执行/fail写入故障后下一任务受理，失效租约不继续发布。
 - 跳过：集成命令未设置新冻结侧车，冻结专项未执行；不借基线旧二进制覆盖新源码验证。
-- 修改：ingestion/import_pdf.py、jobs/repository.py、ipc/server.py、tests/integration/test_audit_recovery.py；本地提交待登记。
+- 修改：ingestion/import_pdf.py、jobs/repository.py、ipc/server.py、tests/integration/test_audit_recovery.py；本地提交45f3c50。
 - 边界：持久DB故障仍会阻断服务/状态写入；fail写入失败时保留租约与attempt，恢复后按既有过期机制处理。未吞掉全局DB错误。
 
 ## RAG-AUD-02 恢复导入没有把重新读取的文件哈希绑定到原任务预期哈希
@@ -27,7 +27,7 @@
 - 本轮命令：run_logged A-red-corrected：7 FAIL/7 PASS；A-green：19 PASS；A-integration：25 PASS/1 SKIP。首轮A-red中的9个导入错误是测试实现问题，已修正并保留日志。
 - 业务断言：坏头/有效PDF替换的启动与手动恢复被隔离，正常对象完成；共同run重核哈希；真实源码侧车启动可读正常文献；DB错误仍传播。配置claim/执行/fail写入故障后下一任务受理，失效租约不继续发布。
 - 跳过：集成命令未设置新冻结侧车，冻结专项未执行；不借基线旧二进制覆盖新源码验证。
-- 修改：ingestion/import_pdf.py、jobs/repository.py、ipc/server.py、tests/integration/test_audit_recovery.py；本地提交待登记。
+- 修改：ingestion/import_pdf.py、jobs/repository.py、ipc/server.py、tests/integration/test_audit_recovery.py；本地提交45f3c50。
 - 边界：持久DB故障仍会阻断服务/状态写入；fail写入失败时保留租约与attempt，恢复后按既有过期机制处理。未吞掉全局DB错误。
 
 ## RAG-AUD-03 模型配置任务领取失败时泄漏唯一重型工作槽
@@ -40,30 +40,32 @@
 - 本轮命令：run_logged A-red-corrected：7 FAIL/7 PASS；A-green：19 PASS；A-integration：25 PASS/1 SKIP。首轮A-red中的9个导入错误是测试实现问题，已修正并保留日志。
 - 业务断言：坏头/有效PDF替换的启动与手动恢复被隔离，正常对象完成；共同run重核哈希；真实源码侧车启动可读正常文献；DB错误仍传播。配置claim/执行/fail写入故障后下一任务受理，失效租约不继续发布。
 - 跳过：集成命令未设置新冻结侧车，冻结专项未执行；不借基线旧二进制覆盖新源码验证。
-- 修改：ingestion/import_pdf.py、jobs/repository.py、ipc/server.py、tests/integration/test_audit_recovery.py；本地提交待登记。
+- 修改：ingestion/import_pdf.py、jobs/repository.py、ipc/server.py、tests/integration/test_audit_recovery.py；本地提交45f3c50。
 - 边界：持久DB故障仍会阻断服务/状态写入；fail写入失败时保留租约与attempt，恢复后按既有过期机制处理。未吞掉全局DB错误。
 
 ## RAG-AUD-04 重启后的 retry_wait 任务缺少可达终结路径，并阻止切换恢复副本
 
-- 状态：待核查。
-- 适用性/发行阻断：待核实当前调用链及承诺功能。
+- 状态：已验证（后端专项）；UI按钮路径已改，浏览器回归待最终候选。
+- 适用性：已确认；基线没有修复。
 - 审查定位：`engine/ragsystem/jobs/repository.py`, `apps/desktop/src/components/MvpLibrary.tsx`, `engine/ragsystem/storage/backup_service.py`
 - 审查根因：recover_owned_workspace 将部分 running/queued 任务改为 retry_wait。MVP 队列只允许取消 queued/running，重试仅覆盖 import/parse_page/metadata_extract。restored_path 则将任意 queued/running/retry_wait 视为阻止工作区切换的条件。
 - 修复与业务测试：对 import/parse/index/prepare/answer/config/backup 分别在 queued 和 running 时重启；每种任务都必须有可达的继续或终止操作，终结后恢复副本可激活。
-- 本轮命令/结果/失败或跳过：尚未执行；不以旧CI替代。
-- 修改文件/本地提交：无。
-- 剩余风险：尚未核查，不等于不适用。
+- 本轮测试：B-red 6 FAIL；B-green 18 PASS/1 SKIP（未提供E5资源变量）；B-recovery-matrix 9 PASS/0 FAIL/0 SKIP。
+- 断言：1000范围快照/小载荷、重读/幂等冲突/事务回滚/旧载荷兼容/篡改检测；claim屏障前取消回答不残留queued；所有任务类型queued/running重启后可取消，旧租约不可发布，恢复副本可激活；实际执行者未退出仍拒绝切换。
+- 修改：workflows/preparation.py、ipc/mvp.py、ipc/server.py、jobs/repository.py、MvpLibrary.tsx、bridge.ts、test_audit_task_contracts.py、contracts/task-recovery-v0.6.md；提交待登记。
+- 验证边界：1000版本为合成入队/范围契约，不是1000篇PDF解析吞吐；不移除工作槽保护。复用现有scope_snapshots，无schema变更。
 
 ## RAG-AUD-05 准备接口声明支持 1000 个版本，内部任务在 419 个 UUID 时即超限
 
-- 状态：待核查。
-- 适用性/发行阻断：待核实当前调用链及承诺功能。
+- 状态：已验证（本机源码集成）。
+- 适用性：已确认；基线没有修复。
 - 审查定位：`engine/ragsystem/ipc/mvp.py`, `engine/ragsystem/ipc/mvp.py`, `engine/ragsystem/jobs/repository.py`, `engine/ragsystem/ipc/server.py`, `apps/desktop/src/components/MvpLibrary.tsx`
 - 审查根因：PrepareRequest.version_ids 上限 1000；prepare_documents 将完整 versions 列表写入 job payload；Jobs.enqueue 的紧凑 UTF-8 JSON 上限 16384 字节。该 endpoint 的 HTTP 上限是 128 KiB，因此不是外层 16 KiB 请求限制先触发。
 - 修复与业务测试：在临时库测试 1/418/419/1000 个不同有效版本，覆盖取消、重启、部分失败和幂等重提；明确区分接口接收、任务入队与处理完成。
-- 本轮命令/结果/失败或跳过：尚未执行；不以旧CI替代。
-- 修改文件/本地提交：无。
-- 剩余风险：尚未核查，不等于不适用。
+- 本轮测试：B-red 6 FAIL；B-green 18 PASS/1 SKIP（未提供E5资源变量）；B-recovery-matrix 9 PASS/0 FAIL/0 SKIP。
+- 断言：1000范围快照/小载荷、重读/幂等冲突/事务回滚/旧载荷兼容/篡改检测；claim屏障前取消回答不残留queued；所有任务类型queued/running重启后可取消，旧租约不可发布，恢复副本可激活；实际执行者未退出仍拒绝切换。
+- 修改：workflows/preparation.py、ipc/mvp.py、ipc/server.py、jobs/repository.py、MvpLibrary.tsx、bridge.ts、test_audit_task_contracts.py、contracts/task-recovery-v0.6.md；提交待登记。
+- 验证边界：1000版本为合成入队/范围契约，不是1000篇PDF解析吞吐；不移除工作槽保护。复用现有scope_snapshots，无schema变更。
 
 ## RAG-AUD-06 当前提交的依赖审计门禁失败，尚未完成发布风险处置
 
@@ -78,14 +80,15 @@
 
 ## RAG-AUD-07 领取前取消问答，只终止 job，可能留下永久 queued 的回答
 
-- 状态：待核查。
-- 适用性/发行阻断：待核实当前调用链及承诺功能。
+- 状态：已验证（本机源码集成）。
+- 适用性：已确认；基线没有修复。
 - 审查定位：`engine/ragsystem/ipc/server.py`, `engine/ragsystem/jobs/repository.py`, `engine/ragsystem/workflows/workbench.py`, `apps/desktop/src/components/MvpAsk.tsx`
 - 审查根因：取消路由仅调用 Jobs.cancel；该方法只更新 jobs/job_attempts/events。run_answer 在 claim 返回 None 后直接返回。前端根据 answer_runs 的 queued/running 字段设置 pending，而不是从已取消 job 反推终态。
 - 修复与业务测试：用同步屏障暂停 worker 在 claim 前，取消再放行；断言 job 和 answer_run 均为 cancelled、无模型调用、前端能再次发送。
-- 本轮命令/结果/失败或跳过：尚未执行；不以旧CI替代。
-- 修改文件/本地提交：无。
-- 剩余风险：尚未核查，不等于不适用。
+- 本轮测试：B-red 6 FAIL；B-green 18 PASS/1 SKIP（未提供E5资源变量）；B-recovery-matrix 9 PASS/0 FAIL/0 SKIP。
+- 断言：1000范围快照/小载荷、重读/幂等冲突/事务回滚/旧载荷兼容/篡改检测；claim屏障前取消回答不残留queued；所有任务类型queued/running重启后可取消，旧租约不可发布，恢复副本可激活；实际执行者未退出仍拒绝切换。
+- 修改：workflows/preparation.py、ipc/mvp.py、ipc/server.py、jobs/repository.py、MvpLibrary.tsx、bridge.ts、test_audit_task_contracts.py、contracts/task-recovery-v0.6.md；提交待登记。
+- 验证边界：1000版本为合成入队/范围契约，不是1000篇PDF解析吞吐；不移除工作槽保护。复用现有scope_snapshots，无schema变更。
 
 ## RAG-AUD-08 对话轮询反复加载历史证据，并按证据重复读取整份 PDF 校验
 
