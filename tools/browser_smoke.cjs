@@ -23,10 +23,16 @@ async function main() {
   fs.mkdirSync(evidence, {recursive: true});
   let dataRoot = path.join(root, '.tools/test-data', 'browser-' + crypto.randomUUID());
   let token = crypto.randomBytes(32).toString('hex');
-  const binary = path.join(root, 'apps/desktop/src-tauri/binaries/ragsystem-engine-aarch64-apple-darwin');
+  const binary = process.env.RAGSYSTEM_BROWSER_SIDECAR || path.join(root, 'apps/desktop/src-tauri/binaries/ragsystem-engine-aarch64-apple-darwin');
   const engineCommand=process.env.RAGSYSTEM_BROWSER_SOURCE_ENGINE==='1'?path.join(root,'engine/.venv/bin/python'):binary;
   const engineArgs=process.env.RAGSYSTEM_BROWSER_SOURCE_ENGINE==='1'?['-m','ragsystem']:[];
-  const startEngine=()=>spawn(engineCommand,engineArgs,{stdio:['pipe','pipe','pipe'],env:{...process.env,PYTHONPATH:path.join(root,'engine')}});
+  const startEngine=()=>{
+    const environment={...process.env};
+    if(process.env.RAGSYSTEM_BROWSER_SOURCE_ENGINE==='1')environment.PYTHONPATH=path.join(root,'engine');
+    else {for(const key of ['PYTHONPATH','PYTHONHOME','VIRTUAL_ENV','RAGSYSTEM_DEV_DATA_ROOT'])delete environment[key];environment.PATH=process.platform==='win32'?(process.env.SystemRoot+'\\System32'):'/usr/bin:/bin';}
+    fs.mkdirSync(dataRoot,{recursive:true});
+    return spawn(engineCommand,engineArgs,{cwd:dataRoot,stdio:['pipe','pipe','pipe'],env:environment});
+  };
   let child = startEngine();
   let browser, server, page;
   const errors = [];
@@ -69,9 +75,15 @@ async function main() {
     await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
     page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
-    let recoveryCalls=0, failNextRecovery=false;
+    let recoveryCalls=0, failNextRecovery=false, probeFault="", failProbeList=false, failProbeSnapshot=false;
     const broker = async (command, args = {}) => {
       fs.appendFileSync(path.join(evidence,'browser-commands-'+path.basename(dataRoot)+'.jsonl'),JSON.stringify({command,time:new Date().toISOString()})+'\n');
+      if (chatManagement && command === 'test_probe_fault') {probeFault=args.mode;return;}
+      if (chatManagement && command === 'test_seed_restart_job') {
+        const script="from pathlib import Path; import sys; from ragsystem.storage.database import Database; from ragsystem.jobs.repository import Jobs; print(Jobs(Database(Path(sys.argv[1]))).enqueue('embed_batch','audit-browser-restart',{'synthetic_fixture':True})['id'])";
+        const result=require('node:child_process').spawnSync(path.join(root,'engine/.venv/bin/python'),['-c',script,path.join(dataRoot,'data/research.db')],{env:{...process.env,PYTHONPATH:path.join(root,'engine')},encoding:'utf8'});
+        if(result.status!==0)throw Error('AUDIT_SEED_FAILED');return result.stdout.trim();
+      }
       if (command === 'test_crash_engine') {child.kill();await once(child,'exit');return;}
       if (command === 'test_fail_next_recovery') {failNextRecovery=true;return;}
       if (command === 'test_recovery_count') return recoveryCalls;
@@ -91,19 +103,28 @@ async function main() {
         return;
       }
       if (command === 'workspace_snapshot') {
+        if(failProbeSnapshot){failProbeSnapshot=false;throw Error('AUDIT_SNAPSHOT_FAILURE');}
         const health=await rpc('GET','/v0/health'),docs=await rpc('GET','/v0/documents'),jobs=await rpc('GET','/v0/jobs'),projects=await rpc('GET','/v0/projects'),index=await rpc('GET','/v0/index'),generator=await rpc('GET','/v0/generator'),ocr=await rpc('GET','/v0/ocr'),docling=await rpc('GET','/v0/docling');
         return {health, documents: docs.documents, jobs: jobs.jobs, projects: projects.projects, index, generator, ocr, docling, workspace: {label: path.basename(dataRoot), warning: '', directory:dataRoot}};
       }
+      if (command === 'cancel_job') return rpc('POST',`/v0/jobs/${args.jobId}/cancel`);
       if (command === 'prepare_mvp') return rpc('POST','/v0/mvp/prepare',{version_ids:args.versionIds,idempotency_key:crypto.randomUUID()});
       if (command === 'read_mvp_answer') return rpc('GET',`/v0/answers/${args.answerId}`);
-      if (command === 'list_generation_providers') return rpc('GET','/v0/generation-providers');
+      if (command === 'list_generation_providers') {if(failProbeList){failProbeList=false;throw Error('AUDIT_REFRESH_FAILURE');}return rpc('GET','/v0/generation-providers');}
       if (command === 'retired_generation_providers') return rpc('GET','/v0/generation-providers/retired');
       if (command === 'restore_generation_provider') return rpc('POST',`/v0/generation-providers/${args.identifier}/restore`,{expected_revision:args.expectedRevision,active_id:args.activeId,active_revision:args.activeRevision});
       if (command === 'manage_conversation') return rpc('POST',`/v0/conversations/${args.conversationId}/manage`,{action:args.action,title:args.title,project_id:args.projectId});
       if (command === 'save_generation_provider') return rpc('POST','/v0/generation-providers',args.body);
       if (command === 'preview_generation_provider') return rpc('POST','/v0/generation-provider-probe',args.body);
       if (command === 'authorize_generation_provider') return rpc('POST',`/v0/generation-providers/${args.identifier}/authorization`,{expected_revision:args.expectedRevision,enabled:args.enabled});
-      if (command === 'probe_generation_provider') return rpc('POST',`/v0/generation-providers/${args.identifier}/probe`);
+      if (command === 'probe_generation_provider') {
+        const mode=probeFault;probeFault="";
+        if(mode==='unmount')await new Promise(resolve=>setTimeout(resolve,700));
+        if(mode.includes('refresh'))failProbeList=true;
+        if(mode.includes('callback'))failProbeSnapshot=true;
+        if(mode.startsWith('failure'))throw Error('PROVIDER_AUTH_FAILED');
+        return rpc('POST',`/v0/generation-providers/${args.identifier}/probe`);
+      }
       if (command === 'workbench_snapshot') {
         const scope = args.projectId ? 'project_id=' + args.projectId + '&' : '';
         const answers=await rpc('GET','/v0/history/answers?'+scope),research=await rpc('GET','/v0/history/research?'+scope),generator=await rpc('GET','/v0/generator');

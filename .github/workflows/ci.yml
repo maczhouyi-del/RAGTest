@@ -59,6 +59,8 @@ jobs:
       - name: TypeScript source build
         working-directory: apps/desktop
         run: npm run build
+      - name: Frontend asynchronous failure contracts
+        run: node --experimental-strip-types --test tests/frontend/probeConnection.test.ts
       - name: Model-free test sidecar (not an installer)
         run: uv run --frozen --extra vector-lab --project engine python packaging/build_sidecar.py
       - name: Rust tests with current source sidecar

@@ -10,6 +10,15 @@ module.exports=async function({page,rpc,evidence,errors,audit}) {
  const chat=page.locator('.chat-scroll'),right=page.locator('.chat-evidence');
  await page.getByRole('button',{name:'导入文件',exact:true}).click();
  await wait(async()=>{const docs=(await rpc('GET','/v0/documents')).documents;return docs.length===2&&docs.every(doc=>['ready','partial'].includes(doc.parse_status));});
+ const restartJob=await page.evaluate(()=>globalThis.__testBroker('test_seed_restart_job'));
+ await page.evaluate(()=>globalThis.__testBroker('restart_engine',{force:true}));
+ await page.reload();
+ await nav.getByRole('button',{name:'文献',exact:true}).click();
+ await wait(async()=>(await rpc('GET','/v0/jobs/'+restartJob)).status==='retry_wait');
+ const cancelRestart=page.locator('.processing-queue').getByRole('button',{name:'取消建立检索索引',exact:true});
+ await cancelRestart.waitFor();await cancelRestart.click();
+ await wait(async()=>(await rpc('GET','/v0/jobs/'+restartJob)).status==='cancelled');
+ check(true,'RESTART_RETRY_WAIT_HAS_REACHABLE_UI_CANCEL');
  const docs=(await rpc('GET','/v0/documents')).documents;
  const bert=docs.find(doc=>doc.title.includes('BERT')),dpr=docs.find(doc=>!doc.title.includes('BERT'));
  await page.evaluate(()=>globalThis.__testBroker('choose_embedding_model',{backend:'sqlite-vec'}));
@@ -62,6 +71,19 @@ module.exports=async function({page,rpc,evidence,errors,audit}) {
   check((await rpc('GET','/v0/generation-providers')).providers.length===1,'REPEATED_SAVE_ONE_CONFIG');
   await page.getByRole('button',{name:'测试连接',exact:true}).click();await wait(async()=>(await rpc('GET','/v0/generation-providers')).providers[0].connection_verified);
   const catalog=page.getByLabel('服务模型列表',{exact:true});await catalog.waitFor();check(await catalog.locator('option').count()===4,'FULL_MODEL_CATALOG_NOT_FILTERED_BY_CURRENT_ID');await catalog.selectOption('chat-fixture-pro');check(await page.getByLabel('模型 ID',{exact:true}).inputValue()==='chat-fixture-pro','CATALOG_SELECTION_UPDATES_MODEL_ID');await catalog.selectOption('chat-fixture');
+  for(const mode of ['success-refresh','failure-refresh','success-callback','failure-callback']){
+   await page.evaluate(mode=>globalThis.__testBroker('test_probe_fault',{mode}),mode);
+   const button=page.getByRole('button',{name:'测试连接',exact:true});await button.click();
+   await page.getByRole('alert').filter({hasText:'刷新连接状态失败'}).waitFor();
+   await wait(async()=>await button.isEnabled());
+   check(true,'PROBE_BUSY_CLEARED_'+mode.toUpperCase().replace('-','_'));
+  }
+  await page.evaluate(()=>globalThis.__testBroker('test_probe_fault',{mode:'unmount'}));
+  await page.getByRole('button',{name:'测试连接',exact:true}).click();
+  await nav.getByRole('button',{name:'问答',exact:true}).click();await page.waitForTimeout(1000);
+  await nav.getByRole('button',{name:'设置',exact:true}).click();await page.getByRole('tab',{name:/^自定义兼容接口/}).click();
+  await wait(async()=>await page.getByRole('button',{name:'测试连接',exact:true}).isEnabled());
+  check(errors.length===0,'PROBE_UNMOUNT_NO_UNHANDLED_REJECTION');
   await nav.getByRole('button',{name:'问答',exact:true}).click();await page.getByLabel('生成模型',{exact:true}).selectOption(provider.id);await page.getByLabel('问答文献范围',{exact:true}).selectOption(bert.doc_version_id);
   delay=2500;await input.fill('BERT long running fixture');await page.getByRole('button',{name:'发送问题',exact:true}).click();
   await page.locator('[data-pending-question]').waitFor().catch(()=>{});
