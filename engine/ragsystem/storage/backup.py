@@ -12,6 +12,9 @@ from ragsystem.ipc.directories import directory_identity
 from ragsystem.storage.backup_operations import MARKER, BackupOperations
 from ragsystem.storage.database import SCHEMA_VERSION, Database, utc_now
 
+MAX_BACKUP_BYTES = 8 * 1024**3
+MAX_DATABASE_BYTES = 512 * 1024**2
+
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -34,6 +37,7 @@ class Backups:
         """Trusted operator or purpose-bound broker grant; failures are retained, not deleted."""
         destination = Path(destination)
         destination.mkdir(parents=True, exist_ok=True)
+        self.preflight(destination)
         operations, value = operation or (BackupOperations(self.db, self.root), None)
         value = value or operations.begin("backup", destination)
         try:
@@ -46,6 +50,28 @@ class Backups:
             if operation is None:
                 operations.quarantine(value, "BACKUP_IO_FAILED")
             raise
+
+    def preflight(self, destination):
+        """Capacity estimates reject impossible work; post-copy checks remain authoritative."""
+        with self.db.connection() as conn:
+            conn.execute("BEGIN")
+            database_bytes = conn.execute("PRAGMA page_count").fetchone()[0] * conn.execute("PRAGMA page_size").fetchone()[0]
+            assets = conn.execute("SELECT sha256,size_bytes FROM file_assets").fetchall()
+        if database_bytes > MAX_DATABASE_BYTES or len(assets) + 1 > 10000:
+            raise EngineError("BACKUP_CAPACITY_LIMIT", status=409)
+        total = database_bytes
+        for asset in assets:
+            if not re.fullmatch(r"[a-f0-9]{64}", asset["sha256"]):
+                raise EngineError("BACKUP_DATABASE_INVALID")
+            path = self.root / "papers" / (asset["sha256"] + ".pdf")
+            if path.is_symlink() or not path.is_file() or path.stat().st_size != asset["size_bytes"]:
+                raise EngineError("OBJECT_CORRUPT", status=409)
+            total += asset["size_bytes"]
+        if total > MAX_BACKUP_BYTES:
+            raise EngineError("BACKUP_CAPACITY_LIMIT", status=409)
+        if shutil.disk_usage(destination).free < total + max(1024 * 1024, total // 100):
+            raise EngineError("BACKUP_SPACE_INSUFFICIENT", status=409, retriable=True)
+        return total
 
     def _create(self, snapshot, progress):
         (snapshot / "data").mkdir()
@@ -147,8 +173,8 @@ class Backups:
                 ):
                     raise ValueError("file identity/size invalid")
                 total_bytes += path.stat().st_size
-                if total_bytes > 8 * 1024**3 or (
-                    relative == "data/research.db" and path.stat().st_size > 512 * 1024**2
+                if total_bytes > MAX_BACKUP_BYTES or (
+                    relative == "data/research.db" and path.stat().st_size > MAX_DATABASE_BYTES
                 ):
                     raise ValueError("backup resource limit")
                 seen.add(relative)

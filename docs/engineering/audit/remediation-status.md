@@ -52,7 +52,7 @@
 - 修复与业务测试：对 import/parse/index/prepare/answer/config/backup 分别在 queued 和 running 时重启；每种任务都必须有可达的继续或终止操作，终结后恢复副本可激活。
 - 本轮测试：B-red 6 FAIL；B-green 18 PASS/1 SKIP（未提供E5资源变量）；B-recovery-matrix 9 PASS/0 FAIL/0 SKIP。
 - 断言：1000范围快照/小载荷、重读/幂等冲突/事务回滚/旧载荷兼容/篡改检测；claim屏障前取消回答不残留queued；所有任务类型queued/running重启后可取消，旧租约不可发布，恢复副本可激活；实际执行者未退出仍拒绝切换。
-- 修改：workflows/preparation.py、ipc/mvp.py、ipc/server.py、jobs/repository.py、MvpLibrary.tsx、bridge.ts、test_audit_task_contracts.py、contracts/task-recovery-v0.6.md；提交待登记。
+- 修改：workflows/preparation.py、ipc/mvp.py、ipc/server.py、jobs/repository.py、MvpLibrary.tsx、bridge.ts、test_audit_task_contracts.py、contracts/task-recovery-v0.6.md；本地提交ae72044。
 - 验证边界：1000版本为合成入队/范围契约，不是1000篇PDF解析吞吐；不移除工作槽保护。复用现有scope_snapshots，无schema变更。
 
 ## RAG-AUD-05 准备接口声明支持 1000 个版本，内部任务在 419 个 UUID 时即超限
@@ -64,7 +64,7 @@
 - 修复与业务测试：在临时库测试 1/418/419/1000 个不同有效版本，覆盖取消、重启、部分失败和幂等重提；明确区分接口接收、任务入队与处理完成。
 - 本轮测试：B-red 6 FAIL；B-green 18 PASS/1 SKIP（未提供E5资源变量）；B-recovery-matrix 9 PASS/0 FAIL/0 SKIP。
 - 断言：1000范围快照/小载荷、重读/幂等冲突/事务回滚/旧载荷兼容/篡改检测；claim屏障前取消回答不残留queued；所有任务类型queued/running重启后可取消，旧租约不可发布，恢复副本可激活；实际执行者未退出仍拒绝切换。
-- 修改：workflows/preparation.py、ipc/mvp.py、ipc/server.py、jobs/repository.py、MvpLibrary.tsx、bridge.ts、test_audit_task_contracts.py、contracts/task-recovery-v0.6.md；提交待登记。
+- 修改：workflows/preparation.py、ipc/mvp.py、ipc/server.py、jobs/repository.py、MvpLibrary.tsx、bridge.ts、test_audit_task_contracts.py、contracts/task-recovery-v0.6.md；本地提交ae72044。
 - 验证边界：1000版本为合成入队/范围契约，不是1000篇PDF解析吞吐；不移除工作槽保护。复用现有scope_snapshots，无schema变更。
 
 ## RAG-AUD-06 当前提交的依赖审计门禁失败，尚未完成发布风险处置
@@ -87,7 +87,7 @@
 - 修复与业务测试：用同步屏障暂停 worker 在 claim 前，取消再放行；断言 job 和 answer_run 均为 cancelled、无模型调用、前端能再次发送。
 - 本轮测试：B-red 6 FAIL；B-green 18 PASS/1 SKIP（未提供E5资源变量）；B-recovery-matrix 9 PASS/0 FAIL/0 SKIP。
 - 断言：1000范围快照/小载荷、重读/幂等冲突/事务回滚/旧载荷兼容/篡改检测；claim屏障前取消回答不残留queued；所有任务类型queued/running重启后可取消，旧租约不可发布，恢复副本可激活；实际执行者未退出仍拒绝切换。
-- 修改：workflows/preparation.py、ipc/mvp.py、ipc/server.py、jobs/repository.py、MvpLibrary.tsx、bridge.ts、test_audit_task_contracts.py、contracts/task-recovery-v0.6.md；提交待登记。
+- 修改：workflows/preparation.py、ipc/mvp.py、ipc/server.py、jobs/repository.py、MvpLibrary.tsx、bridge.ts、test_audit_task_contracts.py、contracts/task-recovery-v0.6.md；本地提交ae72044。
 - 验证边界：1000版本为合成入队/范围契约，不是1000篇PDF解析吞吐；不移除工作槽保护。复用现有scope_snapshots，无schema变更。
 
 ## RAG-AUD-08 对话轮询反复加载历史证据，并按证据重复读取整份 PDF 校验
@@ -114,25 +114,27 @@
 
 ## RAG-AUD-10 成功导入和重复导入仍永久保留新建 staging 文件
 
-- 状态：待核查。
-- 适用性/发行阻断：待核实当前调用链及承诺功能。
+- 状态：已验证（本机存储故障集成）。
+- 适用性：当前代码确认并已复现。
 - 审查定位：`engine/ragsystem/ingestion/import_pdf.py`
 - 审查根因：每次 run 都新建 job_id+随机值的 .part；通过 os.link 发布，不论目标已存在还是本次任务成功，finally 只关闭授权文件句柄，没有对本任务 staging 对象做成功后的处理。
 - 修复与业务测试：连续导入同一文件 10 次，确认文档去重且实际分配块数有界；在复制、发布、提交各阶段崩溃后仍可恢复，活跃任务临时对象不得被删除。
-- 本轮命令/结果/失败或跳过：尚未执行；不以旧CI替代。
-- 修改文件/本地提交：无。
-- 剩余风险：尚未核查，不等于不适用。
+- 本轮命令：C-storage-red 5 FAIL；C-storage-green 26 PASS/0 FAIL/0 SKIP。
+- 业务断言：重复导入十次只保留原件和未知归属文件；崩溃残留保持；清理失败有event留痕且已提交文档保持成功；备份数据库/总量/可用空间不满足时禁止进入复制，原有备份/恢复故障回归保持。
+- 修改：ingestion/import_pdf.py、storage/backup.py、bridge.ts、test_audit_storage_capacity.py；本地提交待登记。
+- 边界：不清理未知或历史staging，只处理本次成功任务的唯一创建路径并核对inode；容量预估不保证磁盘不会随后耗尽，复制后完整性及故障隔离继续执行。未做真实千篇容量声明。
 
 ## RAG-AUD-11 备份完整复制后才检查可接受容量，超限任务产生无效大副本
 
-- 状态：待核查。
-- 适用性/发行阻断：待核实当前调用链及承诺功能。
+- 状态：已验证（本机存储故障集成）。
+- 适用性：当前代码确认并已复现。
 - 审查定位：`engine/ragsystem/storage/backup.py`, `engine/ragsystem/storage/backup.py`, `engine/ragsystem/storage/backup_service.py`
 - 审查根因：_create 先复制 SQLite 和所有原件；inspect 才限制总量 8 GiB、SQLite 文件 512 MiB。BackupService 创建后再 inspect，失败会保留/隔离副本。
 - 修复与业务测试：构造越过数据库/总量上限的测试元数据或稀疏测试文件，验证在大规模复制前拒绝；测试复制中磁盘满、取消、隔离保留和正常恢复。
-- 本轮命令/结果/失败或跳过：尚未执行；不以旧CI替代。
-- 修改文件/本地提交：无。
-- 剩余风险：尚未核查，不等于不适用。
+- 本轮命令：C-storage-red 5 FAIL；C-storage-green 26 PASS/0 FAIL/0 SKIP。
+- 业务断言：重复导入十次只保留原件和未知归属文件；崩溃残留保持；清理失败有event留痕且已提交文档保持成功；备份数据库/总量/可用空间不满足时禁止进入复制，原有备份/恢复故障回归保持。
+- 修改：ingestion/import_pdf.py、storage/backup.py、bridge.ts、test_audit_storage_capacity.py；本地提交待登记。
+- 边界：不清理未知或历史staging，只处理本次成功任务的唯一创建路径并核对inode；容量预估不保证磁盘不会随后耗尽，复制后完整性及故障隔离继续执行。未做真实千篇容量声明。
 
 ## RAG-AUD-12 Embedding 虽然批量推理，缓存和关联仍逐条事务写入
 

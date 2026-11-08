@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import stat
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -36,6 +37,7 @@ class PdfImporter:
             grant.source.seek(0)
             digest, size, last_beat = hashlib.sha256(), 0, time.monotonic()
             with temp.open("xb") as target:
+                own = os.fstat(target.fileno())
                 while data := grant.source.read(1024 * 1024):
                     size += len(data)
                     if size > MAX_PDF_BYTES:
@@ -52,7 +54,7 @@ class PdfImporter:
                 raise EngineError("SOURCE_CHANGED", status=409)
             destination = self.root / "papers" / (grant.sha256 + ".pdf")
             # Hard-link publication is create-only and same-filesystem atomic.
-            # Keep the staging link: crash evidence is never batch-cleaned.
+            # Failed/crashed attempts retain their staging object for recovery.
             try:
                 os.link(temp, destination)
             except FileExistsError:
@@ -106,6 +108,17 @@ class PdfImporter:
                 fault("before_commit")
                 self.jobs.complete(job_id, token, "document_version:" + version_id, connection=conn)
             fault("after_commit")
+            try:
+                current = temp.stat(follow_symlinks=False)
+                if not stat.S_ISREG(current.st_mode) or (current.st_dev, current.st_ino) != (own.st_dev, own.st_ino):
+                    raise EngineError("STAGING_IDENTITY_CHANGED")
+                temp.unlink()  # Only this successful attempt's create-only path.
+            except (OSError, EngineError) as exc:
+                with self.db.transaction() as conn:
+                    self.jobs.event(conn, job_id, "staging_cleanup_pending", {
+                        "staging_name": temp.name,
+                        "code": exc.code if isinstance(exc, EngineError) else "FILE_IO_FAILED",
+                    })
             return {"doc_version_id": version_id, "file_sha256": grant.sha256}
         except EngineError as exc:
             self.jobs.fail(job_id, token, exc.code)

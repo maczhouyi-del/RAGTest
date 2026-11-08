@@ -232,6 +232,8 @@ const errors: Record<string, string> = {
   INSUFFICIENT_EVIDENCE: "本轮证据不足以形成受支持的回答。可补充文献、调整范围，或进入逐篇研究。",
   MODEL_WORKER_FAILED: "本地生成进程异常退出，资料和检查点已保留。可重试或使用摘录模式。",
   MODEL_TIMEOUT: "本地生成超时，进程已停止；资料和检查点已保留。",
+  BACKUP_CAPACITY_LIMIT: "备份超过当前支持上限（数据库 512 MiB、总量 8 GiB）；尚未复制，请检查库容量。",
+  BACKUP_SPACE_INSUFFICIENT: "目标磁盘可用空间不足，请释放空间或选择其他目录后重试。",
   ENGINE_RESTARTED: "上次引擎中断，旧执行者已隔离。可取消此任务；导入、解析和元数据可重试，其他任务需重新提交并按需重新授权。",
   MODEL_RERANK_INVALID: "相关性复核返回无效排序，结果未发布。可改用不含模型复核的检索策略。",
   MODEL_OUTPUT_INVALID: "模型没有返回有效结构，草稿未发布。可以重试或改用摘录模式。",
