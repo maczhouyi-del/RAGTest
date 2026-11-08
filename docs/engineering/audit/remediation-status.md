@@ -121,7 +121,7 @@
 - 修复与业务测试：连续导入同一文件 10 次，确认文档去重且实际分配块数有界；在复制、发布、提交各阶段崩溃后仍可恢复，活跃任务临时对象不得被删除。
 - 本轮命令：C-storage-red 5 FAIL；C-storage-green 26 PASS/0 FAIL/0 SKIP。
 - 业务断言：重复导入十次只保留原件和未知归属文件；崩溃残留保持；清理失败有event留痕且已提交文档保持成功；备份数据库/总量/可用空间不满足时禁止进入复制，原有备份/恢复故障回归保持。
-- 修改：ingestion/import_pdf.py、storage/backup.py、bridge.ts、test_audit_storage_capacity.py；本地提交待登记。
+- 修改：ingestion/import_pdf.py、storage/backup.py、bridge.ts、test_audit_storage_capacity.py；本地提交d2e8097。
 - 边界：不清理未知或历史staging，只处理本次成功任务的唯一创建路径并核对inode；容量预估不保证磁盘不会随后耗尽，复制后完整性及故障隔离继续执行。未做真实千篇容量声明。
 
 ## RAG-AUD-11 备份完整复制后才检查可接受容量，超限任务产生无效大副本
@@ -133,7 +133,7 @@
 - 修复与业务测试：构造越过数据库/总量上限的测试元数据或稀疏测试文件，验证在大规模复制前拒绝；测试复制中磁盘满、取消、隔离保留和正常恢复。
 - 本轮命令：C-storage-red 5 FAIL；C-storage-green 26 PASS/0 FAIL/0 SKIP。
 - 业务断言：重复导入十次只保留原件和未知归属文件；崩溃残留保持；清理失败有event留痕且已提交文档保持成功；备份数据库/总量/可用空间不满足时禁止进入复制，原有备份/恢复故障回归保持。
-- 修改：ingestion/import_pdf.py、storage/backup.py、bridge.ts、test_audit_storage_capacity.py；本地提交待登记。
+- 修改：ingestion/import_pdf.py、storage/backup.py、bridge.ts、test_audit_storage_capacity.py；本地提交d2e8097。
 - 边界：不清理未知或历史staging，只处理本次成功任务的唯一创建路径并核对inode；容量预估不保证磁盘不会随后耗尽，复制后完整性及故障隔离继续执行。未做真实千篇容量声明。
 
 ## RAG-AUD-12 Embedding 虽然批量推理，缓存和关联仍逐条事务写入
@@ -149,14 +149,14 @@
 
 ## RAG-AUD-13 按子串拦截 systematic review，误拒单篇论文的正常问题
 
-- 状态：待核查。
-- 适用性/发行阻断：待核实当前调用链及承诺功能。
+- 状态：已验证（本机意图路由集成）。
+- 适用性：当前调用链确认，需整改。
 - 审查定位：`engine/ragsystem/workflows/workbench.py`
 - 审查根因：create_answer 在意图拆分前，只要 question.casefold() 包含“所有论文/全库/all papers/every paper/systematic review”等任一片段，就抛出 RESEARCH_REQUIRED。
 - 修复与业务测试：新增单篇术语问答、引用中出现 all papers、真正要求逐篇穷尽的中英文对照用例；前两类可正常检索，后一类仍进入或提示逐篇研究。
-- 本轮命令/结果/失败或跳过：尚未执行；不以旧CI替代。
-- 修改文件/本地提交：无。
-- 剩余风险：尚未核查，不等于不适用。
+- 本轮结果：D-intent-red：4 FAIL/5 PASS；D-intent-green：36 PASS/0 FAIL/0 SKIP。正常术语/引号问法入队，真正逐篇穷尽请求仍拒绝Top-K冒充全库。
+- 修改：retrieval/research_intent.py、workflows/workbench.py、test_audit_intent.py；本地提交待登记。
+- 边界：意图规则为有界确定性规则，不等于真实RAG效果验收；TS流测试不替代原生或浏览器交互。
 
 ## RAG-AUD-14 LanceDB 路径将全部范围内向量物化为 Python 记录再截取 Top-K
 
@@ -171,14 +171,14 @@
 
 ## RAG-AUD-15 模型连接测试的刷新失败会跳过 busy 复位
 
-- 状态：待核查。
-- 适用性/发行阻断：待核实当前调用链及承诺功能。
+- 状态：已修复待验证（异步流5项单元已通过，React组件交互未完成）。
+- 适用性：当前调用链确认，需整改。
 - 审查定位：`apps/desktop/src/components/GenerationConnections.tsx`
 - 审查根因：probe 的 finally 为 await refresh(); await onSaved?.(); setBusy(false)。任意一次 await 拒绝都会在清除 busy 前退出；调用点使用 void probe(item)，该新异常还可能成为未处理 rejection。
 - 修复与业务测试：分别模拟 probe 成功/失败后 refresh 拒绝、onSaved 拒绝和组件卸载；按钮必须恢复，错误类别明确，无未处理 Promise rejection。
-- 本轮命令/结果/失败或跳过：尚未执行；不以旧CI替代。
-- 修改文件/本地提交：无。
-- 剩余风险：尚未核查，不等于不适用。
+- 本轮结果：B-probe-red：5 FAIL；B-probe-green：5 PASS。旧probe控制流提取为可执行TS单元后复现；未将该单元测试冒充DOM卸载测试。TypeScript typecheck PASS。
+- 修改：GenerationConnections.tsx、probeConnection.ts、tests/frontend/probeConnection.test.ts；本地提交待登记。
+- 边界：意图规则为有界确定性规则，不等于真实RAG效果验收；TS流测试不替代原生或浏览器交互。
 
 ## RAG-AUD-16 问题字符上限与向量 Token 上限未形成一致契约，错误提示误指向文档
 

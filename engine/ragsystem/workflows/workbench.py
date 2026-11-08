@@ -273,18 +273,9 @@ class Workbench:
             }
         ):
             raise EngineError("INVALID_REQUEST")
-        if any(
-            term in question.casefold()
-            for term in (
-                "所有论文",
-                "全部论文",
-                "整库",
-                "全库",
-                "all papers",
-                "every paper",
-                "systematic review",
-            )
-        ):
+        from ragsystem.retrieval.research_intent import requires_research
+
+        if requires_research(question):
             raise EngineError("RESEARCH_REQUIRED", status=409)
         system_topics, literature_question = question_parts(question)
         system_topic = system_topics[0] if system_topics and not literature_question else None
