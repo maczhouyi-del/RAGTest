@@ -1,5 +1,7 @@
 # PLANS.md — 路线图、门禁与可执行工作机制
 
+AUDIT-REMEDIATE（2026-11-08）：在codex/audit-remediation-20261108完成15项本机整改验证；Python460/Rust10/TS故障流5/包内侧车浏览器53通过，Ruff/Clippy/TS构建通过。已生成Mac ARM64工程app/DMG，无发行签名/公证；06依赖/许可、17人工金标、18及REL干净原生安装/资源取得仍阻塞，正式发行NO-GO。仅本地任务提交，无push/发布，原有清理记录及数据保留。详见[台账](docs/engineering/audit/remediation-status.md)、[报告](docs/engineering/reports/AUDIT-REMEDIATE-20261108.md)、[候选清单](docs/engineering/release/candidate-20261108.md)。
+
 VERIFY-CLEAN-SYNC（2026-11-06）：用户授权当前代码完整测试、清理审查并直接提交同步main，覆盖SECTION-AWARE历史不推送限制。按[计划](docs/engineering/execplans/VERIFY-CLEAN-SYNC-2026-11-06.md)执行：Python395/Rust10/浏览器46通过，TS/Ruff/Clippy/新冻结102项哈希通过，npm审计0漏洞；OSV网络阻塞、科研无金标、Windows未实机验收。按用户禁止批量删除要求，11个历史构建目录约8.318GiB仅列手动清理清单，实际删除0。见[报告](docs/engineering/reports/VERIFY-CLEAN-SYNC-2026-11-06.md)。源码正常提交同步main，不强推、不创建PR、不上传构建/模型/数据。
 
 SECTION-AWARE 本地工程验证完成（2026-11-06）：按[计划](docs/engineering/execplans/SECTION-AWARE.md)实现章节感知、段落优先、400字符/80重叠兜底、schema21增量结构快照和部分发布上下文重算。Python 395 PASS/0 FAIL/0 SKIP；新定向41 PASS，Ruff/冻结侧车102项源码哈希通过。公开PDF两篇29页：C方案574个Chunk全部切片一致，局部重解析后571条向量复用/0新增；B纯段落因上下文超限失败。科研金标仍BLOCKED、Windows NOT EXECUTED，不宣称检索质量提升。详见[报告](docs/engineering/reports/SECTION-AWARE-CHUNKING-IMPLEMENTATION.md)。独立分支保留未提交；未改前端/Rust、旧迁移或真实用户库，未付费调用、推送或部署旧App。

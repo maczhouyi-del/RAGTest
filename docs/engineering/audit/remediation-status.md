@@ -6,7 +6,7 @@
 
 ## RAG-AUD-01 单个待恢复原件异常可以阻断整个引擎启动
 
-- 状态：已验证（本机源码集成/真实侧车子进程；新冻结/目标平台待最终候选复测）。
+- 状态：已验证（本机源码集成/真实侧车子进程；M2完整冻结/Rust已复测；目标干净平台待验收）。
 - 适用性：当前基线仍适用；属于发行阻断，已完成本机修复。
 - 审查定位：`engine/ragsystem/ipc/server.py`, `engine/ragsystem/ingestion/import_pdf.py`
 - 审查根因：lifespan 在 yield 前直接调用 importer.recover_published_imports()。恢复循环对每条记录只有 finally 释放 Grants，没有隔离该记录的授权、读取或恢复异常。
@@ -19,7 +19,7 @@
 
 ## RAG-AUD-02 恢复导入没有把重新读取的文件哈希绑定到原任务预期哈希
 
-- 状态：已验证（本机源码集成/真实侧车子进程；新冻结/目标平台待最终候选复测）。
+- 状态：已验证（本机源码集成/真实侧车子进程；M2完整冻结/Rust已复测；目标干净平台待验收）。
 - 适用性：当前基线仍适用；属于发行阻断，已完成本机修复。
 - 审查定位：`engine/ragsystem/ingestion/import_pdf.py`, `engine/ragsystem/ingestion/import_pdf.py`
 - 审查根因：recover_published_imports/resume 以 payload 中的 digest 找到 papers/<digest>.pdf，再用 Grants.issue 计算当前文件哈希；随后 run 使用 grant.sha256 发布和入库，没有先比较 grant.sha256 与原任务 payload.sha256。
@@ -32,7 +32,7 @@
 
 ## RAG-AUD-03 模型配置任务领取失败时泄漏唯一重型工作槽
 
-- 状态：已验证（本机源码集成/真实侧车子进程；新冻结/目标平台待最终候选复测）。
+- 状态：已验证（本机源码集成/真实侧车子进程；M2完整冻结/Rust已复测；目标干净平台待验收）。
 - 适用性：当前基线仍适用；属于发行阻断，已完成本机修复。
 - 审查定位：`engine/ragsystem/ipc/server.py`
 - 审查根因：run_docling_configuration、run_ocr_configuration、run_generator 都在 try/finally 之前调用 jobs.claim(...)；slot.release() 位于之后的 finally。领取任务发生异常时不会进入该 finally。
@@ -45,7 +45,7 @@
 
 ## RAG-AUD-04 重启后的 retry_wait 任务缺少可达终结路径，并阻止切换恢复副本
 
-- 状态：已验证（后端专项）；UI按钮路径已改，浏览器回归待最终候选。
+- 状态：已验证（后端专项及M2包内侧车浏览器重启任务取消）。
 - 适用性：已确认；基线没有修复。
 - 审查定位：`engine/ragsystem/jobs/repository.py`, `apps/desktop/src/components/MvpLibrary.tsx`, `engine/ragsystem/storage/backup_service.py`
 - 审查根因：recover_owned_workspace 将部分 running/queued 任务改为 retry_wait。MVP 队列只允许取消 queued/running，重试仅覆盖 import/parse_page/metadata_extract。restored_path 则将任意 queued/running/retry_wait 视为阻止工作区切换的条件。
@@ -69,14 +69,16 @@
 
 ## RAG-AUD-06 当前提交的依赖审计门禁失败，尚未完成发布风险处置
 
-- 状态：已确认；发行阻断未解决。
-- 适用性：当前代码仍适用，未发现其他提交已修复；基线与报告相同。
+- 状态：阻塞（全锁审计与目标许可）。
+- 适用性：当前代码仍适用；同基线复现，不把维护性公告和可利用漏洞混为一类。
 - 审查定位：`.github/workflows/ci.yml`
 - 审查根因：Actions run 42369976421：Windows 与 macOS 的 source job 成功，但 lock-audit job 128395893056 失败，整个工作流结论为 failure。读取到的日志报告 lock_integrity PASS、vulnerability_audit FAIL、license_review BLOCKED，存在 diskcache、glib 等公告命中。
 - 修复与业务测试：同一提交的审计、源码测试和实际目标包 SBOM/许可清单一致；所有告警均有修复或审查结论。这里没有声称公告已具备可利用 PoC。
-- 当前调用链/证据：tools/dependency_gate.py → lock清单648组件 → OSV在线坐标审计。baseline-dependencies exit1，6依赖8公告记录，锁完整性PASS、许可映射BLOCKED。macOS cargo tree --target aarch64-apple-darwin -i glib exit0无依赖路径；Windows离线映射缺jiff-tzdb而exit101，已尝试锁定在线补齐。单个平台无路径不构成全锁豁免。
-- 修改文件/本地提交：无。
-- 剩余工作：需按目标产物SBOM映射、合并别名、评估升级兼容性/可达性；未关闭审计、未批准风险豁免。 未自行批准延期。
+- 本轮命令：baseline-dependencies及final-dependencies均exit1，648组件、6包/8公告记录（含别名），锁完整性PASS，许可映射BLOCKED。npm两次执行HTTP400，属于审计执行失败，不能报告0漏洞。
+- 精确目标映射：10条cargo tree --locked --offline探针，macARM/Winx64×5个Rust告警均exit0无反向依赖路径；完整证据target-dependency-mapping.json。首次Windows离线缺固定jiff-tzdb，补齐锁定开发依赖后重跑。未因此自动排除全锁风险。
+- diskcache经llama-cpp可选运行时入包，llama.py:375默认self.cache=None、:646仅set_cache启用；应用local_generator.py没有set_cache/DiskCache调用。此为当前不可达路径证据，不等于对任意插件/未来修改的安全保证。
+- 处置：docs/engineering/audit/dependency-triage-20261108.json逐包登记；上游DiskCache公告未给修复版本，存在本地可写缓存被反序列化的条件风险；proc-macro-error/zvariant为维护公告。未自动接受风险、删依赖审计或盲升不在当前目标树的Linux依赖。
+- 状态：阻塞。需要目标实际SBOM/NOTICE完整映射与审查结论，或经兼容性验证的上游修复；不能把原始8条记录当8个独立可利用漏洞。无获批延期/豁免。
 
 ## RAG-AUD-07 领取前取消问答，只终止 job，可能留下永久 queued 的回答
 
@@ -92,12 +94,13 @@
 
 ## RAG-AUD-08 历史证据重复读取
 
-- 状态：已验证（源码业务计数、篡改回归和浏览器；最终冻结待复测）。
+- 状态：已验证（源码业务计数、篡改回归及M2包内侧车浏览器）。
 - 适用性/根因：已确认；History→public_evidence→anchor逐证据整PDF校验，完成后仍每秒拉全部历史。
 - 修复：请求内以路径/预期SHA/设备/inode/大小/纳秒mtime/ctime复用校验；下一请求或实际打开仍重核，不建立跨请求可信缓存。非活动或不可见对话停止全量轮询，新提交重新启用。
 - 红绿：C-evidence-red 2 FAIL；C-evidence-green 16 PASS；C-read-browser 47 PASS（包含完成后停止轮询）。同响应1/5轮各由3/15次原件读取降至1次，下一请求篡改仍失效。
 - 基准：C-read-benchmark-final exit0；同临时库两公开PDF、1/30轮、每项5次热OS缓存P50/P95见read-benchmark-final.json。未实施清空系统缓存，冷物理IO未测，不能将热缓存结果称冷启动SLA。
 - 修改：source_search.py、workbench.py、history.py、MvpAsk.tsx、test_audit_evidence_reads.py、browser_chat_management.cjs、benchmark_audit_reads.py。
+- 本地提交：0b23d53。
 - 剩余风险：活跃生成仍按既有接口读历史；此修改不等于引入轻量状态端点。Windows原生及最终候选需复测。
 
 ## RAG-AUD-09 文献列表N+1
@@ -107,7 +110,7 @@
 - 修复：候选/job按256版本有界批量，DOI一次映射；元数据更新仅查目标版本。保留全局可见DOI候选及字段优先级。
 - 红绿：C-library-red 1 FAIL（50条102 SELECT）；C-library-green-corrected 1 PASS（5 SELECT）；C-library-metadata 20 PASS。首个green指定了不存在文件，exit4，不计作业务失败/通过。
 - 同机热缓存5样本：1000合成版本2002→11 SELECT，P50 9.23→5.15ms，P95 12.02→5.20ms；1版本4→5 SELECT。记录不含真实千篇PDF/解析/向量，不能声明千篇整体验收。
-- 修改：library/repository.py、test_audit_library_queries.py、benchmark_audit_reads.py；日志同本任务evidence目录。
+- 修改：library/repository.py、test_audit_library_queries.py、benchmark_audit_reads.py；提交0b23d53，日志同本任务evidence目录。
 - 剩余风险：列表仍为全量快照，未改变公开分页/应用状态契约；容量上限需真实语料验收。
 
 ## RAG-AUD-10 成功导入和重复导入仍永久保留新建 staging 文件
@@ -136,12 +139,12 @@
 
 ## RAG-AUD-12 Embedding 虽然批量推理，缓存和关联仍逐条事务写入
 
-- 状态：已验证（有界事务/回滚/缓存/租约检查；最终冻结待复测）。
+- 状态：已验证（有界事务/回滚/缓存/租约检查及M2完整回归）。
 - 根因：逐get/persist/link独立连接与FULL同步事务；基线可复现。
 - 修复：128摘要批读、最多16（默认8）向量批持久化，128关联短事务；推理在事务外，推理后重查取消/租约，缓存仍按完整空间指纹。索引最终校验/原子发布未改。
 - 红绿：C-batch-red 2 FAIL；C-batch-green 8 PASS；D-query-green-corrected包含取消补测共53 PASS。
 - 同机同公开PDF/合成向量：323新增编码数不变，首次事务647→45，复用324→4、重编码0；单次首次591.48→65.46ms，不是模型性能/SLA。
-- 修改：indexing/embeddings.py、incremental.py、test_audit_embedding_batches.py、benchmark_audit_vectors.py。无schema/历史迁移修改。
+- 修改：indexing/embeddings.py、incremental.py、test_audit_embedding_batches.py、benchmark_audit_vectors.py；提交2f8ae9f。无schema/历史迁移修改。
 - 风险：已经提交的合法缓存可在取消后复用；不发布不完整索引。真实千篇吞吐未验收。
 
 ## RAG-AUD-13 按子串拦截 systematic review，误拒单篇论文的正常问题
@@ -162,62 +165,66 @@
 - 修复：ids仅投影ID分批读取；精确距离仅投影ID/_distance、256行分批，heap保留TopK，仍先范围过滤且全量检查缺失ID。精确同分按ID排序，未用先TopK后过滤。
 - 红绿：C-lance-red 2 FAIL；C-lance-green 12 PASS。含3000合成向量的cosine/l2、同分、空范围、候选不足与既有适配器契约。
 - 同环境独立进程5000×384合成向量/3333授权/Top10：Python峰值42,734,040→1,083,427字节，进程峰值RSS489,127,936→366,002,176字节，单次251.09→32.80ms。冷/真实文献容量未测；原生精确扫描与授权ID集合仍O(N)，不宣称常数内存ANN。
-- 修改：vector_adapters/lancedb.py、test_audit_lance_streaming.py、benchmark_audit_vectors.py。计量日志C-vector-benchmark。
+- 修改：vector_adapters/lancedb.py、test_audit_lance_streaming.py、benchmark_audit_vectors.py。计量日志C-vector-benchmark；提交2f8ae9f。
 
 ## RAG-AUD-15 模型连接测试的刷新失败会跳过 busy 复位
 
-- 状态：已修复待验证（异步流5项单元已通过，React组件交互未完成）。
+- 状态：已验证（异步流5项及React浏览器故障/卸载交互）。。
 - 适用性：当前调用链确认，需整改。
 - 审查定位：`apps/desktop/src/components/GenerationConnections.tsx`
 - 审查根因：probe 的 finally 为 await refresh(); await onSaved?.(); setBusy(false)。任意一次 await 拒绝都会在清除 busy 前退出；调用点使用 void probe(item)，该新异常还可能成为未处理 rejection。
 - 修复与业务测试：分别模拟 probe 成功/失败后 refresh 拒绝、onSaved 拒绝和组件卸载；按钮必须恢复，错误类别明确，无未处理 Promise rejection。
-- 本轮结果：B-probe-red：5 FAIL；B-probe-green：5 PASS。旧probe控制流提取为可执行TS单元后复现；未将该单元测试冒充DOM卸载测试。TypeScript typecheck PASS。
+- 本轮结果：B-probe-red：5 FAIL；B-probe-green：5 PASS。旧probe控制流提取为可执行TS单元后复现；另在final-browser-source-transport及final-browser-bundled分别53项通过，覆盖成功/失败×refresh/onSaved拒绝、卸载后无未处理异常。TypeScript构建PASS。
 - 修改：GenerationConnections.tsx、probeConnection.ts、tests/frontend/probeConnection.test.ts；本地提交f136937。
 - 边界：意图规则为有界确定性规则，不等于真实RAG效果验收；TS流测试不替代原生或浏览器交互。
 
 ## RAG-AUD-16 问题字符上限与向量 Token 上限未形成一致契约，错误提示误指向文档
 
-- 状态：已验证（锁定真实tokenizer边界及相关集成；新增索引保持专项待最终全量）。
+- 状态：已验证（锁定真实tokenizer边界、溢出保持原索引及M2完整回归）。
 - 根因：字符传输上限不等于512Token；query/passage共用文档错误码，历史拼接可能溢出。
 - 修复：QUERY_CONTEXT_LIMIT独立提示；完整当前问题优先，指代时按最旧顺序移除历史问题，记录实际retrieval_query、query_token_limit和dropped_history_turns。保留文档拒绝静默截断和完整空间指纹。
 - 红绿：D-query-red 2 FAIL/5 PASS；首次green 49 PASS/1 FAIL，暴露检索配置缺失时丢失诊断，已修复；corrected 53 PASS。真实E5 query/passage 511/512允许，513拒绝，无溢出推理调用。
-- 修改：local_onnx.py、hybrid.py、workbench.py、bridge.ts、test_audit_query_budget.py、contracts/query-budget-v0.7.md；无schema变更。
+- 修改：local_onnx.py、hybrid.py、workbench.py、bridge.ts、test_audit_query_budget.py、contracts/query-budget-v0.7.md；提交2f8ae9f，无schema变更。
 - 风险：字符上限仍是传输保护；Token限制只用于向量/混合，不限制关键词模式。不改变已有索引或自动转云。
 
 ## RAG-AUD-17 评估工具存在，但真实人工金标和已批准质量验收尚未闭环
 
-- 状态：阻塞（真实效果验收）；评估工具补充已实现待最终验证。
+- 状态：阻塞（真实效果验收）；评估工具补充已由最终460项回归验证。
 - 适用性：当前代码仍适用，未发现其他提交已修复；基线与报告相同。
 - 审查定位：`docs/evaluation/goldset-protocol.md`, `engine/ragsystem/retrieval/evaluation.py`
 - 审查根因：评估文档明确无真实金标，并在后续更新中记录 0 个人工裁定样本、阈值 pending；文档明确说明 gold/prediction 是待填写的空模板。已有 Recall@5/10、MRR、NDCG@10、时延计算和离线科学质量评分工具，不能误报为“没有评估机制”。
 - 修复与业务测试：提供可重跑的冻结数据清单、独立评审记录、分组指标、失败样例和完整运行指纹；模型自评分不得当成人工真值；阈值须预先批准，不因本次失败而临时降低。
 - 当前调用链/证据：goldset-protocol记录缺独立人工标注/批准阈值；retrieval.evaluation已有Recall/MRR/NDCG与latency，tools科学评估器存在。未获取本轮独立人工金标。
-- 修改文件/本地提交：无。
+- 修改：retrieval/evaluation.py、tools/evaluate_scientific_quality.py、goldset-protocol.md、test_audit_evaluation.py；本地提交2f8ae9f。
 - 剩余工作：不能用合成测试/模型自审证明真实准确率；已补Precision@5/10未知标签保护、独立人工answer_relevance及分角色完整调用Token/费用记账和重跑说明；D-evaluation-red 2 FAIL，green 13 PASS/1 SKIP（缺E5环境，最终完整环境复测），真实评分需授权语料与独立标注。 未自行批准延期。
 
 ## RAG-AUD-18 源码 CI 与完整冻结侧车、浏览器集成、原生安装验收之间仍有断层
 
-- 状态：已确认；发行门禁未完成。
+- 状态：阻塞（本机工程链路已验证，干净原生发行未验收）。
 - 适用性：当前代码仍适用，未发现其他提交已修复；基线与报告相同。
 - 审查定位：`.github/workflows/ci.yml`, `packaging/build_sidecar.py`, `packaging/build_sidecar.py`, `tools/browser_mvp.cjs`
 - 审查根因：CI 包括 Ruff/Pytest/TS build/Rust tests/clippy/npm audit；build_sidecar 不带 include-* 标志，默认排除向量、生成、OCR、Docling 可选运行时。tools 中有连接冻结引擎的浏览器脚本，但当前 CI 未运行这些脚本；desktop-e2e 目录本身是验收文档。
 - 修复与业务测试：同一提交、同一源指纹的完整侧车和应用在目标干净账户运行；覆盖导入→解析→索引→问答→引用→取消/重启→备份恢复，并单列模型缺失、平台跳过、签名/安装未验证项。
-- 当前调用链/证据：ci.yml仅源码/模型无关侧车，未执行browser工具或完整可选运行时包；本机M1完整冻结及浏览器正在补本轮证据，但不替代安装后原生验证。
-- 修改文件/本地提交：无。
-- 剩余工作：Windows11目标机、证书/公证账户及产物许可未齐；候选构建/资源首次初始化/原生安装链路仍待实施，不标已验收。 未自行批准延期。
+- 当前调用链/证据：ci.yml仅源码/模型无关侧车，未执行browser工具或完整可选运行时包；本机M2完整冻结、包内侧车浏览器53及app/DMG已生成，但不替代安装后原生验证。
+- 修改：packaging/build_candidate.py、tools/browser_smoke.cjs/browser_chat_management.cjs、candidate_preflight/upgrade_failure测试、ci.yml；本地提交46cf179。
+- 剩余工作：Windows11目标机、发行签名/公证授权及产物许可未齐；普通用户资源取得、干净原生安装链路仍阻塞。源码CI仅新增TS故障单元，未执行远程CI、不谎称完整运行时已进CI门禁，不标已验收。 未自行批准延期。
 
-## REL发行登记
+## REL发行登记（均不自行延期）
 
-| 编号 | 范围 | 状态 | 所需证据 |
+| 编号 | 范围 | 状态 | 当前证据/缺口 |
 |---|---|---|---|
-| REL-001 | Windows11x64与macOS ARM64候选范围、运行时/模型区分 | 待核查 | 明确功能与资源矩阵 |
-| REL-002 | 无开发环境的完整安装后主链路 | 待核查 | 同源指纹产物及干净账户操作记录 |
-| REL-003 | 签名/公证/许可证再分发 | 阻塞 | 当前无新证书/账户授权；需逐资源许可清单 |
-| REL-004 | 首次资源检查/离线/缺资源/卸载与升级恢复 | 待核查 | 可运行流程与故障回归 |
+| REL-001 | Windows11x64主目标与macOS ARM64候选、资源/网络矩阵 | 已验证（范围登记） | release/candidate-20261108.md；没有改变平台或添加服务 |
+| REL-002 | 同源完整包与无开发环境链路 | 部分已验证/阻塞 | M2完整侧车、Rust10、包内侧车浏览器53；没有干净账户原生GUI安装证据 |
+| REL-003 | 发行签名/公证/逐目标许可 | 阻塞 | Mac只有linker ad-hoc、无Team/资源密封；不调用账户；NOTICE/许可审查未闭环 |
+| REL-004 | 备份升级恢复、卸载保留 | 部分已验证/阻塞 | 旧库升级/失败回滚/备份副本恢复/新schema拒开已测；Windows安装升级/卸载未测 |
+| REL-005 | 普通用户资源取得/首次初始化 | 阻塞 | 已有设置页明确选择本地目录与缺资源提示；尚无经许可审查的用户资源包/下载恢复GUI，不宣称已满足首装普通用户体验 |
+| REL-006 | Windows固定WebView2及原生DLL | 阻塞 | 新候选构建入口要求预置完整哈希清单，拒绝隐式latest下载；无授权运行时资源/目标机实测 |
+
+构建入口packaging/build_candidate.py；已生成Mac app/DMG，版本仍0.1.0工程快照，非正式发行。详细产物SHA、范围、构建与恢复入口见release/candidate-20261108.md、candidate-20261108.json及reports/AUDIT-REMEDIATE-20261108.md。
 
 ## 基线执行
 
-正在运行当前环境可执行的Python全量、Ruff、TS构建及依赖审计。完整冻结测试使用已存在且指纹匹配的FINAL侧车；不下载模型。
+已运行当前环境可执行的Python全量、Ruff、TS构建及依赖审计。完整冻结测试使用已存在且指纹匹配的FINAL侧车；不下载模型。
 
 基线实际：Python398 PASS/0 FAIL/0 SKIP（125.33秒）；Ruff/TS PASS；dependency_gate exit1，648锁组件、6依赖8公告记录；许可映射BLOCKED。无付费API/用户库访问。
 
@@ -226,6 +233,12 @@
 - 45f3c50：01/02/03。
 - ae72044：04/05/07后端及UI入口、兼容协议。
 - d2e8097：10/11。
-- f136937：13/15（15组件故障交互仍待专项）。
-- 未完成项保持开放：06、17、18；04及15补UI故障交互证据。没有不适用项，也没有获批延期项。
-- 恢复执行：先读本台账与execplans/AUDIT-REMEDIATE-20261108.md，核对分支/dirty文档；按08/09/12/14性能业务计数测试→16 Token预算→06精确依赖处置→17评估格式→18/REL候选构建及原生矩阵继续。不得使用清理旧产物或调整skip掩盖缺口。
+- f136937：13/15（15组件故障交互已补齐）。
+- 未完成项保持开放：06、17、18；04及15 UI专项已完成。没有不适用项，也没有获批延期项。
+- 恢复执行：先读本台账与execplans/AUDIT-REMEDIATE-20261108.md，核对分支/dirty文档；先核对M2完整测试及发行报告→06目标SBOM/依赖处置→17独立人工金标/批准阈值→18/REL普通用户资源与干净双平台安装矩阵继续。不得使用清理旧产物或调整skip掩盖缺口。
+
+## 最终本机检查点
+
+candidate-python：460 PASS/0 FAIL/0 SKIP（包内M2侧车，131.33秒）；final-rust：10 PASS/0 ignored；TS/Vite、Ruff、Clippy通过；TS故障流5 PASS；源码/包内/去开发变量包内浏览器各53 PASS。103项冻结源码/锁/入口哈希一致，Mac app/DMG已生成并CRC验证，未作发行签名/公证/原生GUI安装。正式发行NO-GO。
+
+06/17/18及REL阻塞保留；没有不适用项或获批延期。其余15项在上述本机边界内已验证，不代表Windows或真实科研容量验收。完整产物与恢复入口见reports/AUDIT-REMEDIATE-20261108.md和release/candidate-20261108.md。

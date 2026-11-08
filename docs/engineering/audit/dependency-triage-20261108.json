@@ -1,0 +1,115 @@
+{
+  "recorded_on": "2026-11-08",
+  "baseline": "00f8f6bc5b06889269454000f66e289b0c491f08",
+  "status": "BLOCKED",
+  "all_lock_audit": "FAIL",
+  "target_licenses": "BLOCKED",
+  "packages": [
+    {
+      "package": {
+        "ecosystem": "PyPI",
+        "name": "diskcache",
+        "version": "5.6.3"
+      },
+      "advisories": [
+        "GHSA-w8v5-vhqr-4h9v",
+        "PYSEC-2026-2447"
+      ],
+      "aliases": [
+        "CVE-2025-69872",
+        "GHSA-w8v5-vhqr-4h9v",
+        "PYSEC-2026-2447"
+      ],
+      "fixed_versions": [],
+      "target_tree_result": "bundled through optional llama-cpp runtime; disk cache not enabled by application",
+      "disposition": "OPEN; no risk waiver or automatic exclusion"
+    },
+    {
+      "package": {
+        "ecosystem": "crates.io",
+        "name": "glib",
+        "version": "0.18.5"
+      },
+      "advisories": [
+        "GHSA-wrw7-89jp-8q8g",
+        "RUSTSEC-2024-0429"
+      ],
+      "aliases": [
+        "GHSA-wrw7-89jp-8q8g",
+        "RUSTSEC-2024-0429"
+      ],
+      "fixed_versions": [
+        "0.20.0"
+      ],
+      "target_tree_result": "no inverse dependency path on both selected Rust targets",
+      "disposition": "OPEN; no risk waiver or automatic exclusion"
+    },
+    {
+      "package": {
+        "ecosystem": "crates.io",
+        "name": "proc-macro-error",
+        "version": "1.0.4"
+      },
+      "advisories": [
+        "RUSTSEC-2024-0370"
+      ],
+      "aliases": [],
+      "fixed_versions": [],
+      "target_tree_result": "no inverse dependency path on both selected Rust targets",
+      "disposition": "OPEN; no risk waiver or automatic exclusion"
+    },
+    {
+      "package": {
+        "ecosystem": "crates.io",
+        "name": "zbus_names",
+        "version": "4.3.5"
+      },
+      "advisories": [
+        "RUSTSEC-2026-0371"
+      ],
+      "aliases": [],
+      "fixed_versions": [],
+      "target_tree_result": "no inverse dependency path on both selected Rust targets",
+      "disposition": "OPEN; no risk waiver or automatic exclusion"
+    },
+    {
+      "package": {
+        "ecosystem": "crates.io",
+        "name": "zvariant",
+        "version": "5.15.1"
+      },
+      "advisories": [
+        "RUSTSEC-2026-0370"
+      ],
+      "aliases": [],
+      "fixed_versions": [],
+      "target_tree_result": "no inverse dependency path on both selected Rust targets",
+      "disposition": "OPEN; no risk waiver or automatic exclusion"
+    },
+    {
+      "package": {
+        "ecosystem": "crates.io",
+        "name": "zvariant_derive",
+        "version": "5.15.1"
+      },
+      "advisories": [
+        "RUSTSEC-2026-0372"
+      ],
+      "aliases": [],
+      "fixed_versions": [],
+      "target_tree_result": "no inverse dependency path on both selected Rust targets",
+      "disposition": "OPEN; no risk waiver or automatic exclusion"
+    }
+  ],
+  "evidence": "target-dependency-mapping.json: 10 locked/offline cargo tree probes exit0; exact target SBOM still pending",
+  "npm_audit": "execution failure HTTP400; not zero vulnerabilities",
+  "notes": [
+    "Advisory aliases are not separate defects. Unmaintained advisories are not evidence of an exploitable path.",
+    "Current target tree does not justify silently changing the all-lock gate or marking global risk accepted."
+  ],
+  "sources": [
+    "https://github.com/advisories/GHSA-w8v5-vhqr-4h9v",
+    "https://rustsec.org/advisories/RUSTSEC-2024-0370.html",
+    "https://rustsec.org/advisories/RUSTSEC-2026-0370.html"
+  ]
+}
