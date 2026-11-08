@@ -156,6 +156,7 @@ const errors: Record<string, string> = {
   PROVIDER_RESPONSE_INVALID: "模型服务返回了不兼容的数据格式。",
   PROVIDER_REDIRECT_FORBIDDEN: "模型服务请求被重定向，已停止发送。请填写最终接口地址。",
   PROVIDER_RESPONSE_LIMIT: "模型服务返回数据过大，本次请求已停止。",
+  QUERY_CONTEXT_LIMIT: "当前问题超过向量检索的 512 Token 上限，请缩短问题；已保存的文献和索引不受影响。",
   EMBEDDING_CONTEXT_LIMIT: "文本超过向量模型长度限制，未进行截断索引；请重新解析为较短片段。",
   INDEX_REBUILD_REQUIRED: "本地索引已变化或校验失败，请在文献页更新索引。已有向量会复用。",
   PREPARATION_PARTIAL: "部分文献准备失败，其他文献仍可使用。请查看失败任务并重试。",

@@ -82,3 +82,11 @@ RAG-02（2026-10-28）：quoted_phrase_then_OR为显式引号词元短语策略�
 scientific-gold.schema v0.2增加ordinary_qa/conflicting_evidence/experimental_conditions/low_relevance_distractors，保留原类别；可记录acceptable_conclusions/refusal_expectation。SHA+页+quote绑定实际文件版本，JSONL范围内另保存doc_version_id以便复现。新类别属于本次用户要求的覆盖，不降低现有阈值。当前仍0个人工裁定样本，thresholds.proposed.json仍pending。
 
 重排比较使用v3批内名次交织，不跨批比较原分数。需同时评估候选遗漏、最终配额后Recall、MRR/nDCG、候选顺序扰动稳定性；合成分数平移不变测试不能证明真实增益。真实千篇不足时仍exit2，禁止重复两篇PDF冒充1000篇。
+
+## AUDIT-REMEDIATE-20261108 评价补充（真实金标仍BLOCKED）
+
+ranking_metrics新增Precision@5/10，分母固定K，重复ID不重复得分；返回的任一ID未标注时Precision为空，不能把未知结果当负例。compare_retrieval沿用pool_complete和独立裁定要求。科学预测人工复核可提供human_review.retrieval_relevance[{sha256,page,grade:0..3}]，包括召回到的负例；已有targets不得标成0。人工answer_relevance布尔值与fact_correct、semantic_support分别计分，模型自评不计入。
+
+每条预测新增calls_complete:true与model_calls数组，逐次包含role(answer/support/relevance)、input_tokens、output_tokens、cost、currency（ISO三字母），可附model/provider/fingerprint和attempt编号。失败与重试也纳入；本地零费用须明确记录0，缺usage/cost不能冒充0。输出逐样本call_accounting（调用数、输入/输出Token、分币种费用），不相加不同币种；缺完整记账阻断门禁。工具不会为补齐记录调用任何模型/API。
+
+输出记录金标、预测、语料清单、阈值和工具的SHA256。运行时另外保存源码提交、模型/IndexSpace指纹及环境命令到本地实验清单；不要上传私有文本。新增指标尚无人工批准阈值，本次不改thresholds.proposed.json。当前人工裁定样本0，不能报告真实Recall、语义忠实度或拒答质量通过。

@@ -220,7 +220,7 @@ class Workbench:
         return list(reversed(result))
 
     @staticmethod
-    def retrieval_context(question, context):
+    def retrieval_context(question, context, *, query_fits=None):
         reference_text = re.sub(
             r"\b(?:is|was|would|could) it (?:be )?(?:possible|necessary|important|true|known|reasonable)\b",
             "",
@@ -234,13 +234,22 @@ class Workbench:
             flags=re.I,
         )
         selected = context[-2:] if reference else []
+        dropped = 0
+        if query_fits is not None:
+            if not query_fits(question):
+                raise EngineError("QUERY_CONTEXT_LIMIT")
+            while selected and not query_fits("\n".join([question, *(item["question"] for item in selected)])):
+                selected = selected[1:]
+                dropped += 1
         query = "\n".join([question, *(item["question"] for item in selected)])
         return selected, {
-            "version": "current-question-first-v3-scope",
+            "version": "current-question-first-v4-token-budget",
             "strategy": "explicit_reference_last_two" if selected else "current_question_only",
             "turns": len(selected),
             "character_budget": 1600,
             "retrieval_query": query,
+            "query_token_limit": 512 if query_fits is not None else None,
+            "dropped_history_turns": dropped,
         }
 
     def create_answer(
@@ -513,6 +522,13 @@ class Workbench:
                 "pipeline_trace": trace.data,
             }
             trace.start("retrieval", 1)
+            if run["strategy"].removesuffix("_review") in {"hybrid", "vector_exact"}:
+                context_policy["query_token_limit"] = 512
+                context, context_policy = self.retrieval_context(
+                    question, context,
+                    query_fits=self.search.query_budget(versions, scope["project_id"]),
+                )
+                result["context_policy"] = context_policy
             retrieval = self.search.search(
                 context_policy["retrieval_query"],
                 versions,

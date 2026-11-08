@@ -168,6 +168,27 @@ class HybridSearch:
                 job_id, token, exc.code if isinstance(exc, EngineError) else "INDEX_BUILD_FAILED"
             )
 
+    def require_encoder(self, config):
+        if self.encoder is None or self.encoder_path != config["model_dir"]:
+            try:
+                self.encoder = LocalE5(Path(config["model_dir"]))
+            except (ImportError, OSError) as exc:
+                raise EngineError("MODEL_NOT_AVAILABLE", status=409) from exc
+            self.encoder_path = config["model_dir"]
+        if self.encoder.fingerprint != config["fingerprint"]:
+            raise EngineError("MODEL_FINGERPRINT_CHANGED", status=409)
+        return self.encoder
+
+    def query_budget(self, versions, project_id):
+        with self.db.connection() as conn:
+            self.sources.require_scope(conn, versions, project_id)
+        config = self.config()
+        if not config:
+            raise EngineError("EMBEDDING_NOT_CONFIGURED", status=409)
+        if not self.status()["ready"]:
+            raise EngineError("INDEX_REBUILD_REQUIRED", status=409)
+        return self.require_encoder(config).query_fits
+
     def paper_quota(self, hits, k, quota):
         if quota is not None and (type(quota) is not int or not 1 <= quota <= 10):
             raise EngineError("INVALID_SEARCH")
@@ -321,14 +342,7 @@ class HybridSearch:
         if not self.status()["ready"]:
             raise EngineError("INDEX_REBUILD_REQUIRED", status=409)
         phase_started = time.perf_counter()
-        if self.encoder is None or self.encoder_path != config["model_dir"]:
-            try:
-                self.encoder = LocalE5(Path(config["model_dir"]))
-            except (ImportError, OSError) as exc:
-                raise EngineError("MODEL_NOT_AVAILABLE", status=409) from exc
-            self.encoder_path = config["model_dir"]
-        if self.encoder.fingerprint != config["fingerprint"]:
-            raise EngineError("MODEL_FINGERPRINT_CHANGED", status=409)
+        self.require_encoder(config)
         timings["model_ready_ms"] = (time.perf_counter() - phase_started) * 1000
         started = time.perf_counter()
         query_vector = self.encoder.encode([query], query=True)[0]

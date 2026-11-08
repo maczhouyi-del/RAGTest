@@ -136,14 +136,13 @@
 
 ## RAG-AUD-12 Embedding 虽然批量推理，缓存和关联仍逐条事务写入
 
-- 状态：已确认；待修复与测量。
-- 适用性：当前代码仍适用，未发现其他提交已修复；基线与报告相同。
-- 审查定位：`engine/ragsystem/indexing/incremental.py`, `engine/ragsystem/storage/database.py`
-- 审查根因：增量索引逐项 get/persist/link；这些方法独立打开连接或提交事务。Database 使用 synchronous=FULL，因此“按批编码”不等于“按批持久化”。
-- 修复与业务测试：比较事务数、编码数、写入数和总耗时；缓存命中不得重新编码；在批次中取消/崩溃后不得发布半成品索引。
-- 当前调用链/证据：embed_visible逐摘要cache.get、逐向量persist、逐Chunk link；Embeddings方法独立db.transaction，Database synchronous=FULL。
-- 修改文件/本地提交：无。
-- 剩余工作：待有界批次读写、取消/租约边界及事务数/缓存命中实测；最终新代校验发布必须保持。 未自行批准延期。
+- 状态：已验证（有界事务/回滚/缓存/租约检查；最终冻结待复测）。
+- 根因：逐get/persist/link独立连接与FULL同步事务；基线可复现。
+- 修复：128摘要批读、最多16（默认8）向量批持久化，128关联短事务；推理在事务外，推理后重查取消/租约，缓存仍按完整空间指纹。索引最终校验/原子发布未改。
+- 红绿：C-batch-red 2 FAIL；C-batch-green 8 PASS；D-query-green-corrected包含取消补测共53 PASS。
+- 同机同公开PDF/合成向量：323新增编码数不变，首次事务647→45，复用324→4、重编码0；单次首次591.48→65.46ms，不是模型性能/SLA。
+- 修改：indexing/embeddings.py、incremental.py、test_audit_embedding_batches.py、benchmark_audit_vectors.py。无schema/历史迁移修改。
+- 风险：已经提交的合法缓存可在取消后复用；不发布不完整索引。真实千篇吞吐未验收。
 
 ## RAG-AUD-13 按子串拦截 systematic review，误拒单篇论文的正常问题
 
@@ -158,14 +157,12 @@
 
 ## RAG-AUD-14 LanceDB 路径将全部范围内向量物化为 Python 记录再截取 Top-K
 
-- 状态：已确认；待修复与测量。
-- 适用性：当前代码仍适用，未发现其他提交已修复；基线与报告相同。
-- 审查定位：`engine/ragsystem/vector_adapters/lancedb.py`
-- 审查根因：search 使用 limit(len(eligible)).to_list() 后进行本地排序/截取；ids 路径先 to_arrow 再取 embedding_id 列。两者可能传回远超最终 K 的数据，包括不需要的向量列。
-- 修复与业务测试：对同一授权范围比较旧实现与精确参考结果，覆盖同分、空范围、过滤后候选不足；记录返回中间数据量和峰值 RSS，验证无越范围召回。
-- 当前调用链/证据：LanceDB.search_exact使用prefilter=True后limit(len(eligible)).to_list再排序截K；ids使用整表to_arrow取ID列。
-- 修改文件/本地提交：无。
-- 剩余工作：范围过滤正确，不能用先TopK后过滤替代；待投影、有界结果/同分精确参照与RSS测量。 未自行批准延期。
+- 状态：已验证（精确范围/同分及合成内存测量；真实容量未验收）。
+- 根因：全部范围记录含vector物化为Python；ids整表Arrow；基线仍适用。
+- 修复：ids仅投影ID分批读取；精确距离仅投影ID/_distance、256行分批，heap保留TopK，仍先范围过滤且全量检查缺失ID。精确同分按ID排序，未用先TopK后过滤。
+- 红绿：C-lance-red 2 FAIL；C-lance-green 12 PASS。含3000合成向量的cosine/l2、同分、空范围、候选不足与既有适配器契约。
+- 同环境独立进程5000×384合成向量/3333授权/Top10：Python峰值42,734,040→1,083,427字节，进程峰值RSS489,127,936→366,002,176字节，单次251.09→32.80ms。冷/真实文献容量未测；原生精确扫描与授权ID集合仍O(N)，不宣称常数内存ANN。
+- 修改：vector_adapters/lancedb.py、test_audit_lance_streaming.py、benchmark_audit_vectors.py。计量日志C-vector-benchmark。
 
 ## RAG-AUD-15 模型连接测试的刷新失败会跳过 busy 复位
 
@@ -180,25 +177,23 @@
 
 ## RAG-AUD-16 问题字符上限与向量 Token 上限未形成一致契约，错误提示误指向文档
 
-- 状态：已确认；待修复与Tokenizer边界运行验证。
-- 适用性：当前代码仍适用，未发现其他提交已修复；基线与报告相同。
-- 审查定位：`engine/ragsystem/ipc/server.py`, `engine/ragsystem/workflows/workbench.py`, `engine/ragsystem/models/local_onnx.py`, `apps/desktop/src/bridge.ts`
-- 审查根因：搜索接受最多 20000 字符，问答界面最多 4000 字符；指代查询还拼接历史问题。E5 的输入上限为 512 Tokens，溢出拒绝。前端 EMBEDDING_CONTEXT_LIMIT 文案却建议“重新解析为较短片段”，未区分查询文本和文档 Chunk。
-- 修复与业务测试：用固定模型 tokenizer 生成 511/512/513 Token 和历史追加边界样例，分别覆盖查询与 passage；验证错误文案、历史裁剪记录以及失败不改变已有索引。
-- 当前调用链/证据：SearchRequest允许20000字符，MvpAsk允许4000；Workbench.retrieval_context拼历史；LocalE5.encode使用512Token，query/passage共用EMBEDDING_CONTEXT_LIMIT；bridge该码仍提示重解析文档。
-- 修改文件/本地提交：无。
-- 剩余工作：待用锁定Tokenizer做511/512/513边界、当前问题优先与历史预算、独立QUERY_CONTEXT_LIMIT和诊断记录；本轮尚未修改，不能算通过。 未自行批准延期。
+- 状态：已验证（锁定真实tokenizer边界及相关集成；新增索引保持专项待最终全量）。
+- 根因：字符传输上限不等于512Token；query/passage共用文档错误码，历史拼接可能溢出。
+- 修复：QUERY_CONTEXT_LIMIT独立提示；完整当前问题优先，指代时按最旧顺序移除历史问题，记录实际retrieval_query、query_token_limit和dropped_history_turns。保留文档拒绝静默截断和完整空间指纹。
+- 红绿：D-query-red 2 FAIL/5 PASS；首次green 49 PASS/1 FAIL，暴露检索配置缺失时丢失诊断，已修复；corrected 53 PASS。真实E5 query/passage 511/512允许，513拒绝，无溢出推理调用。
+- 修改：local_onnx.py、hybrid.py、workbench.py、bridge.ts、test_audit_query_budget.py、contracts/query-budget-v0.7.md；无schema变更。
+- 风险：字符上限仍是传输保护；Token限制只用于向量/混合，不限制关键词模式。不改变已有索引或自动转云。
 
 ## RAG-AUD-17 评估工具存在，但真实人工金标和已批准质量验收尚未闭环
 
-- 状态：阻塞（真实效果验收）；评估工具补齐仍待实施。
+- 状态：阻塞（真实效果验收）；评估工具补充已实现待最终验证。
 - 适用性：当前代码仍适用，未发现其他提交已修复；基线与报告相同。
 - 审查定位：`docs/evaluation/goldset-protocol.md`, `engine/ragsystem/retrieval/evaluation.py`
 - 审查根因：评估文档明确无真实金标，并在后续更新中记录 0 个人工裁定样本、阈值 pending；文档明确说明 gold/prediction 是待填写的空模板。已有 Recall@5/10、MRR、NDCG@10、时延计算和离线科学质量评分工具，不能误报为“没有评估机制”。
 - 修复与业务测试：提供可重跑的冻结数据清单、独立评审记录、分组指标、失败样例和完整运行指纹；模型自评分不得当成人工真值；阈值须预先批准，不因本次失败而临时降低。
 - 当前调用链/证据：goldset-protocol记录缺独立人工标注/批准阈值；retrieval.evaluation已有Recall/MRR/NDCG与latency，tools科学评估器存在。未获取本轮独立人工金标。
 - 修改文件/本地提交：无。
-- 剩余工作：不能用合成测试/模型自审证明真实准确率；待补Precision@K、语义评价及全调用成本字段和重跑说明，真实评分需授权语料与独立标注。 未自行批准延期。
+- 剩余工作：不能用合成测试/模型自审证明真实准确率；已补Precision@5/10未知标签保护、独立人工answer_relevance及分角色完整调用Token/费用记账和重跑说明；D-evaluation-red 2 FAIL，green 13 PASS/1 SKIP（缺E5环境，最终完整环境复测），真实评分需授权语料与独立标注。 未自行批准延期。
 
 ## RAG-AUD-18 源码 CI 与完整冻结侧车、浏览器集成、原生安装验收之间仍有断层
 
@@ -232,5 +227,5 @@
 - ae72044：04/05/07后端及UI入口、兼容协议。
 - d2e8097：10/11。
 - f136937：13/15（15组件故障交互仍待专项）。
-- 未完成项保持开放：06、12、14、16、17、18；04及15补UI故障交互证据。没有不适用项，也没有获批延期项。
+- 未完成项保持开放：06、17、18；04及15补UI故障交互证据。没有不适用项，也没有获批延期项。
 - 恢复执行：先读本台账与execplans/AUDIT-REMEDIATE-20261108.md，核对分支/dirty文档；按08/09/12/14性能业务计数测试→16 Token预算→06精确依赖处置→17评估格式→18/REL候选构建及原生矩阵继续。不得使用清理旧产物或调整skip掩盖缺口。

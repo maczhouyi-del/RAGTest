@@ -19,6 +19,11 @@ def ranking_metrics(relevance, ranked):
         return sum((2**grade - 1) / math.log2(index + 2) for index, grade in enumerate(values))
 
     return {
+        **{
+            f"precision_at_{k}": sum(grade > 0 for grade in grades[:k]) / k
+            if all(key in relevance for key in ranked[:k]) else None
+            for k in (5, 10)
+        },
         "recall_at_5": len(required & set(ranked[:5])) / len(required) if required else None,
         "recall_at_10": len(required & set(ranked[:10])) / len(required) if required else None,
         "mrr": next((1 / index for index, grade in enumerate(grades, 1) if grade > 0), 0)

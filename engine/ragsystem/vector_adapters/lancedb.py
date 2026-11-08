@@ -1,3 +1,4 @@
+import heapq
 import json
 from pathlib import Path
 
@@ -50,7 +51,11 @@ class LanceDB(ExactAdapter):
             self.table.delete("embedding_id IN (" + ",".join("'" + i + "'" for i in ids) + ")")
 
     def ids(self):
-        return set(self.table.to_arrow()["embedding_id"].to_pylist())
+        return {
+            value
+            for batch in self.table.search().select(["embedding_id"]).limit(None).to_batches(256)
+            for value in batch.column("embedding_id").to_pylist()
+        }
 
     def search_exact(self, query, eligible_embedding_ids, k):
         eligible = sorted(set(eligible_embedding_ids))
@@ -58,24 +63,25 @@ class LanceDB(ExactAdapter):
         if not eligible:
             return []
         predicate = "embedding_id IN (" + ",".join("'" + i + "'" for i in eligible) + ")"
-        # Fetch the eligible distances to make exact ties deterministic across
-        # backends. Measure this adapter overhead separately, not just the kernel.
-        rows = (
+        # Exact ties require seeing every eligible distance. Stream only ID and
+        # distance in bounded batches; retain O(k) Python rows, never all vectors.
+        batches = (
             self.table.search(vector)
             .distance_type(self.metric)
             .bypass_vector_index()
             .where(predicate, prefilter=True)
+            .select(["embedding_id", "_distance"])
             .limit(len(eligible))
-            .to_list()
+            .to_batches(256)
         )
-        if self.metric == "l2":
-            # Lance returns squared L2, sqlite-vec returns Euclidean L2.
-            rows = [{**row, "_distance": max(0.0, float(row["_distance"])) ** 0.5} for row in rows]
-        rows.sort(key=lambda row: (row["_distance"], row["embedding_id"]))
-        return [
-            {"embedding_id": row["embedding_id"], "distance": float(row["_distance"])}
-            for row in rows[:k]
-        ]
+        def distances():
+            for batch in batches:
+                for row in batch.to_pylist():
+                    distance = float(row["_distance"])
+                    if self.metric == "l2":
+                        distance = max(0.0, distance) ** 0.5
+                    yield {"embedding_id": row["embedding_id"], "distance": distance}
+        return heapq.nsmallest(k, distances(), key=lambda row: (row["distance"], row["embedding_id"]))
 
     def rebuild(self, entries):
         entries = list(entries)

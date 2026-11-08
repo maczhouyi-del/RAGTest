@@ -86,6 +86,11 @@ class LocalE5:
         self.encoded_texts = 0
         self.truncated_texts = 0
 
+    def query_fits(self, text):
+        if not isinstance(text, str) or len(text) > 20000:
+            return False
+        return not self.tokenizer.encode("query: " + text).overflowing
+
     def encode(self, texts: list[str], *, query=False):
         import numpy as np
 
@@ -96,7 +101,7 @@ class LocalE5:
         prefix = "query: " if query else "passage: "
         encoded = self.tokenizer.encode_batch([prefix + text for text in texts])
         if any(e.overflowing for e in encoded):
-            raise EngineError("EMBEDDING_CONTEXT_LIMIT")
+            raise EngineError("QUERY_CONTEXT_LIMIT" if query else "EMBEDDING_CONTEXT_LIMIT")
         values = {
             "input_ids": np.array([e.ids for e in encoded], dtype=np.int64),
             "attention_mask": np.array([e.attention_mask for e in encoded], dtype=np.int64),

@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -45,6 +46,23 @@ def average(values):
     return sum(values) / len(values) if values else None
 
 
+def call_accounting(prediction):
+    calls = prediction.get("model_calls")
+    if prediction.get("calls_complete") is not True or not isinstance(calls, list):
+        return None
+    costs, input_tokens, output_tokens = {}, 0, 0
+    for call in calls:
+        if (not isinstance(call, dict) or call.get("role") not in {"answer", "support", "relevance"}
+            or any(type(call.get(key)) is not int or call[key] < 0 for key in ("input_tokens", "output_tokens"))
+            or type(call.get("cost")) not in {int, float} or not math.isfinite(call["cost"]) or call["cost"] < 0
+            or not re.fullmatch(r"[A-Z]{3}", call.get("currency", ""))):
+            return None
+        input_tokens += call["input_tokens"]
+        output_tokens += call["output_tokens"]
+        costs[call["currency"]] = costs.get(call["currency"], 0) + call["cost"]
+    return {"calls": len(calls), "input_tokens": input_tokens, "output_tokens": output_tokens, "cost_by_currency": costs}
+
+
 def score(cases, predictions, verify_source):
     observations = []
     blocked = []
@@ -68,7 +86,14 @@ def score(cases, predictions, verify_source):
         citations = prediction.get("citations", [])
         judgment = prediction.get("human_review", {})
         manual = reviewed(judgment)
-        retrieval = ranking_metrics(dict.fromkeys(required, 1), ranked)
+        relevance = dict.fromkeys(required, 1)
+        if manual:
+            for item in judgment.get("retrieval_relevance", []):
+                key = (item["sha256"], item["page"])
+                if key in required and item["grade"] == 0:
+                    raise ValueError("REQUIRED_TARGET_CANNOT_BE_IRRELEVANT")
+                relevance[key] = item["grade"]
+        retrieval = ranking_metrics(relevance, ranked)
         total_claims = judgment.get("total_claims")
         unsupported_claims = judgment.get("unsupported_claims")
         unsupported_rate = (
@@ -98,6 +123,11 @@ def score(cases, predictions, verify_source):
                 if required
                 else None,
                 "retrieval_recall_at_5": retrieval["recall_at_5"],
+                "retrieval_precision_at_5": retrieval["precision_at_5"],
+                "retrieval_precision_at_10": retrieval["precision_at_10"],
+                "answer_relevance": judgment.get("answer_relevance")
+                if manual and type(judgment.get("answer_relevance")) is bool else None,
+                "call_accounting": call_accounting(prediction),
                 "retrieval_mrr": retrieval["mrr"],
                 "retrieval_ndcg_at_10": retrieval["ndcg_at_10"],
                 "unsupported_conclusion_rate": unsupported_rate,
@@ -123,6 +153,9 @@ def score(cases, predictions, verify_source):
     keys = [
         "retrieval_recall_at_10",
         "retrieval_recall_at_5",
+        "retrieval_precision_at_5",
+        "retrieval_precision_at_10",
+        "answer_relevance",
         "retrieval_mrr",
         "retrieval_ndcg_at_10",
         "unsupported_conclusion_rate",
@@ -232,10 +265,17 @@ def main():
         blockers.append("METRIC_COVERAGE_INCOMPLETE")
     if any(value["samples"] == 0 for value in result["latency_ms"].values()):
         blockers.append("LATENCY_MEASUREMENTS_MISSING")
+    if not result["observations"] or any(row["call_accounting"] is None for row in result["observations"]):
+        blockers.append("ALL_CALL_USAGE_OR_COST_MISSING")
     if len(result["observations"]) < approved.get("minimum_cases", 120):
         blockers.append("SAMPLE_SIZE_NOT_MET")
     if approved.get("approval_status") != "approved" or not approved.get("approved_by"):
         blockers.append("THRESHOLDS_NOT_APPROVED")
+    result["input_fingerprints"] = {
+        key: hashlib.sha256(path.read_bytes()).hexdigest()
+        for key, path in (("gold", args.gold), ("predictions", args.predictions), ("manifest", args.manifest),
+                          ("thresholds", args.thresholds), ("evaluator", Path(__file__)))
+    }
     result.update(
         status="BLOCKED" if blockers else "NOT_EXECUTED",
         gate_blockers=blockers,

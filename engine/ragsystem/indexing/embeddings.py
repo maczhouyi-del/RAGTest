@@ -2,6 +2,7 @@ import hashlib
 import json
 import math
 import struct
+from contextlib import nullcontext
 from uuid import uuid4
 
 from ragsystem.domain.errors import EngineError
@@ -83,10 +84,22 @@ class Embeddings:
             ).fetchone()
             return dict(row) if row else None
 
-    def persist(self, space_id, content_sha256, vector):
+    def get_many(self, space_id, digests):
+        if not 1 <= len(digests) <= 128:
+            raise ValueError("invalid embedding read batch")
+        with self.db.connection() as conn:
+            return {
+                row["content_sha256"]: dict(row)
+                for row in conn.execute(
+                    "SELECT * FROM embedding_records WHERE space_id=? AND content_sha256 IN ("
+                    + ",".join("?" for _ in digests) + ")", [space_id, *digests]
+                )
+            }
+
+    def persist(self, space_id, content_sha256, vector, *, connection=None):
         if len(content_sha256) != 64 or any(c not in "0123456789abcdef" for c in content_sha256):
             raise EngineError("CONTENT_FINGERPRINT_INVALID")
-        with self.db.transaction() as conn:
+        with (nullcontext(connection) if connection is not None else self.db.transaction()) as conn:
             space = conn.execute(
                 "SELECT * FROM embedding_spaces WHERE id=?", (space_id,)
             ).fetchone()
@@ -117,8 +130,8 @@ class Embeddings:
             )
             return record_id
 
-    def link(self, chunk_id, embedding_id):
-        with self.db.transaction() as conn:
+    def link(self, chunk_id, embedding_id, *, connection=None):
+        with (nullcontext(connection) if connection is not None else self.db.transaction()) as conn:
             row = conn.execute(
                 """SELECT c.content_sha256 AS chunk_hash,e.content_sha256 AS vector_hash
                 FROM chunks c JOIN embedding_records e ON e.id=? WHERE c.id=?""",
