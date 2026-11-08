@@ -19,11 +19,14 @@ def test_ten_duplicate_imports_retire_only_successful_owned_staging(tmp_path):
     importer = PdfImporter(db, root)
     unrelated = root / "staging/unknown-user-file.part"
     unrelated.write_bytes(b"preserve unknown owner")
-    refs = [importer.import_path_for_test(source, str(i)) for i in range(10)]
+    refs = [importer.import_path_for_test(source, "0")]
+    initial_blocks = sum(p.stat().st_blocks for directory in (root/"staging", root/"papers") for p in directory.iterdir())
+    refs += [importer.import_path_for_test(source, str(i)) for i in range(1, 10)]
     assert len({row["doc_version_id"] for row in refs}) == 1
     assert list((root / "staging").iterdir()) == [unrelated]
     assert len(list((root / "papers").iterdir())) == 1
     assert unrelated.read_bytes() == b"preserve unknown owner"
+    assert sum(p.stat().st_blocks for directory in (root/"staging", root/"papers") for p in directory.iterdir()) == initial_blocks
 
 
 def test_import_staging_kept_after_publication_crash_and_cleanup_failure_audited(tmp_path, monkeypatch):

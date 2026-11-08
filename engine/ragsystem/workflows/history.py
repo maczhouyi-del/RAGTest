@@ -147,7 +147,8 @@ class History:
             ).fetchone()[0]
         page = _history_page(rows, total, limit)
         page["conversation"] = dict(conversation)
-        page["items"] = [self.answer(r["id"], project_id) for r in reversed(page["items"])]
+        verified_files = {}
+        page["items"] = [self.answer(r["id"], project_id, verified_files=verified_files) for r in reversed(page["items"])]
         return page
 
     def index(self, kind, project_id=None, cursor=None, limit=30):
@@ -178,8 +179,8 @@ class History:
             ).fetchone()[0]
         return _history_page(rows, total, limit)
 
-    def answer(self, identifier, project_id):
-        values = self.work.answers(project_id, run_id=identifier)
+    def answer(self, identifier, project_id, *, verified_files=None):
+        values = self.work.answers(project_id, run_id=identifier, verified_files=verified_files)
         if not values:
             raise EngineError("NOT_FOUND", status=404)
         return values[0]

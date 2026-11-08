@@ -3,6 +3,7 @@ from pathlib import Path
 
 from ragsystem.chunking.publication import metadata
 from ragsystem.domain.errors import EngineError
+from ragsystem.ipc.grants import digest_stream
 from ragsystem.retrieval.tokenizer import index_terms, quoted_phrases, search_terms, tokenize
 from ragsystem.storage.database import Database
 
@@ -129,7 +130,7 @@ class Sources:
             if len(rows) < 200:
                 break
 
-    def anchor(self, anchor_id: str):
+    def anchor(self, anchor_id: str, *, verified_files=None):
         with self.db.connection() as conn:
             row = conn.execute(
                 """SELECT c.*,v.file_sha256,e.raw_text,e.page_rotation_degrees,e.quality_status
@@ -144,13 +145,23 @@ class Sources:
         if row["raw_text"][row["start_offset"] : row["end_offset"]] != row["clean_text"]:
             raise EngineError("SOURCE_ALIGNMENT_INVALID", status=409)
         path = self.root / "papers" / (row["file_sha256"] + ".pdf")
-        if (
-            path.is_symlink()
-            or not path.is_file()
-            or path.stat().st_size > 64 * 1024 * 1024
-            or hashlib.sha256(path.read_bytes()).hexdigest() != row["file_sha256"]
-        ):
-            raise EngineError("OBJECT_CORRUPT", status=409)
+        cache = {} if verified_files is None else verified_files
+        try:
+            info = path.stat()
+            identity = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+            key = (str(path), row["file_sha256"], identity)
+            if path.is_symlink() or not path.is_file() or info.st_size > 64 * 1024 * 1024:
+                raise EngineError("OBJECT_CORRUPT", status=409)
+            if key not in cache:
+                with path.open("rb") as source:
+                    actual, size = digest_stream(source)
+                after = path.stat()
+                if (actual != row["file_sha256"] or size != info.st_size or
+                    (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns) != identity):
+                    raise EngineError("OBJECT_CORRUPT", status=409)
+                cache[key] = True
+        except OSError as exc:
+            raise EngineError("OBJECT_CORRUPT", status=409) from exc
         return {
             "schema_version": "0.1-draft",
             "structure": structure,

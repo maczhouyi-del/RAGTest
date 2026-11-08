@@ -110,6 +110,10 @@ module.exports=async function({page,rpc,evidence,errors,audit}) {
   check(!audit().secret_in_db,'NO_KEY_IN_SQLITE');
   await page.getByRole('button',{name:'新会话',exact:true}).click();await send('你是什么模型');
   for(const width of [1400,1000,720]){await page.setViewportSize({width,height:900});await page.waitForTimeout(100);check(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+2),'BOUNDED_LAYOUT_'+width);await page.screenshot({path:path.join(evidence,'chat-'+width+'.png'),fullPage:true});}
+  await page.waitForTimeout(1100);
+  const countTurns=()=>fs.readdirSync(evidence).filter(name=>name.startsWith('browser-commands-')&&name.endsWith('.jsonl')).reduce((total,name)=>total+fs.readFileSync(path.join(evidence,name),'utf8').split('\n').filter(Boolean).map(line=>JSON.parse(line)).filter(record=>record.command==='conversation_turns').length,0);
+  const settledReads=countTurns();await page.waitForTimeout(2200);
+  check(countTurns()===settledReads,'COMPLETED_CONVERSATION_STOPS_FULL_EVIDENCE_POLLING');
   check(!errors.length,'NO_BROWSER_ERRORS');
   fs.writeFileSync(path.join(evidence,'CHAT-01-browser.json'),JSON.stringify({status:'PASS',checks,transport:'SIMULATED TAURI',engine:'REAL PROCESS',model:'LOOPBACK FIXTURE',cloud_calls:0,before:baseline,after},null,2));
  }finally{await new Promise(resolve=>server.close(resolve));}

@@ -166,3 +166,29 @@ def test_prepare_snapshot_atomicity_legacy_and_tamper_detection(tmp_path, monkey
         conn.execute("UPDATE scope_snapshots SET versions_json='[]'")
     with pytest.raises(EngineError, match="SCOPE_IDENTITY_CHANGED"):
         preparation.versions(new["id"])
+
+
+@pytest.mark.parametrize("outcome", ["partial", "cancelled"])
+def test_prepare_frozen_scope_partial_and_cancelled_never_complete(tmp_path, monkeypatch, outcome):
+    from ragsystem.domain.errors import EngineError
+    from ragsystem.parsing.pipeline import Parser
+
+    db = Database(tmp_path / "data/research.db")
+    ids = versions(db, 2)
+    preparation = Preparation(db, tmp_path, HybridSearch(db, tmp_path))
+    job = preparation.enqueue(ids, "run")
+    calls = []
+    def parse(self, version, key, **kwargs):
+        calls.append(version)
+        if outcome == "cancelled":
+            Jobs(db).cancel(job["id"])
+            kwargs["parent_check"]()
+        if version == sorted(ids)[0]:
+            raise EngineError("PDF_EXTRACTION_FAILED")
+    monkeypatch.setattr(Parser, "parse", parse)
+    preparation.run(job["id"], preparation.versions(job["id"]))
+    row = Jobs(db).get(job["id"])
+    assert row["status"] == ("failed" if outcome == "partial" else "cancelled")
+    assert row["result_ref"] is None
+    assert len(calls) == (2 if outcome == "partial" else 1)
+    assert preparation.search.config() is None

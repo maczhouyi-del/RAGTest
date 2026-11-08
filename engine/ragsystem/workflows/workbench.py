@@ -854,7 +854,7 @@ class Workbench:
             if self.generation.generator is not None:
                 self.generation.generator.cancel_check = None
 
-    def public_evidence(self, row):
+    def public_evidence(self, row, *, verified_files=None):
         value = dict(row)
         anchor = json.loads(value["anchor_json"])
         value["text_origin"] = (
@@ -890,7 +890,7 @@ class Workbench:
             "location_confidence": "unknown",
         }
         try:
-            self.sources.anchor(value["source_anchor_id"])
+            self.sources.anchor(value["source_anchor_id"], verified_files=verified_files)
             value["current_source_status"] = "verified"
         except EngineError:
             value["current_source_status"] = "stale_or_unavailable"
@@ -908,7 +908,8 @@ class Workbench:
             ]
         return value
 
-    def answers(self, project_id=None, run_id=None):
+    def answers(self, project_id=None, run_id=None, *, verified_files=None):
+        verified_files = {} if verified_files is None else verified_files
         with self.db.connection() as conn:
             rows = conn.execute(
                 """SELECT r.*,s.versions_json,s.project_id FROM answer_runs r
@@ -928,7 +929,7 @@ class Workbench:
                     )
                 ]
                 value["evidence"] = [
-                    self.public_evidence(evidence)
+                    self.public_evidence(evidence, verified_files=verified_files)
                     for evidence in conn.execute(
                         "SELECT * FROM evidence_records WHERE owner_id=? ORDER BY created_at",
                         (row["id"],),

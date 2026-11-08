@@ -119,7 +119,7 @@ class Library:
             )
         return {"project_id": project_id, "document_id": document_id, "linked": linked}
 
-    def list_documents(self, project_id=None):
+    def list_documents(self, project_id=None, *, document_id=None, doc_version_id=None):
         with self.db.connection() as conn:
             if project_id is not None:
                 self.require_project(conn, project_id)
@@ -134,6 +134,12 @@ class Library:
             if project_id is not None:
                 query += " AND EXISTS(SELECT 1 FROM project_documents pd WHERE pd.document_id=d.id AND pd.project_id=? AND pd.linked=1)"
                 params = (project_id,)
+            if document_id is not None:
+                query += " AND d.id=?"
+                params = (*params, document_id)
+            if doc_version_id is not None:
+                query += " AND v.id=?"
+                params = (*params, doc_version_id)
             rows = [
                 dict(row)
                 for row in conn.execute(query + " ORDER BY v.created_at DESC,v.id", params)
@@ -143,22 +149,37 @@ class Library:
                 "SELECT document_id,project_id FROM project_documents WHERE linked=1 ORDER BY project_id"
             ):
                 memberships.setdefault(row["document_id"], []).append(row["project_id"])
+            from ragsystem.library.metadata import VERSION
+
+            candidates_by_version, extraction_by_key, doi_documents = {}, {}, {}
+            ids = [row["doc_version_id"] for row in rows]
+            for start in range(0, len(ids), 256):
+                batch = ids[start:start + 256]
+                placeholders = ",".join("?" for _ in batch)
+                for candidate in conn.execute(
+                    "SELECT * FROM metadata_candidates WHERE extractor_version=? AND doc_version_id IN ("
+                    + placeholders + ") ORDER BY created_at,id", [VERSION, *batch],
+                ):
+                    value = dict(candidate)
+                    value["value"] = json.loads(value.pop("candidate_value"))
+                    candidates_by_version.setdefault((value["document_id"], value["doc_version_id"]), {})[value["field_name"]] = value
+                for job in conn.execute(
+                    "SELECT idempotency_key,status,error_code FROM jobs WHERE type='verify' AND idempotency_key IN ("
+                    + placeholders + ")", [VERSION + ":" + item for item in batch],
+                ):
+                    extraction_by_key[job["idempotency_key"]] = {"status":job["status"], "error_code":job["error_code"]}
+            for item in conn.execute(
+                "SELECT m.document_id,m.doi FROM document_metadata m WHERE m.doi IS NOT NULL "
+                "AND EXISTS(SELECT 1 FROM document_versions v WHERE v.document_id=m.document_id AND v.visibility='visible') ORDER BY m.document_id"
+            ):
+                doi_documents.setdefault(item["doi"], []).append(item["document_id"])
             for row in rows:
                 row["authors"] = json.loads(row.pop("authors_json") or "[]")
                 row["tags"] = json.loads(row.pop("tags_json") or "[]")
                 row["venue"] = row["venue"] or ""
                 row["abstract"] = row["abstract"] or ""
                 origins = json.loads(row.pop("field_origins_json") or "{}")
-                from ragsystem.library.metadata import VERSION
-
-                candidates = {}
-                for candidate in conn.execute(
-                    "SELECT * FROM metadata_candidates WHERE document_id=? AND doc_version_id=? AND extractor_version=? ORDER BY created_at,id",
-                    (row["document_id"], row["doc_version_id"], VERSION),
-                ):
-                    value = dict(candidate)
-                    value["value"] = json.loads(value.pop("candidate_value"))
-                    candidates[value["field_name"]] = value
+                candidates = candidates_by_version.get((row["document_id"], row["doc_version_id"]), {})
                 for field, candidate in candidates.items():
                     if origins.get(field) not in {"manual", "confirmed"}:
                         row[field] = candidate["value"]
@@ -169,14 +190,8 @@ class Library:
                     origins.get(field) == "automatic" and value["review_status"] == "unreviewed"
                     for field, value in candidates.items()
                 )
-                extraction = conn.execute(
-                    "SELECT status,error_code FROM jobs WHERE type='verify' AND idempotency_key=?",
-                    (VERSION + ":" + row["doc_version_id"],),
-                ).fetchone()
-                row["metadata_extraction"] = (
-                    dict(extraction)
-                    if extraction
-                    else {"status": "not_started", "error_code": None}
+                row["metadata_extraction"] = extraction_by_key.get(
+                    VERSION + ":" + row["doc_version_id"], {"status": "not_started", "error_code": None}
                 )
                 row["metadata_origin"] = (
                     "manual"
@@ -186,19 +201,7 @@ class Library:
                     else None
                 )
                 row["project_ids"] = memberships.get(row["document_id"], [])
-                row["duplicate_candidates"] = (
-                    [
-                        other[0]
-                        for other in conn.execute(
-                            """SELECT m.document_id FROM document_metadata m WHERE m.doi=? AND m.document_id!=?
-                       AND EXISTS(SELECT 1 FROM document_versions v WHERE v.document_id=m.document_id
-                       AND v.visibility='visible') ORDER BY m.document_id""",
-                            (row["doi"], row["document_id"]),
-                        )
-                    ]
-                    if row["doi"]
-                    else []
-                )
+                row["duplicate_candidates"] = [other for other in doi_documents.get(row["doi"], []) if other != row["document_id"]] if row["doi"] else []
             return rows
 
     def select_qa_versions(self, versions, policy="latest_imported"):
@@ -230,7 +233,7 @@ class Library:
         current_values = next(
             (
                 row
-                for row in self.list_documents()
+                for row in self.list_documents(document_id=document_id, doc_version_id=body.doc_version_id)
                 if row["document_id"] == document_id
                 and (body.doc_version_id is None or row["doc_version_id"] == body.doc_version_id)
             ),
@@ -300,7 +303,7 @@ class Library:
                     "UPDATE metadata_candidates SET review_status='accepted' WHERE id=?",
                     (candidate_id,),
                 )
-        return next(row for row in self.list_documents() if row["document_id"] == document_id)
+        return next(row for row in self.list_documents(document_id=document_id) if row["document_id"] == document_id)
 
     def file_record(self, version_id, root: Path):
         with self.db.connection() as conn:

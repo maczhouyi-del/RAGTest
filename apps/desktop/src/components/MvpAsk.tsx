@@ -17,7 +17,7 @@ export default function MvpAsk({data,creatingConversation,providers,model,onMode
   useEffect(()=>{setAwaitingResult(false);},[selectedId,conversationId]);
   const [scope,setScope]=useState("all");
   const [busy,setBusy]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState("");
-  const submitting=useRef(false),composing=useRef(false);
+  const submitting=useRef(false),composing=useRef(false),polling=useRef(true),pendingRun=useRef<string|null>(null);
   const chat=useRef<HTMLDivElement>(null),scrollIntent=useRef<string|null>(null),prepend=useRef<{height:number;top:number}|null>(null);
   const [pendingQuestion,setPendingQuestion]=useState<{text:string;runId?:string}|null>(null),[archived,setArchived]=useState(false);
   useLayoutEffect(()=>{
@@ -31,11 +31,12 @@ export default function MvpAsk({data,creatingConversation,providers,model,onMode
   const provider=providers.find(item=>item.id===model);
   useEffect(()=>{
     let alive=true,inFlight=false,cursorLoaded=false;
-    if(submittedConversation.current!==conversationId){setPendingQuestion(null);scrollIntent.current=null;prepend.current=null;}
+    polling.current=true;
+    if(submittedConversation.current!==conversationId){pendingRun.current=null;setPendingQuestion(null);scrollIntent.current=null;prepend.current=null;}
     setLoading(!!conversationId);setAnswers([]);setOlderCursor(null);setError("");setPending(false);setQuestion("");setArchived(false);
     if(!conversationId){setScope("all");setPendingQuestion(null);return;}
-    const poll=async()=>{if(inFlight)return;inFlight=true;try{const result=await conversationTurns(conversationId);if(alive&&current.current===conversationId){setLoading(false);setArchived(!!result.conversation.archived_at);if(!cursorLoaded&&!pendingQuestion){scrollIntent.current=result.items.at(-1)?.id??null;}setPendingQuestion(previous=>previous?.runId&&result.items.some(item=>item.id===previous.runId)?null:previous);setAnswers(previous=>[...previous.filter(old=>!result.items.some(item=>item.id===old.id)),...result.items]);if(!cursorLoaded){setOlderCursor(result.next_cursor);cursorLoaded=true;}setPending(result.items.some(item=>["queued","running"].includes(item.status)));}}catch(err){if(alive){setLoading(false);setError(errorMessage(err));}}finally{inFlight=false;}};
-    void poll();const timer=window.setInterval(()=>void poll(),1000);return()=>{alive=false;window.clearInterval(timer);};
+    const poll=async()=>{if(inFlight)return;inFlight=true;try{const result=await conversationTurns(conversationId);if(alive&&current.current===conversationId){setLoading(false);setArchived(!!result.conversation.archived_at);if(!cursorLoaded&&!pendingQuestion){scrollIntent.current=result.items.at(-1)?.id??null;}setPendingQuestion(previous=>previous?.runId&&result.items.some(item=>item.id===previous.runId)?null:previous);setAnswers(previous=>[...previous.filter(old=>!result.items.some(item=>item.id===old.id)),...result.items]);if(!cursorLoaded){setOlderCursor(result.next_cursor);cursorLoaded=true;}if(pendingRun.current&&result.items.some(item=>item.id===pendingRun.current))pendingRun.current=null;polling.current=!!pendingRun.current||result.items.some(item=>["queued","running"].includes(item.status));setPending(polling.current);}}catch(err){if(alive){setLoading(false);setError(errorMessage(err));}}finally{inFlight=false;}};
+    void poll();const timer=window.setInterval(()=>{if(polling.current&&document.visibilityState==="visible")void poll();},1000);return()=>{alive=false;window.clearInterval(timer);};
   },[conversationId]);
   const parsed=data.documents.filter(doc=>["ready","partial"].includes(doc.parse_status));
   const newest = new Map<string,string>();
@@ -48,9 +49,9 @@ export default function MvpAsk({data,creatingConversation,providers,model,onMode
   async function submit(event:FormEvent) {
     event.preventDefault();if(submitting.current||busy||pending||!question.trim()||question.length>4000||(!systemQuestion&&!versions.length)||!available||archived||loading||creatingConversation)return;
     const submittingConversation=conversationId;submittedConversation.current=conversationId;
-    submitting.current=true;scrollIntent.current="pending";setPendingQuestion({text:question});setAwaitingResult(true);setBusy(true);setPending(true);setError("");
-    try{const run=await askQuestion({question,version_ids:versions,project_id:null,mode:model==="extractive"?"extractive":"generative",strategy:effectiveStrategy,conversation_id:conversationId||null,provider_id:provider?.id??null,provider_revision:provider?.revision,per_paper_limit:3,version_policy:scope==="all"?"latest_imported":"explicit_versions"});if(current.current!==submittingConversation){await onCreated();return;}submittedConversation.current=run.conversation_id;setPendingQuestion(previous=>previous?{...previous,runId:run.id}:null);onConversation(run.conversation_id);onSelected(run.id);setQuestion("");await onCreated();}
-    catch(err){setError(errorMessage(err));setPendingQuestion(null);setAwaitingResult(false);setPending(false);}finally{submitting.current=false;setBusy(false);}
+    submitting.current=true;polling.current=true;pendingRun.current="submitting";scrollIntent.current="pending";setPendingQuestion({text:question});setAwaitingResult(true);setBusy(true);setPending(true);setError("");
+    try{const run=await askQuestion({question,version_ids:versions,project_id:null,mode:model==="extractive"?"extractive":"generative",strategy:effectiveStrategy,conversation_id:conversationId||null,provider_id:provider?.id??null,provider_revision:provider?.revision,per_paper_limit:3,version_policy:scope==="all"?"latest_imported":"explicit_versions"});if(current.current!==submittingConversation){await onCreated();return;}submittedConversation.current=run.conversation_id;pendingRun.current=run.id;setPendingQuestion(previous=>previous?{...previous,runId:run.id}:null);onConversation(run.conversation_id);onSelected(run.id);setQuestion("");await onCreated();}
+    catch(err){pendingRun.current=null;polling.current=false;setError(errorMessage(err));setPendingQuestion(null);setAwaitingResult(false);setPending(false);}finally{submitting.current=false;setBusy(false);}
   }
   async function open(evidence:Evidence,owner:AnswerRun|null=answer) {
     try{setError("");const file=await readSource(evidence.source_anchor_id);const document=data.documents.find(doc=>doc.doc_version_id===file.anchor.doc_version_id);const claim=owner?.claims.find(item=>item.evidence_ids.includes(evidence.id));onRead({...file,evidence_quote:evidence.quote},{title:document?.title??"引用文献",authors:document?.authors??[],year:document?.year??null,evidence,claim:claim?.text,question:owner?.question});}
