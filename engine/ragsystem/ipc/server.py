@@ -885,20 +885,23 @@ def create_app(token: str, data_root: Path):
     def docling_status():
         return DoclingService(db).status()
 
-    def run_docling_configuration(job_id, grant):
-        job = jobs.claim(job_id, lease_seconds=180)
+    def run_configuration(job_id, grant, configure, error_code, lease_seconds):
+        job = None
         try:
+            job = jobs.claim(job_id, lease_seconds=lease_seconds)
             if job:
-                DoclingService(db).configure(grant, job)
+                configure(grant, job)
         except Exception as exc:
+            code = exc.code if isinstance(exc, EngineError) else error_code if job else "JOB_CLAIM_FAILED"
             if job:
-                jobs.fail(
-                    job_id,
-                    job["lease_token"],
-                    exc.code if isinstance(exc, EngineError) else "DOCLING_LOAD_FAILED",
-                )
+                jobs.fail(job_id, job["lease_token"], code)
+            else:
+                jobs.fail_pending(job_id, code)
         finally:
             slot.release()
+
+    def run_docling_configuration(job_id, grant):
+        run_configuration(job_id, grant, lambda g, j: DoclingService(db).configure(g, j), "DOCLING_LOAD_FAILED", 180)
 
     @app.post("/v0/docling", status_code=202)
     def configure_docling(body: GeneratorRequest, background: BackgroundTasks):
@@ -921,19 +924,7 @@ def create_app(token: str, data_root: Path):
         return OcrService(db).status()
 
     def run_ocr_configuration(job_id, grant):
-        job = jobs.claim(job_id, lease_seconds=180)
-        try:
-            if job:
-                OcrService(db).configure(grant, job)
-        except Exception as exc:
-            if job:
-                jobs.fail(
-                    job_id,
-                    job["lease_token"],
-                    exc.code if isinstance(exc, EngineError) else "OCR_LOAD_FAILED",
-                )
-        finally:
-            slot.release()
+        run_configuration(job_id, grant, lambda g, j: OcrService(db).configure(g, j), "OCR_LOAD_FAILED", 180)
 
     @app.post("/v0/ocr", status_code=202)
     def configure_ocr(body: GeneratorRequest, background: BackgroundTasks):
@@ -956,19 +947,7 @@ def create_app(token: str, data_root: Path):
         return workbench.generation.status()
 
     def run_generator(job_id, grant):
-        job = jobs.claim(job_id, lease_seconds=1800)
-        try:
-            if job:
-                workbench.generation.configure(grant, job)
-        except Exception as exc:
-            if job:
-                jobs.fail(
-                    job_id,
-                    job["lease_token"],
-                    exc.code if isinstance(exc, EngineError) else "MODEL_LOAD_FAILED",
-                )
-        finally:
-            slot.release()
+        run_configuration(job_id, grant, workbench.generation.configure, "MODEL_LOAD_FAILED", 1800)
 
     @app.post("/v0/generator", status_code=202)
     def configure_generator(body: GeneratorRequest, background: BackgroundTasks):

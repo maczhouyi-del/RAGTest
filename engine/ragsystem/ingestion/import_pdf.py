@@ -32,6 +32,7 @@ class PdfImporter:
         token, job_id = job["lease_token"], job["id"]
         temp = self.root / "staging" / (job_id + "-" + str(uuid4()) + ".part")
         try:
+            self._require_expected_object(job, grant)
             grant.source.seek(0)
             digest, size, last_beat = hashlib.sha256(), 0, time.monotonic()
             with temp.open("xb") as target:
@@ -153,9 +154,11 @@ class PdfImporter:
         """Resume expired imports from retained immutable objects, never source paths."""
         self.jobs.recover_expired()
         recovered = 0
-        for job in self.jobs.list():
-            if job["type"] != "import" or job["status"] not in {"queued", "retry_wait"}:
-                continue
+        with self.db.connection() as conn:
+            pending = [dict(row) for row in conn.execute(
+                "SELECT * FROM jobs WHERE type='import' AND status IN ('queued','retry_wait')"
+            )]
+        for job in pending:
             payload = json.loads(job["payload_json"])
             digest = payload.get("sha256", "")
             if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
@@ -165,16 +168,39 @@ class PdfImporter:
                 continue  # Original was not published; needs a fresh user grant.
             grants = Grants()
             try:
-                grant = grants.issue(target.absolute())
+                grant = self._recovery_grant(job, grants, target)
                 if isinstance(payload.get("display_name"), str):
                     grant.display_name = payload["display_name"][:255]
                 claimed = self.jobs.claim(job["id"])
                 if claimed:
                     self.run(claimed, grant)
                     recovered += 1
+            except EngineError as exc:
+                if exc.code not in {"OBJECT_CORRUPT", "FILE_IO_FAILED", "SOURCE_CHANGED"}:
+                    raise
+                self.jobs.fail_pending(job["id"], exc.code)
+                # An object failure is isolated; DB and lease errors still escape.
             finally:
                 grants.close()
         return recovered
+
+    @staticmethod
+    def _require_expected_object(job, grant):
+        payload = json.loads(job["payload_json"])
+        if (payload.get("sha256") != grant.sha256 or
+                payload.get("size_bytes", grant.size) != grant.size):
+            raise EngineError("OBJECT_CORRUPT", status=409)
+
+    def _recovery_grant(self, job, grants, path):
+        try:
+            grant = grants.issue(path.absolute())
+            self._require_expected_object(job, grant)
+            return grant
+        except EngineError as exc:
+            if exc.code not in {"FILE_NOT_ALLOWED", "NOT_PDF", "PDF_TOO_LARGE", "OBJECT_CORRUPT"}:
+                raise
+            self.jobs.fail_pending(job["id"], "OBJECT_CORRUPT")
+            raise EngineError("OBJECT_CORRUPT", status=409) from exc
 
     def resume(self, job_id):
         job = self.jobs.get(job_id)
@@ -185,12 +211,11 @@ class PdfImporter:
         if not path.is_file():
             raise EngineError("RESELECT_FILE_REQUIRED", status=409)
         grants = Grants()
-        grant = grants.issue(path.absolute())
         try:
+            grant = self._recovery_grant(job, grants, path)
             grant.display_name = json.loads(job["payload_json"]).get("display_name", path.name)
             claimed = self.jobs.claim(job_id)
             if claimed:
                 self.run(claimed, grant)
         finally:
-            grant.source.close()
             grants.close()

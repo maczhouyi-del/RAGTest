@@ -165,6 +165,17 @@ class Jobs:
             )
             self.event(conn, job_id, "failed", {"code": code})
 
+    def fail_pending(self, job_id, code):
+        """Reject an intent without taking over any running executor's lease."""
+        with self.db.transaction() as conn:
+            changed = conn.execute(
+                "UPDATE jobs SET status='failed',error_code=?,updated_at=? "
+                "WHERE id=? AND status IN ('queued','retry_wait') AND lease_token IS NULL",
+                (code, utc_now(), job_id),
+            )
+            if changed.rowcount:
+                self.event(conn, job_id, "failed_before_claim", {"code": code})
+
     def cancel(self, job_id):
         with self.db.transaction() as conn:
             row = conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
