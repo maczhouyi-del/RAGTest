@@ -1,4 +1,4 @@
-"""Mac development app startup/renderer IPC/parent-death smoke; no native dialog test."""
+"""Isolated Mac debug app startup/IPC/parent-death smoke; no native dialog test."""
 
 import hashlib
 import json
@@ -29,6 +29,10 @@ def main():
             ),
         )
     )
+    # Release builds deliberately ignore RAGSYSTEM_DEV_DATA_ROOT. Refuse a
+    # release/copied bundle rather than silently opening the user's real library.
+    if app_path.resolve().parts[-4:-1] != ("debug", "bundle", "macos"):
+        raise RuntimeError("DEBUG_BUNDLE_REQUIRED_FOR_ISOLATED_NATIVE_SMOKE")
     executable = app_path / "Contents/MacOS/ragsystem-desktop"
     sidecar = executable.with_name("ragsystem-engine")
     if any("ragsystem-desktop" in command for _, _, command in processes()):

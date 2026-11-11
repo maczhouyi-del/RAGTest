@@ -8,7 +8,7 @@ module.exports=async function({page,rpc,evidence,errors,stage,audit}){
  const nav=page.getByRole('navigation',{name:'主导航'}),input=page.getByLabel('你的问题',{exact:true});
  if(stage==='B'||stage==='C'){
   await page.getByRole('button',{name:'新会话',exact:true}).click();
-  await page.getByRole('heading',{name:'从文献出发，找到有据可查的答案',exact:true}).waitFor();
+  await page.getByRole('heading',{name:'新对话',exact:true}).waitFor();
   await input.fill('当前生成模型是什么？');await page.getByRole('button',{name:'发送问题',exact:true}).click();
   await wait(async()=>(await rpc('GET','/v0/history/answers')).total===1);
   const id=(await rpc('GET','/v0/history/answers')).items[0].id;

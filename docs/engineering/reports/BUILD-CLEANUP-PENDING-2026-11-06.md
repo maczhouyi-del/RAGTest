@@ -1,5 +1,7 @@
 # 历史构建产物手动清理清单（2026-11-06）
 
+**后续状态（2026-11-07）：用户明确允许本次清理后，下列11目录及随后6个过渡构建目录均已实际删除；不再需要手动处理。** 17目录/176文件，可用空间实测增加12.376GiB，89份诊断先归档核验；详见[BUILD-CLEANUP-02报告](BUILD-CLEANUP-02-2026-11-07.md)。下文保留2026-11-06盘点时的历史状态。
+
 状态：仅盘点，实际删除 0。按用户 AGENTS 的禁止批量删除规则，请用户在 Finder 中手动处理下列候选目录；不要删除整个 .tools/build。源码提交/测试不依赖此清理。
 
 保留最新 VERIFY-CLEAN-SYNC 侧车/工作目录、上一份 SECTION-AWARE verified 回退候选、最后 GUI App 与 CHAT-02 侧车；模型、用户数据库、PDF、target、dist 不在清理范围。历史失败日志及关键构建诊断已另行保存在本机 evidence/VERIFY-CLEAN-SYNC/preserved-build-diagnostics。

@@ -1,0 +1,63 @@
+{
+  "task": "UI-02",
+  "recorded_at": "2026-11-09T17:54:04.739047+08:00",
+  "platform": "macOS-26.2-arm64-arm-64bit",
+  "branch": "codex/audit-remediation-20261108",
+  "head": "eccd5c77c40f92b549ab34b5c3c3d210e61ed37b",
+  "status": "PASS",
+  "browser_assertions": 116,
+  "ui_screenshots": 38,
+  "results": [
+    {
+      "file": "docs/engineering/evidence/UI-02-20261109/delivery/CHAT-01-browser.json",
+      "status": "PASS",
+      "assertions": 53,
+      "screenshots": 0
+    },
+    {
+      "file": "docs/engineering/evidence/UI-02-20261109/delivery/UI02-empty.json",
+      "status": "PASS",
+      "assertions": 7,
+      "screenshots": 4
+    },
+    {
+      "file": "docs/engineering/evidence/UI-02-20261109/delivery/UI02-populated.json",
+      "status": "PASS",
+      "assertions": 48,
+      "screenshots": 29
+    },
+    {
+      "file": "docs/engineering/evidence/UI-02-20261109/delivery/UI02-recovery.json",
+      "status": "PASS",
+      "assertions": 3,
+      "screenshots": 1
+    },
+    {
+      "file": "docs/engineering/evidence/UI-02-20261109/delivery/UI02-source.json",
+      "status": "PASS",
+      "assertions": 5,
+      "screenshots": 4
+    }
+  ],
+  "source_sha256": {
+    "apps/desktop/src/App.tsx": "d7627e920edf869511aad23a06698eaa484152d56d8a170e0f83a85dfea2227a",
+    "apps/desktop/src/studio.css": "5c01ea53b78df957ba77154ccc44591e0a5e62e7c288a1f370d85750c9d5f4ff",
+    "apps/desktop/src/components/Welcome.tsx": "b0e23c3c18faeab83b04230ec893a65d9e0b7a1fe6cad4f06742cc2e512526a1",
+    "apps/desktop/src/components/ConversationSidebar.tsx": "7ffd069e8b1577f6f37dc5e6f049a3af85173e7714b3372e32abbe8af9e9965e",
+    "apps/desktop/src/components/MvpAsk.tsx": "699684804d167b7cae28e3125d69ec31d239aaf98002f331b8a7eb40a2c0af61",
+    "apps/desktop/src/components/MvpLibrary.tsx": "2abdc4cda340c100c81456584f3827ddb1db590f1a89eeecf6151aac1a6b92b8",
+    "apps/desktop/src/components/MvpSettings.tsx": "f4fb296b8cea66c27cfbe637a3c71b2feec5d64671c4b133b746af8128244130",
+    "apps/desktop/src/components/TurnEvidence.tsx": "b505b442480ae3e79bfab91fa1f4937beeed17302a1a63ee011b51a4f860272c",
+    "apps/desktop/src/components/SourceWorkspace.tsx": "85960c205be577f0d0113573ff9216bffbe62988121af756d7c150076c3bc06e",
+    "apps/desktop/src/components/answerPresentation.ts": "8ce7d44fdd0c7e56f4e5af9a440c41d7cec497ff527385e88632654445254c7f",
+    "tools/browser_smoke.cjs": "1c992e231e764b6f334f4abe9a2f5eb0d5e46660ec8614847c75f2a0cff28699",
+    "tools/browser_chat_management.cjs": "57aace02f96113e950fbb0eefd3fb4f27f9790a3d610026df5395ca19a25502d",
+    "tools/browser_ui_simple.cjs": "11c24ca23780ae72cb441872c34da765d83616d5ff02b60d8729a189c4251cbd"
+  },
+  "native_install": "NOT EXECUTED",
+  "windows": "NOT EXECUTED",
+  "scientific_quality": "NOT EXECUTED",
+  "paid_api_calls": 0,
+  "new_dependencies": 0,
+  "user_pdf_uploads": 0
+}

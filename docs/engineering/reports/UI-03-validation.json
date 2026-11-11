@@ -1,0 +1,759 @@
+{
+  "task": "UI-03",
+  "platform": "macOS-26.2-arm64-arm-64bit",
+  "head": "eccd5c77c40f92b549ab34b5c3c3d210e61ed37b",
+  "executions": [
+    {
+      "label": "browser-bundled",
+      "started_at": "2026-11-09T14:36:06.013072+00:00",
+      "ended_at": "2026-11-09T14:38:08.485196+00:00",
+      "duration_s": 122.471,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/browser-bundled.log"
+    },
+    {
+      "label": "browser-final-bundle",
+      "started_at": "2026-11-09T14:47:31.853693+00:00",
+      "ended_at": "2026-11-09T14:49:21.890416+00:00",
+      "duration_s": 110.036,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/browser-final-bundle.log"
+    },
+    {
+      "label": "browser-settings-fix",
+      "started_at": "2026-11-09T14:45:44.448730+00:00",
+      "ended_at": "2026-11-09T14:47:00.146392+00:00",
+      "duration_s": 75.697,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/browser-settings-fix.log"
+    },
+    {
+      "label": "browser-settings",
+      "started_at": "2026-11-09T14:33:32.682790+00:00",
+      "ended_at": "2026-11-09T14:35:17.123727+00:00",
+      "duration_s": 104.44,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "node",
+        "tools/browser_smoke.cjs"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/browser-settings.log"
+    },
+    {
+      "label": "clippy",
+      "started_at": "2026-11-09T14:43:51.079427+00:00",
+      "ended_at": "2026-11-09T14:43:51.636746+00:00",
+      "duration_s": 0.557,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        ".tools/cargo/bin/cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/clippy.log"
+    },
+    {
+      "label": "compatibility-v20-verified",
+      "started_at": "2026-11-09T14:37:02.424964+00:00",
+      "ended_at": "2026-11-09T14:37:02.585730+00:00",
+      "duration_s": 0.161,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        ".tools/ui03-validation/compatibility.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/compatibility-v20-verified.log"
+    },
+    {
+      "label": "debug-build",
+      "started_at": "2026-11-09T14:34:25.395130+00:00",
+      "ended_at": "2026-11-09T14:35:19.369738+00:00",
+      "duration_s": 53.974,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "tauri",
+        "--",
+        "build",
+        "--debug",
+        "--ci",
+        "--no-sign",
+        "--target",
+        "aarch64-apple-darwin",
+        "--bundles",
+        "app",
+        "--config",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/UI-03-20261109-candidate/candidate.tauri.json"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/debug-build.log"
+    },
+    {
+      "label": "dmg-final",
+      "started_at": "2026-11-09T14:47:33.000540+00:00",
+      "ended_at": "2026-11-09T14:47:37.003734+00:00",
+      "duration_s": 4.003,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "hdiutil",
+        "verify",
+        ".tools/build/UI-03-20261109-candidate/target/aarch64-apple-darwin/release/bundle/dmg/RAGSystem_0.1.0_aarch64.dmg"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/dmg-final.log"
+    },
+    {
+      "label": "dmg-integrity",
+      "started_at": "2026-11-09T14:36:06.012863+00:00",
+      "ended_at": "2026-11-09T14:36:09.006069+00:00",
+      "duration_s": 2.993,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "hdiutil",
+        "verify",
+        ".tools/build/UI-03-20261109-candidate/target/aarch64-apple-darwin/release/bundle/dmg/RAGSystem_0.1.0_aarch64.dmg"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/dmg-integrity.log"
+    },
+    {
+      "label": "userdata-preservation",
+      "started_at": "2026-11-09T14:51:51.272460+00:00",
+      "ended_at": "2026-11-09T14:51:51.342816+00:00",
+      "duration_s": 0.07,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        ".tools/ui03-validation/preservation.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/userdata-preservation.log"
+    },
+    {
+      "label": "frontend-build-fix",
+      "started_at": "2026-11-09T14:45:23.539485+00:00",
+      "ended_at": "2026-11-09T14:45:24.238199+00:00",
+      "duration_s": 0.699,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build",
+        "--",
+        "--emptyOutDir=false"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/frontend-build-fix.log"
+    },
+    {
+      "label": "frontend-build",
+      "started_at": "2026-11-09T14:06:03.079498+00:00",
+      "ended_at": "2026-11-09T14:06:03.763653+00:00",
+      "duration_s": 0.684,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "build",
+        "--",
+        "--emptyOutDir=false"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/frontend-build.log"
+    },
+    {
+      "label": "frontend-unit",
+      "started_at": "2026-11-09T14:06:03.079498+00:00",
+      "ended_at": "2026-11-09T14:06:03.319397+00:00",
+      "duration_s": 0.24,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "node",
+        "--experimental-strip-types",
+        "--test",
+        "tests/frontend/probeConnection.test.ts"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/frontend-unit.log"
+    },
+    {
+      "label": "install-staging",
+      "started_at": "2026-11-09T14:48:17.951146+00:00",
+      "ended_at": "2026-11-09T14:48:18.572718+00:00",
+      "duration_s": 0.621,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        ".tools/ui03-validation/prepare_install.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/install-staging.log"
+    },
+    {
+      "label": "install",
+      "started_at": "2026-11-09T14:50:14.689231+00:00",
+      "ended_at": "2026-11-09T14:50:16.144370+00:00",
+      "duration_s": 1.455,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        ".tools/ui03-validation/install.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/install.log"
+    },
+    {
+      "label": "native-safety-unit",
+      "started_at": "2026-11-09T14:33:16.823704+00:00",
+      "ended_at": "2026-11-09T14:33:17.053655+00:00",
+      "duration_s": 0.23,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "tests/unit/test_native_smoke_safety.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/native-safety-unit.log"
+    },
+    {
+      "label": "native-startup",
+      "started_at": "2026-11-09T14:36:39.150163+00:00",
+      "ended_at": "2026-11-09T14:36:50.987224+00:00",
+      "duration_s": 11.837,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        "tools/smoke_native_macos.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/native-startup.log"
+    },
+    {
+      "label": "python-full",
+      "started_at": "2026-11-09T14:32:22.670866+00:00",
+      "ended_at": "2026-11-09T14:35:12.708711+00:00",
+      "duration_s": 170.036,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "engine/pyproject.toml",
+        "-q"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/python-full.log"
+    },
+    {
+      "label": "release-build-final",
+      "started_at": "2026-11-09T14:46:45.153543+00:00",
+      "ended_at": "2026-11-09T14:47:27.057766+00:00",
+      "duration_s": 41.904,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "npm",
+        "--prefix",
+        "apps/desktop",
+        "run",
+        "tauri",
+        "--",
+        "build",
+        "--ci",
+        "--no-sign",
+        "--target",
+        "aarch64-apple-darwin",
+        "--bundles",
+        "app,dmg",
+        "--config",
+        "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/UI-03-20261109-candidate/candidate.tauri.json"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/release-build-final.log"
+    },
+    {
+      "label": "release-build-retry",
+      "started_at": "2026-11-09T14:32:47.639988+00:00",
+      "ended_at": "2026-11-09T14:34:21.350226+00:00",
+      "duration_s": 93.709,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        "packaging/build_candidate.py",
+        "--sidecar-manifest",
+        "docs/engineering/evidence/UI-03-20261109/sidecar-20261109T140603169711Z.json",
+        "--output-directory",
+        ".tools/build/UI-03-20261109-candidate"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/release-build-retry.log"
+    },
+    {
+      "label": "release-build",
+      "started_at": "2026-11-09T14:32:22.670865+00:00",
+      "ended_at": "2026-11-09T14:32:22.703367+00:00",
+      "duration_s": 0.032,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        "packaging/build_candidate.py",
+        "--sidecar-manifest",
+        ".tools/build/sidecar-20261109T140603125117Z/manifest.json",
+        "--output-directory",
+        ".tools/build/UI-03-20261109-candidate"
+      ],
+      "exit_code": 1,
+      "log": "docs/engineering/evidence/UI-03-20261109/release-build.log"
+    },
+    {
+      "label": "ruff-final",
+      "started_at": "2026-11-09T14:46:27.215326+00:00",
+      "ended_at": "2026-11-09T14:46:27.710552+00:00",
+      "duration_s": 0.495,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "packaging/build_candidate.py",
+        "tools/smoke_native_macos.py",
+        "tools/benchmark_audit_reads.py",
+        "tools/benchmark_audit_vectors.py",
+        "tools/evaluate_scientific_quality.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/ruff-final.log"
+    },
+    {
+      "label": "ruff",
+      "started_at": "2026-11-09T14:06:03.079501+00:00",
+      "ended_at": "2026-11-09T14:06:03.169655+00:00",
+      "duration_s": 0.09,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "--config",
+        "engine/pyproject.toml",
+        "engine/ragsystem",
+        "tests",
+        "packaging/build_candidate.py",
+        "tools/benchmark_audit_reads.py",
+        "tools/benchmark_audit_vectors.py",
+        "tools/evaluate_scientific_quality.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/ruff.log"
+    },
+    {
+      "label": "rust-full",
+      "started_at": "2026-11-09T14:36:06.012781+00:00",
+      "ended_at": "2026-11-09T14:40:22.774478+00:00",
+      "duration_s": 256.76,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        ".tools/cargo/bin/cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--manifest-path",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/rust-full.log"
+    },
+    {
+      "label": "sidecar-freeze",
+      "started_at": "2026-11-09T14:06:03.079498+00:00",
+      "ended_at": "2026-11-09T14:08:07.986478+00:00",
+      "duration_s": 124.906,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        "packaging/build_sidecar.py",
+        "--build-label",
+        "UI-03-20261109",
+        "--include-vector-lab",
+        "--include-generation-lab",
+        "--include-ocr-lab",
+        "--include-docling-lab",
+        "--output-directory",
+        ".tools/build/UI-03-20261109-sidecar",
+        "--evidence-directory",
+        "docs/engineering/evidence/UI-03-20261109"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/sidecar-freeze.log"
+    },
+    {
+      "label": "userdata-after",
+      "started_at": "2026-11-09T14:50:16.170848+00:00",
+      "ended_at": "2026-11-09T14:50:16.243061+00:00",
+      "duration_s": 0.072,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        ".tools/ui03-validation/snapshot.py",
+        "after"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/userdata-after.log"
+    },
+    {
+      "label": "userdata-before",
+      "started_at": "2026-11-09T14:34:59.795231+00:00",
+      "ended_at": "2026-11-09T14:34:59.872397+00:00",
+      "duration_s": 0.077,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        ".tools/ui03-validation/snapshot.py",
+        "before"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/userdata-before.log"
+    },
+    {
+      "label": "approved-preflight",
+      "started_at": "2026-11-09T15:13:37.916365+00:00",
+      "ended_at": "2026-11-09T15:13:38.202373+00:00",
+      "duration_s": 0.286,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        ".tools/ui03-validation/approved_preflight.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/approved-preflight.log"
+    },
+    {
+      "label": "upgraded-library-final",
+      "started_at": "2026-11-09T15:22:20.988738+00:00",
+      "ended_at": "2026-11-09T15:22:21.075900+00:00",
+      "duration_s": 0.087,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        ".tools/ui03-validation/verify_upgraded.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/upgraded-library-final.log"
+    },
+    {
+      "label": "upgraded-library",
+      "started_at": "2026-11-09T15:19:53.773091+00:00",
+      "ended_at": "2026-11-09T15:19:53.866339+00:00",
+      "duration_s": 0.093,
+      "platform": "macOS-26.2-arm64-arm-64bit",
+      "command": [
+        "engine/.venv/bin/python",
+        ".tools/ui03-validation/verify_upgraded.py"
+      ],
+      "exit_code": 0,
+      "log": "docs/engineering/evidence/UI-03-20261109/upgraded-library.log"
+    }
+  ],
+  "source_sha256": {
+    "apps/desktop/src/App.tsx": "d7627e920edf869511aad23a06698eaa484152d56d8a170e0f83a85dfea2227a",
+    "apps/desktop/src/main.tsx": "d80787c05f8f5f811114021840f343bbc68d71057ec5770628aa008d65239c24",
+    "apps/desktop/src/styles.css": "d93c1701b7add0870614b50056a8cc54f24c31bb432c759adc6be3251045096f",
+    "apps/desktop/src/studio.css": "5c01ea53b78df957ba77154ccc44591e0a5e62e7c288a1f370d85750c9d5f4ff",
+    "apps/desktop/src/LegacyWorkspace.tsx": "e6f4fc4a42302f0caffb9ef97c2c2ba763ef104f5a6371779624320fb3a045bf",
+    "apps/desktop/src/bridge.ts": "66eb7aa671b003a14a8ccbd5f2da32d287299ceb1a4b258d5496d93a3d216051",
+    "apps/desktop/src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "apps/desktop/src/probeConnection.ts": "65e1361936bf8bd614150f1c15b07cae79d1e0fa9dbe94e28d8248909a618027",
+    "apps/desktop/src/components/MvpLibrary.tsx": "2abdc4cda340c100c81456584f3827ddb1db590f1a89eeecf6151aac1a6b92b8",
+    "apps/desktop/src/components/PdfPreview.tsx": "43e4c95cc1ce84897ad47e188e522f47403d0b5731bef9c84ce5c2a7fb64ed3a",
+    "apps/desktop/src/components/uiFormat.ts": "a43f5b78beb3a62f24c24c833dc5f6b5815dd4e0743b4fe2a2b6c1d7238da348",
+    "apps/desktop/src/components/MvpSettings.tsx": "5c4da03e33ad8803c65b5b7d4e139639de43ddbed59a93223af5a551dcc1e344",
+    "apps/desktop/src/components/answerPresentation.ts": "8ce7d44fdd0c7e56f4e5af9a440c41d7cec497ff527385e88632654445254c7f",
+    "apps/desktop/src/components/IdentitySettings.tsx": "ebf7672326a56da4435cd4556ee666443619f41ea1034684d7689012c485c0f7",
+    "apps/desktop/src/components/DocumentDetails.tsx": "1b8416450eaef01771a145ed383501b555ea91e8366458fd009d9c5e3fd9ac7f",
+    "apps/desktop/src/components/SourceWorkspace.tsx": "85960c205be577f0d0113573ff9216bffbe62988121af756d7c150076c3bc06e",
+    "apps/desktop/src/components/MetadataSummary.tsx": "3fd6927d7083883ba70eb48c4db74cf7cf71793126a28e788e10a7a1599828a2",
+    "apps/desktop/src/components/ProjectPicker.tsx": "7da120f00588da863b26115813a6b4ba1583c379c4826dcb8c926dcd19c0de84",
+    "apps/desktop/src/components/Icon.tsx": "224cefe9eab6d71cf5cc4cf39e11de5929dce2d6c7df0d00068abfb12d2ff9ff",
+    "apps/desktop/src/components/TableCandidates.tsx": "0630d40ff2f3eeb89d566002f491851298b7b852d4170183fa4b834ca9143fe4",
+    "apps/desktop/src/components/MvpAsk.tsx": "699684804d167b7cae28e3125d69ec31d239aaf98002f331b8a7eb40a2c0af61",
+    "apps/desktop/src/components/ResearchWorkbench.tsx": "f18c7108970f319c10baa6f70c0ae9493c1bcb4aa8bdb315138ec1573a799c94",
+    "apps/desktop/src/components/SourceSearch.tsx": "abbe883bd9578d71786628cd3f15d581715adfde72d42b46ef19b0faf0846793",
+    "apps/desktop/src/components/BackupSettings.tsx": "71ade044596d922a4888721d1db11060125bbde026878f9309a5674df684a088",
+    "apps/desktop/src/components/LifecycleSettings.tsx": "a4e4c7499159d1fb376bd1206e3c36df9a3596514f0c114bad3b8514999fec8d",
+    "apps/desktop/src/components/TurnEvidence.tsx": "b505b442480ae3e79bfab91fa1f4937beeed17302a1a63ee011b51a4f860272c",
+    "apps/desktop/src/components/PipelineDiagnostics.tsx": "1c444fdc59c8b9fed2561b1eb997ce66479d7f08f6ea53c6129a40b9ed115a59",
+    "apps/desktop/src/components/ModelSettings.tsx": "aae3534a7be4120d8042961c7af0b9da5e4a752ad4377ebe3d274e02530edefb",
+    "apps/desktop/src/components/CopyButton.tsx": "3bebf37c67dd80f3510de38072e7953ce66c0e926ce17ef89329db611b8b3d3a",
+    "apps/desktop/src/components/Welcome.tsx": "b0e23c3c18faeab83b04230ec893a65d9e0b7a1fe6cad4f06742cc2e512526a1",
+    "apps/desktop/src/components/GenerationConnections.tsx": "2c91b8b956c0cf726a1429950c505958d51eaf9dc0da04b4ef0aa486fa7af8ea",
+    "apps/desktop/src/components/ConversationSidebar.tsx": "7ffd069e8b1577f6f37dc5e6f049a3af85173e7714b3372e32abbe8af9e9965e",
+    "apps/desktop/src/components/ReadingNotes.tsx": "07a0d3591f2bdcb2e4966dd495c75f8e361abe59fb897b89343a34c5f7e8f6cd",
+    "apps/desktop/src-tauri/src/lib.rs": "9e01178f6930b35439325485f93eb03e380922a5f939cda2fa6ee9031c67623b",
+    "apps/desktop/src-tauri/src/sidecar.rs": "722f1f9386f7ff7c3b6b6ed90fe16b2575e50c26cfbabf4f3b7023314a78fce6",
+    "apps/desktop/src-tauri/src/main.rs": "902db3da2732ee7f3ed46236c2bd0c5ff05908b65b52e0f5fe845e5b5f706979",
+    "engine/ragsystem/__init__.py": "4dbd2020b680a5fb346281a18c2223e229f2206fec012d0a0e0cec8322c1f83d",
+    "engine/ragsystem/build_identity.py": "6d7df5f424da7752c9230e8a6d836eec0410391d3e5d309fedc2de50ac35a9fa",
+    "engine/ragsystem/__main__.py": "f8bbbcd1f49decd906b64fcd4ffa346f7e686b32b7a7f4716e4c36d961a3540c",
+    "engine/ragsystem/ingestion/__init__.py": "bf86fba96e289e705f672d267806d40c5852fa106320983aabe8a774e22407f2",
+    "engine/ragsystem/ingestion/import_pdf.py": "35dc187d5dc4b090a373fad4ec536873c5b4411a00295bb15b80dad4343a3392",
+    "engine/ragsystem/workflows/system_information.py": "f90dd79e1da6feb2ded3284eb6c48e28fa3dfd723608e4e91ebff76c539d0165",
+    "engine/ragsystem/workflows/diagnostics.py": "a6882964bc100431d7bc5f3928c6ae53983d15936c2d1a3120094448f22f115c",
+    "engine/ragsystem/workflows/__init__.py": "41b468ebdab5cd6666493cb83255ba89e4376e5702a58d86bea7f40e25f34a2d",
+    "engine/ragsystem/workflows/workbench.py": "d4044bb5100dadab7ca5b705d5bc3dfc6682b5c8e6d7a7326385a12cc7f1854c",
+    "engine/ragsystem/workflows/preparation.py": "3c0462722156d0e5e27d3ebc7e6ba42199b12d6a56f7c79d8366b3d304549a8e",
+    "engine/ragsystem/workflows/history.py": "fb855a6179abba97986321e6a7d9089636e523231d2b7db13c91cf7d76358940",
+    "engine/ragsystem/library/metadata.py": "28015eb6d222f13ab28a5672244b5f10e4d5564d9b47f0b636d616c9b0bd2f3d",
+    "engine/ragsystem/library/__init__.py": "529c7b83d29be30c90914e6393ecad176a367af56ee19d368d9dbdba7ff3e0d3",
+    "engine/ragsystem/library/lifecycle.py": "a1985ac993221d30c8e7ed1fcd56970e9fa033c8930ea959d20dc52576e3d76c",
+    "engine/ragsystem/library/repository.py": "8b7dbfc1cfb338927bc4cadc5a82fb494e2ada6f2223b12959df0aeecdfd1706",
+    "engine/ragsystem/library/annotations.py": "6b82a44414aa51a162f758e979156d0639752233936a1a2747371d66a56a8cad",
+    "engine/ragsystem/library/identity.py": "5e1e916df556aa7fa271b79c1fba2b217acbd16ae527612dc4fd6164b8ec946d",
+    "engine/ragsystem/models/local_onnx.py": "75f3a5b04afe91e62b18529b753b287d01efcca64b3e72366431a9c329480f16",
+    "engine/ragsystem/models/provider.py": "a55b70ef20b4a4f94d36f5176ee9e128f192f2c239487750a55a1eee3a34fe59",
+    "engine/ragsystem/models/generation_service.py": "b4ad6379679178e68bab08c8fa5d83dbb2a2c6d1d5b869967ddcf3d7bf775f23",
+    "engine/ragsystem/models/local_generator.py": "5478cd358009834b8c886c11cad714d8fa6f81cd8d00a132a46a8870654216dc",
+    "engine/ragsystem/models/__init__.py": "defa54c4492f71aa8f753bf1aed1ca430ee19554b6f62d8181039f008cfa9a06",
+    "engine/ragsystem/models/provider_errors.py": "2a64627a97f4b0d8ae45c4d917c544af5f2b8d3915b0166b7860364d8ab17b82",
+    "engine/ragsystem/models/network_provider.py": "dc2ba89c74d412df058d5a396de07ddb1e99cdb41315919d6121d811e7e48851",
+    "engine/ragsystem/models/generator_worker.py": "1e94ec80de351f0fe92c76a55f01d783f62bf9da37eb284039c9538171c3f2f7",
+    "engine/ragsystem/models/provider_registry.py": "5c50391a448a1f797d6ca43e26006abb74f6b4379c207d8b033677df72015f0b",
+    "engine/ragsystem/storage/backup.py": "db42a81458b78f7d8465ff74f5c9855ba5107cbd6d111cba3d1761102a63e8bb",
+    "engine/ragsystem/storage/backup_service.py": "76b135174e599eef7207f5d91f0efe5cc54ff745a13ab978f3354d79878b74fb",
+    "engine/ragsystem/storage/database.py": "6d3c40e20ad49e23ad8f2b92d3cb45429896b50098ba58075063055df79cbf16",
+    "engine/ragsystem/storage/backup_operations.py": "a1e27855643cd875fdda5776531090780fd290d7f9d402a26a7e13c358aed2fe",
+    "engine/ragsystem/storage/__init__.py": "7f85c0b7aecefb0b86a1c60b948bf87a8693c7fae79309f6ad51194eb3ba2fd1",
+    "engine/ragsystem/storage/workspace_lock.py": "f2c1d6d6526b2de0f714203e8b60e244a432ba590cc093211eeb7f37e5b3e2e2",
+    "engine/ragsystem/chunking/__init__.py": "f2d0abb417aa8e722ec9c3d40adaf9700e22cefb04b4acefab230969212fa9f7",
+    "engine/ragsystem/chunking/publication.py": "a22a617526e30a9d84c599d1cdc5c73d473cb1ed98e1746adc49285b3778a443",
+    "engine/ragsystem/chunking/structure.py": "8442ca0567838376d1b9b8a5dd1354ca05d7ce51878c66355601036e22ec8545",
+    "engine/ragsystem/chunking/mapping.py": "9c181930d3c1e62443cd581d4e8080936909ce96a620c56379e15c11f6fad1ad",
+    "engine/ragsystem/verification/__init__.py": "7119a89de1416d06930b6e1ce84ab41747e802fe4fd2b2cb8467ac59b53622ed",
+    "engine/ragsystem/verification/quotes.py": "020ec5dde76924cac7079ebb4d7666da049bba7217c5bd5b71fc008d2a3e3cb3",
+    "engine/ragsystem/retrieval/research_intent.py": "4499b4e1b28ff8e632faa3fe25864e5b1496457d67a33cf25a3e87a6577b6fee",
+    "engine/ragsystem/retrieval/source_search.py": "9b9b3a8aaf4e36783526c55893b233a543ec2d4e194c25f0425cd38f0c038645",
+    "engine/ragsystem/retrieval/hybrid.py": "ee133c08b90a258250450e420916bbd848ed04c3d1256e929a7530aa5206752d",
+    "engine/ragsystem/retrieval/evaluation.py": "95cb0f04224b02ce0c7f11ccbae9a59b0bb65ba573f3ed90f1e96013d3057d80",
+    "engine/ragsystem/retrieval/__init__.py": "ea7bfeebd1a6132612df3d2a0ef65fda4f82064758b40d876cdfef917ff2e569",
+    "engine/ragsystem/retrieval/tokenizer.py": "9fd753c6ae64d556e3addd8567cbb50e1fd72face2fe0d81fb136b78a58f3e5c",
+    "engine/ragsystem/retrieval/document_overview.py": "a7491fafde57c34c31810dd5bab8c6d3cbe501859ee42da38c52135bdc485ce9",
+    "engine/ragsystem/retrieval/reranking.py": "96abe28fbee6e6716ab477f57f4ea2ba2c703d7846def10ce524264d95c7c47c",
+    "engine/ragsystem/retrieval/title_scope.py": "270068beb456ac221fd04e9b06e22d080919142d98339f0507ef76c9a4c377d8",
+    "engine/ragsystem/retrieval/metadata_scope.py": "63760950e62ec61308c4a50135c1afb11b6e631eea93868cbfebdfcbffc5cae6",
+    "engine/ragsystem/vector_adapters/sqlite_vec.py": "836d9bc74c0f58ce2fd0084886fcf827087aec7e3cf4468b7d8b584356fb6b55",
+    "engine/ragsystem/vector_adapters/__init__.py": "b67ba28412fe1ea2eb028a2a88b50508f70d2c85401f6763cc66bb4963fa980d",
+    "engine/ragsystem/vector_adapters/lancedb.py": "54b6532019d8803d603c51ff511e913b9e3cb864c925beee2092caef8dceb822",
+    "engine/ragsystem/vector_adapters/base.py": "41362c53f7769acbfcbdd16364e62b428e36e8770de6bae59db2c49da0909fd6",
+    "engine/ragsystem/ipc/server.py": "aed8400a14df2e13ede97231dcec0bc37652aef2822c45819100350d7fe36eb9",
+    "engine/ragsystem/ipc/directories.py": "4e8cc5bb47f7fc42f5b81738c052f29940ecb79d42a3dcc4f4aaf880509d8c99",
+    "engine/ragsystem/ipc/__init__.py": "03a973ba92e4eebf7c36fa37d3beb05e9b65019f8bc8f47814aba2e21779d33d",
+    "engine/ragsystem/ipc/grants.py": "d11a7ffbb33c2d363be39075d4554a9ad554eb1c4fd0b12471ba3c8bf449ce6a",
+    "engine/ragsystem/ipc/mvp.py": "dd7c1cbe3741e14f1c73a9b0f945f5ae50d9aca91e15ba65067f88cb3db2dc2f",
+    "engine/ragsystem/indexing/__init__.py": "72011fff578e80335d49446e7d67fd1092e5d12a7a69ea8d6e7f238ef3ca4784",
+    "engine/ragsystem/indexing/embeddings.py": "abfdb4a5ea10dd0ed6bcbcbcfca1dcc68a7009d3e06c7b184946a66ed1e0d663",
+    "engine/ragsystem/indexing/integrity.py": "485ca113690e28a5ed488d22246f633733124117fad0dcaa1c4b15100bc0215f",
+    "engine/ragsystem/indexing/incremental.py": "63b439b8125dcd064fe4be30f5d9f7f8207055c3dc50f38c665c2797bbdc2aa1",
+    "engine/ragsystem/parsing/pdfium_words.py": "d9b387d3cb87ecc2d7b73c80ab97fba2beb2cde6320531b24ac024d61df0b552",
+    "engine/ragsystem/parsing/worker.py": "dfd0dbf28afb5e003c225e12be97934f49390a325274a691128535a78bcf57de",
+    "engine/ragsystem/parsing/limits.py": "383553efec7236afd79ceae1ee5390b265d814d8bb3ff1974687bf5652bc4e5e",
+    "engine/ragsystem/parsing/docling.py": "2aa628a7a56cb285b62c184ea1c5f399d3d1cd0bc827ace7b9c73c46ec134b8a",
+    "engine/ragsystem/parsing/docling_backend.py": "95f5646a3feaf548f589861c64bfb722a0bb345b3415678c551c27187fe991cb",
+    "engine/ragsystem/parsing/__init__.py": "215b7ec5156b10d2d85eb6d925fdb2456a64121660ce4476168763b69f6fb6b3",
+    "engine/ragsystem/parsing/windows_job.py": "9546dc754f727c79434dd8473abf8a46ccca3cbb89d1d8c0cac13ce9852b76aa",
+    "engine/ragsystem/parsing/ocr.py": "d342d522b5157d5f1a37d4dc1ad5e3687a64cbd95cf5cc7650b390c7c8131e6d",
+    "engine/ragsystem/parsing/routing.py": "f8d42387301ab52c6f1972db5a0fd1c352408071eba56ad710556e601f1111b9",
+    "engine/ragsystem/parsing/pipeline.py": "788ffd161aca5c5db28d6e7cf2308dcabb6b8b4240cce49fbe83edbf6d5130c1",
+    "engine/ragsystem/parsing/publication.py": "3239354ffc5140550406882cbf075f52a526246ac0886af1bfb9a90edffcb9ae",
+    "engine/ragsystem/parsing/process.py": "ea9a2d06f664cb10d085b42ab4f1196e156d9d8dce292e5537da95d75758140d",
+    "engine/ragsystem/parsing/tables.py": "1cd4f70c8cddbe87647c5fe541833cb7459d834f4cbe8016e5caf203a3971383",
+    "engine/ragsystem/jobs/__init__.py": "b967a353db2c1a6f74182859e284ce78d951d0c559e77333c874e4fe6ca4735d",
+    "engine/ragsystem/jobs/repository.py": "f7fa000521276dc209deceff8e0394c41c57312b0c69a08f54c341dc1b10c699",
+    "engine/ragsystem/domain/__init__.py": "14eb5d6932ece1eb1273a9d68a5e1ccf2b0f11ed9d7fbbe952d8744fc49403e4",
+    "engine/ragsystem/domain/errors.py": "1ed93858a1e5b1cc434ffc2bbfc8dcac2f0353cade42c70b3fc153f106e338d1",
+    "engine/ragsystem/storage/migrations/0007_evidence_workbench.sql": "ca240d096ab4e64291a8cee58e4cb655965014c63b9e0b26210b527573ff5772",
+    "engine/ragsystem/storage/migrations/0016_provider_capabilities.sql": "2a83d72bc30bdde2c92e589f10ee36bd9681a857dd031203e7bcbb9a5ab1d8d4",
+    "engine/ragsystem/storage/migrations/0020_single_remote_provider.sql": "66ff5c34f6a3b82b18681ee09baa9819f60fc3d1f1e7d893fecebbd6434c859c",
+    "engine/ragsystem/storage/migrations/0011_structured_tables.sql": "b5e629fccb44f7e2efb10522d47334d26e6f9452aa46676c34bc8644d8843b3d",
+    "engine/ragsystem/storage/migrations/0012_parse_publications.sql": "c7c0fd1b1318ffe9a20f6ea950fc9da523c588634610b799446b4b4aca8d0552",
+    "engine/ragsystem/storage/migrations/0008_review_history.sql": "84ffb8383105703686106732db7fea151cb6bc79c727bd68be273c78c3651855",
+    "engine/ragsystem/storage/migrations/0021_section_aware_chunking.sql": "f56ade551d0b540bf11ba7f33eeb78e33def6f6caf4a120e83d027edb3d12d6f",
+    "engine/ragsystem/storage/migrations/0019_conversation_management.sql": "02a67e844131877b80d8bfdecf4c9f84e9210a596be148fdd65872380fe87cd1",
+    "engine/ragsystem/storage/migrations/0001_initial.sql": "92227bba9b535306cdc53caf0a4e8e77799c02a1d4a9469b2db7c83c51fe4750",
+    "engine/ragsystem/storage/migrations/0004_library.sql": "c4efc938dc86e19203a07377dba3746ea9a08efe0073e424d6063c39c2d7fd3d",
+    "engine/ragsystem/storage/migrations/0009_document_identity.sql": "638316fcd51fe860e5a00c37c9fae3c9f207168beb5751c9d8705b1c38bed600",
+    "engine/ragsystem/storage/migrations/0006_search_settings.sql": "74826e8103d41c9acbc83831141a786849648b2f261356b1de9c9f62d2958f40",
+    "engine/ragsystem/storage/migrations/0014_generation_providers.sql": "22458539ecec53bcc3b77dd2871e81456dc15e2171a760ce1a6c7c43b4e26368",
+    "engine/ragsystem/storage/migrations/0018_provider_authorizations.sql": "86afc66c960dca394c0f7bdcfd6fee5bcaa780ba3e41b14a12caa9506fbddd46",
+    "engine/ragsystem/storage/migrations/0015_conversation_activity.sql": "a9e1489c3469f03fc63d536f4ece2fe7453f24099f5fd0e9acba0cf4a0e2dac4",
+    "engine/ragsystem/storage/migrations/0013_mvp_keyword_terms.sql": "3f56e3f1e36dce405c42a08645dca9b003b94be5341bfd0bbb48c31810cd008d",
+    "engine/ragsystem/storage/migrations/0005_backups.sql": "95d97bc16b21bd4b8e74db1bbf188d34c441d42146a6d3a53e14388349a82626",
+    "engine/ragsystem/storage/migrations/0010_document_lifecycle.sql": "215821765ea0e85c91753147d3d72a1908a687bc4627c3109ba57f192d79b90f",
+    "engine/ragsystem/storage/migrations/0017_metadata_candidates.sql": "c69b68d8b264ab955faf60e766a99f65bf2f07e4ef0ac15b230d14272d7bd649",
+    "engine/ragsystem/storage/migrations/0002_parsing.sql": "431aaf142a10b127df7ef96cab155b0bac229293381fe4801a0264e49c20f31b",
+    "engine/ragsystem/storage/migrations/0003_embeddings.sql": "3a3cf39531cf5b1474d62f0a01e85adb80e149fd4f69be90cd80fd163aa257cc"
+  },
+  "app_files": {
+    "Contents/Info.plist": "4afe1773c3b19d2bd740f198a54df75ce5285488cec2168bd29be033e1550ea8",
+    "Contents/MacOS/ragsystem-engine": "ed1c5e603ce9078356edbd395a3777991a37dcb749e034371f8b65053527ea55",
+    "Contents/MacOS/ragsystem-desktop": "11ae49098c43e414eecb8d6a0fd0a383b5577a20fa20d29d6bb5d919acb3f9a9",
+    "Contents/Resources/icon.icns": "9a5721016f533f06c14e6093725f0849fc885bb59c59fe90c2e31edba728acd8"
+  },
+  "dmg": {
+    "path": "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/UI-03-20261109-candidate/target/aarch64-apple-darwin/release/bundle/dmg/RAGSystem_0.1.0_aarch64.dmg",
+    "sha256": "4b6ec33d3f3702de23549c74ef79a8284eb1761b9a1de0fff741c2f19ba53f36",
+    "bytes": 459389425
+  },
+  "sidecar_sha256": "ed1c5e603ce9078356edbd395a3777991a37dcb749e034371f8b65053527ea55",
+  "source_lock_entries_verified": 103,
+  "paid_api_calls": 0,
+  "downloaded_models": 0,
+  "user_content_uploads": 0,
+  "installed_started": true,
+  "native_full_workflow": "PASS_EXERCISED_LOCAL_WORKFLOW",
+  "real_schema_upgrade": "PASS_AUTHORIZED_20_TO_21",
+  "windows": "NOT_EXECUTED",
+  "scientific_gold": "BLOCKED_NO_HUMAN_GOLD",
+  "signed": false,
+  "notarized": false,
+  "release_approved": false,
+  "installation": {
+    "status": "APP_FILES_REPLACED_AND_HASH_VERIFIED",
+    "installed": "/Users/kabudamac/Applications/RAGSystem.app",
+    "legacy_updated": "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/macos-chat02-final-20261101T144616691467Z/RAGSystem.app",
+    "rollback": "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/build/UI-03-rollback/RAGSystem-before-UI03.app",
+    "launched": true
+  },
+  "real_data_preservation": {
+    "status": "PASS_POST_UPGRADE",
+    "schema_version": 21,
+    "existing_tables_unchanged": 65,
+    "documents": 2,
+    "embedding_records": 257,
+    "method": "65 original non-migration tables and all old migration records unchanged; original PDFs/index verified after native app restart"
+  },
+  "browser_assertions": {
+    "settings_authorization_recovery": 89,
+    "final_bundled_ui": 116
+  },
+  "functional_status": "PASS_LOCAL_ENGINEERING_AND_NATIVE_WORKFLOW",
+  "completed_at": "2026-11-09T15:23:42.182533+00:00",
+  "native_ui": {
+    "status": "PASS",
+    "observed_at": "2026-11-09T15:23:42.181103+00:00",
+    "method": "Native CUA accessibility states and screenshots; real installed release app",
+    "path": "/Users/kabudamac/Applications/RAGSystem.app",
+    "engine_build": "UI-03-20261109",
+    "engine_source_prefix": "fa6ce05115d5",
+    "schema_version": 21,
+    "published_index": "sqlite-vec / 8dd51689-bcf7-4e47-b380-e5cfc0da5b1e",
+    "index_ready": true,
+    "old_history_opened": true,
+    "old_citation_pdf_rendered_page": 14,
+    "restarted_and_library_rendered": true,
+    "real_library_test_writes": 0,
+    "cloud_calls": 0,
+    "left_running": true,
+    "native_full_scope": [
+      "public PDF import/parse/metadata",
+      "native E5 directory grant and hybrid extractive question",
+      "PDF source/review",
+      "native backup/restore/activate/history persistence",
+      "installed app old database migration/startup/diagnostics/history/PDF/restart"
+    ],
+    "native_real_remote_generation": "NOT_EXECUTED"
+  },
+  "upgrade_verification": {
+    "status": "PASS",
+    "verified_at": "2026-11-09T15:22:21.070912+00:00",
+    "schema_before": 20,
+    "schema_after": 21,
+    "unchanged_original_tables": 65,
+    "changed_original_tables": [],
+    "counts": {
+      "documents": 2,
+      "chunks": 450,
+      "embedding_records": 257,
+      "conversations": 13,
+      "answer_runs": 39,
+      "evidence_records": 215
+    },
+    "original_pdfs_verified": true,
+    "original_active_index_sha_verified": true,
+    "integrity_check": "ok",
+    "foreign_key_check": [],
+    "migration_backups": [
+      {
+        "path": "/Users/kabudamac/Library/Application Support/RAGSystem/data/migration-backups/before-v20-fc26feda-ea38-4582-b984-3b34a75b4b9a.db",
+        "bytes": 4112384,
+        "sha256": "c5cab0686183f3f2038bd036326e2505d12d5a857998d982bd5e549c1e92b0a3"
+      }
+    ],
+    "installed_processes": [
+      "18352     1 /Users/kabudamac/Applications/RAGSystem.app/Contents/MacOS/ragsystem-desktop",
+      "18362 18352 /Users/kabudamac/Applications/RAGSystem.app/Contents/MacOS/ragsystem-engine",
+      "18364 18362 /Users/kabudamac/Applications/RAGSystem.app/Contents/MacOS/ragsystem-engine"
+    ],
+    "cloud_calls": 0
+  },
+  "migration_authorization": "User explicitly approved schema 20 to 21 upgrade/startup with backup retained and confirmed Mac unlocked",
+  "approved_preupgrade_backup": "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/ui03-validation/userdata-before-approved.sqlite3",
+  "native_restored": {
+    "status": "PASS",
+    "restored_root": "/Users/kabudamac/CodexWorkspace/Web-projects/projects/RAGSystem/.tools/test-data/UI-03-native-backups/ragsystem-restored-517ed382-7cf3-4630-b179-b783cc274e47",
+    "counts": {
+      "documents": 2,
+      "embedding_records": 571,
+      "answer_runs": 1,
+      "conversations": 1,
+      "evidence_records": 3,
+      "human_reviews": 1
+    },
+    "vector_sha256": "2e9e1385aa40ef07fbe73bf108797df24ef1fedade756d9cb2c7e44b3202658b",
+    "same_as_native_source": true
+  }
+}

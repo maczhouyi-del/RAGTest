@@ -252,6 +252,7 @@ const errors: Record<string, string> = {
   MODEL_NOT_AVAILABLE: "配置的本地模型不可用，请重新选择已批准的模型目录。",
   MODEL_HASH_MISMATCH: "模型文件校验不通过，未启用该资源。",
   MODEL_UNSUPPORTED: "当前仅接入了已批准固定版本的 multilingual-e5-small 候选。",
+  INDEX_BUILD_FAILED: "索引建立失败。请确认选择的是完整的 E5 模型目录，并在文献页查看任务记录。",
   NO_PARSED_DOCUMENTS: "请先导入并解析文献，再建立向量索引。",
   INDEX_SCOPE_CHANGED: "索引构建期间文献范围变化，旧索引仍保留，请重试。",
   DIRECTORY_NOT_ALLOWED: "请选择本机的普通目录；符号链接、网络目录或不可访问的位置不能授权。",

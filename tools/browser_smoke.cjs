@@ -75,6 +75,7 @@ async function main() {
     await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
     page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
+    let failNextEmbeddingDirectory=process.env.RAGSYSTEM_UI_INDEX_FAILURE_SMOKE==='1';
     let recoveryCalls=0, failNextRecovery=false, probeFault="", failProbeList=false, failProbeSnapshot=false;
     const broker = async (command, args = {}) => {
       fs.appendFileSync(path.join(evidence,'browser-commands-'+path.basename(dataRoot)+'.jsonl'),JSON.stringify({command,time:new Date().toISOString()})+'\n');
@@ -163,7 +164,8 @@ async function main() {
         const embedding = command === 'choose_embedding_model';
         const ocr = command === 'choose_ocr_model';
         const docling = command === 'choose_docling_model';
-        const directory = path.join(root,'.tools/models',docling ? 'docling-heron-tableformer-fast-candidates' : ocr ? 'tessdata-fast-65727574dfcd264acbb0c3e07860e4e9e9b22185' : embedding ? 'intfloat-multilingual-e5-small-614241f622f53c4eeff9890bdc4f31cfecc418b3' : 'qwen2.5-1.5b-instruct-gguf-91cad51170dc346986eccefdc2dd33a9da36ead9');
+        let directory = path.join(root,'.tools/models',docling ? 'docling-heron-tableformer-fast-candidates' : ocr ? 'tessdata-fast-65727574dfcd264acbb0c3e07860e4e9e9b22185' : embedding ? 'intfloat-multilingual-e5-small-614241f622f53c4eeff9890bdc4f31cfecc418b3' : 'qwen2.5-1.5b-instruct-gguf-91cad51170dc346986eccefdc2dd33a9da36ead9');
+        if(embedding&&failNextEmbeddingDirectory){directory=path.join(root,'tests/fixtures/public');failNextEmbeddingDirectory=false;}
         const grant = await rpc('POST','/v0/internal/directory-grants',{path:directory,purpose:docling?'docling':ocr?'ocr':embedding?'embedding':'generator'});
         return rpc('POST',docling?'/v0/docling':ocr?'/v0/ocr':embedding?'/v0/index':'/v0/generator',{model_grant_id:grant.directory_grant_id,idempotency_key:crypto.randomUUID(),...(embedding?{backend:args.backend}:{})});
       }
@@ -247,7 +249,11 @@ a=c.execute("SELECT value_json FROM app_settings WHERE key='active_index'").fetc
 print(json.dumps({'vector_sha256':h.hexdigest(),'vectors':c.execute('SELECT count(*) FROM embedding_records').fetchone()[0],'index_builds':c.execute("SELECT count(*) FROM jobs WHERE type='embed_batch'").fetchone()[0],'active_index':json.loads(a[0]) if a else None,'secret_in_db':any(any(secret in line for secret in ['local-protocol-fixture-key','fixture-authorization-secret']) for line in c.iterdump())}))`;const output=require('node:child_process').spawnSync(path.join(root,'engine/.venv/bin/python'),['-c',script,path.join(dataRoot,'data/research.db')],{encoding:'utf8'});if(output.status!==0)throw Error('SQLITE_AUDIT_FAILED');return JSON.parse(output.stdout);};
     if(mvp){
       await page.locator('.connection').filter({hasText:/本地引擎(?:已连接|部分可用)/}).waitFor();
-      if(chatManagement){await require('./browser_chat_management.cjs')({page,rpc,root,evidence,errors,audit});}
+      if(chatManagement){
+        if(process.env.RAGSYSTEM_UI_SIMPLE_SMOKE==='1')await require('./browser_ui_simple.cjs')({page,rpc,evidence,errors,stage:'empty'});
+        await require('./browser_chat_management.cjs')({page,rpc,root,evidence,errors,audit});
+        if(process.env.RAGSYSTEM_UI_SIMPLE_SMOKE==='1')await require('./browser_ui_simple.cjs')({page,rpc,evidence,errors,stage:'recovery'});
+      }
       else if(round3){await require('./browser_mvp03.cjs')({page,rpc,root,evidence,errors,stage:round3,audit});if(hardening)await require('./browser_hardening.cjs')({page,rpc,evidence,errors});}
       else if(round2)await require('./browser_round2.cjs')({page,rpc,root,evidence,errors,stage:round2,audit});
       else if(reference)await require('./browser_reference.cjs')({page,rpc,root,evidence,errors});

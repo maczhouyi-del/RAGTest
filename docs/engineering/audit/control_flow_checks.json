@@ -1,0 +1,40 @@
+{
+  "commit": "00f8f6bc5b06889269454000f66e289b0c491f08",
+  "execution_scope": "isolated source-fragment and serialization checks only",
+  "not_executed": [
+    "repository pytest",
+    "ruff",
+    "typescript build",
+    "cargo",
+    "real PDF corpus",
+    "model inference",
+    "paid APIs"
+  ],
+  "claim_failure": {
+    "injected_exception": "sqlite3.OperationalError",
+    "exception_escaped_before_finally": true,
+    "heavy_slot_available_after_failure": false
+  },
+  "prepare_payload_boundary": [
+    {
+      "version_count": 400,
+      "bytes": 15666,
+      "exceeds_job_limit": false
+    },
+    {
+      "version_count": 418,
+      "bytes": 16368,
+      "exceeds_job_limit": false
+    },
+    {
+      "version_count": 419,
+      "bytes": 16407,
+      "exceeds_job_limit": true
+    },
+    {
+      "version_count": 1000,
+      "bytes": 39066,
+      "exceeds_job_limit": true
+    }
+  ]
+}

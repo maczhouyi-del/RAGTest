@@ -27,6 +27,13 @@ module.exports=async function({page,rpc,nav,check,wait,evidence,audit}){
  check(await page.getByRole('heading',{name:'文献身份与文件版本',exact:true}).count()===1&&await page.getByRole('heading',{name:'文献停用与撤稿标记',exact:true}).count()===1,'IDENTITY_AND_LIFECYCLE_PRESERVED');
  const oldRoot=await page.locator('#workspace-directory').inputValue();
  await category('检索与索引');await page.getByLabel('默认检索策略',{exact:true}).selectOption('hybrid');
+ if(process.env.RAGSYSTEM_UI_INDEX_FAILURE_SMOKE==='1'){
+  await page.getByRole('button',{name:'选择 E5 目录并建立索引',exact:true}).click();
+  await wait(async()=>(await rpc('GET','/v0/jobs')).jobs.find(job=>job.type==='embed_batch')?.status==='failed');
+  await page.getByRole('alert').filter({hasText:'索引建立失败。请确认选择的是完整的 E5 模型目录'}).waitFor();
+  check(!(await rpc('GET','/v0/index')).ready,'INVALID_MODEL_DIRECTORY_VISIBLE_IN_SETTINGS_NOT_READY');
+ }
+
  await page.getByRole('button',{name:'选择 E5 目录并建立索引',exact:true}).click();await wait(async()=>(await rpc('GET','/v0/index')).ready);
  const indexed=audit();check(indexed.vectors>0&&!indexed.secret_in_db,'REAL_E5_PERSISTENCE_NO_SECRET');
  await category('模型服务');await page.getByRole('tab',{name:/^本地模型/}).click();await page.getByText('资源已配置',{exact:true}).waitFor();

@@ -13,7 +13,7 @@ export function answerParagraphs(turn:AnswerRun,isSystem:boolean):{text:string;c
  if(turn.result?.intent==="mixed")for(const info of turn.result.system_information??[])rows.push({text:`本机系统信息：${info.text}`,className:"system-answer"});
  if(turn.status==="refused")rows.push({text:refusalText(turn),className:"notice"});
  if(["failed","cancelled"].includes(turn.status))rows.push({text:(turn.result?.outcome==="generation_failed"?"检索已完成，生成或引用核验失败：":"本轮问答未完成：")+errorMessage(turn.error_code??turn.status),className:"job-error",role:"alert"});
- if(turn.result?.kind!=="system_info"&&turn.mode==="extractive"&&turn.status==="completed")rows.push({text:"原文摘录模式，未生成模型答案。原文见右侧「本次检索」。",className:"extractive-status"});
+ if(turn.result?.kind!=="system_info"&&turn.mode==="extractive"&&turn.status==="completed")rows.push({text:"原文摘录模式，未生成模型答案。",className:"extractive-status"});
  if(turn.status==="completed")for(const claim of turn.claims.filter(item=>item.model_support==="supported"))rows.push({text:claim.text,className:"answer-body"});
  return rows;
 }

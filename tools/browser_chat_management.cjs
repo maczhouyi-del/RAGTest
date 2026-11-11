@@ -33,12 +33,15 @@ module.exports=async function({page,rpc,evidence,errors,audit}) {
  const second=await send('dense passage retrieval');
  await wait(async()=>await right.getAttribute('data-answer-run')===second.id);
  check(await chat.locator('blockquote,.pipeline-diagnostics,.citation-cards,.claim-status').count()===0,'MAIN_CHAT_HAS_NO_DIAGNOSTICS_OR_QUOTES');
+ if(process.env.RAGSYSTEM_UI_SIMPLE_SMOKE==='1')await require('./browser_ui_simple.cjs')({page,rpc,evidence,errors,stage:'populated'});
+ await right.locator('.turn-scope>summary').click();
  check((await right.innerText()).includes(dpr.title)&&!(await right.locator('.turn-scope').innerText()).includes(bert.title),'SECOND_TURN_SCOPE_ISOLATED');
  await page.locator(`[data-run-id="${first.id}"] .turn-question`).click();
  await wait(async()=>await right.getAttribute('data-answer-run')===first.id);
+ await right.locator('.turn-scope').evaluate(node=>{node.open=true;});
  check((await right.locator('.turn-scope').innerText()).includes(bert.title)&&!(await right.locator('.turn-scope').innerText()).includes(dpr.title),'HISTORICAL_TURN_SCOPE_ISOLATED');
  await right.getByRole('button',{name:'打开证据 1',exact:true}).click();await page.getByRole('heading',{name:'原文核查',exact:true}).waitFor();await page.locator('canvas').first().waitFor();
- check(await page.locator('canvas').first().evaluate(node=>node.width>0&&node.height>0),'ORIGINAL_PDF_RENDERED');await page.getByRole('button',{name:'返回问答',exact:true}).click();
+ check(await page.locator('canvas').first().evaluate(node=>node.width>0&&node.height>0),'ORIGINAL_PDF_RENDERED');if(process.env.RAGSYSTEM_UI_SIMPLE_SMOKE==='1')await require('./browser_ui_simple.cjs')({page,rpc,evidence,errors,stage:'source'});await page.getByRole('button',{name:'返回问答',exact:true}).click();
  const info=await send('当前文献库中拥有多少篇文献');await wait(async()=>await right.getAttribute('data-answer-run')===info.id);
  check((await right.innerText()).includes('未执行文献检索')&&!await right.locator('.turn-source').count(),'SYSTEM_INFO_HAS_NO_PAPER_CITATIONS');
  await page.locator(`[data-run-id="${info.id}"]`).getByRole('button',{name:'复制回答',exact:true}).click();check(await page.evaluate(()=>navigator.clipboard.readText())===info.result.text,'SYSTEM_ANSWER_COPY_EXACT');

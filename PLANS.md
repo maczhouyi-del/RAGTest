@@ -1,6 +1,14 @@
 # PLANS.md — 路线图、门禁与可执行工作机制
 
+GH-06（2026-11-11）：用户明确授权当前代码提交并同步GitHub，覆盖本轮纳入任务此前不提交/推送限制。目标origin/RAGTest的当前分支codex/audit-remediation-20261108，保留既有8个整改提交，连同UI-02/UI-03及必要工程记录同步；不自动合并main、不强推或发布。前端构建/故障5例/原生隔离保护1例/Ruff通过，生产源码与UI-03哈希一致；完整回归复用11月9日实测，不冒称本轮重跑。范围与执行状态见[计划](docs/engineering/execplans/GH-06-current-source-sync.md)、[报告](docs/engineering/reports/GH-06-2026-11-11.md)。
+
+UI-03（2026-11-09）：本机回归、修复、App替换及原生主流程验收完成。Python461/Rust10/TS5、包内116+授权恢复89断言及Ruff/Clippy/构建通过。解锁后实际完成原生E5/混合摘录问答/引用PDF/核查/备份恢复与历史持久；用户明确批准真实库20→21升级，安装版~/Applications/RAGSystem.app已启动并重启核验，UI-03构建/索引就绪。65张原非迁移表及旧迁移记录、PDF/发布索引SHA保持，2篇/450Chunk/257向量/13对话/39回答保留。旧App和升级前一致备份保留，无待批本机动作。Windows/科研/正式发行门禁不变；无push/付费API/资料外发。见[计划](docs/engineering/execplans/UI-03-full-validation-install.md)、[报告](docs/engineering/reports/UI-03-2026-11-09.md)。
+
+UI-02（2026-11-09）：用户授权的界面精简已完成本地源码与浏览器验证。空库单入口、中性色导航、引用优先/范围与诊断折叠、文献阅读操作前置、设置和核查页去重；无后端/IPC/schema/依赖更改。TS/Vite及连接故障流5例通过；真实隔离引擎/公开PDF/E5的既有53+UI专项63共116断言PASS，38张专项截图覆盖390–1440宽度。原生安装/Windows/科研质量本轮NOT EXECUTED，不自动更新旧App、不提交/推送/发布。见[计划](docs/engineering/execplans/UI-02-quiet-workspace.md)、[报告](docs/engineering/reports/UI-02-2026-11-09.md)。
+
 AUDIT-REMEDIATE（2026-11-08）：在codex/audit-remediation-20261108完成15项本机整改验证；Python460/Rust10/TS故障流5/包内侧车浏览器53通过，Ruff/Clippy/TS构建通过。已生成Mac ARM64工程app/DMG，无发行签名/公证；06依赖/许可、17人工金标、18及REL干净原生安装/资源取得仍阻塞，正式发行NO-GO。仅本地任务提交，无push/发布，原有清理记录及数据保留。详见[台账](docs/engineering/audit/remediation-status.md)、[报告](docs/engineering/reports/AUDIT-REMEDIATE-20261108.md)、[候选清单](docs/engineering/release/candidate-20261108.md)。
+
+BUILD-CLEANUP-02（2026-11-07）：用户明确允许此次清理，作为本次固定目录删除例外。原11目录及后续6个被最终版本替代的构建目录共17个/176文件已删除，可用空间实测增加12.376GiB。89份诊断归档逐成员哈希核对，5个保留目录25文件哈希不变，当前App及侧车进程保持；源码、模型、文献、用户库、向量、target/dist未改。见[清理报告](docs/engineering/reports/BUILD-CLEANUP-02-2026-11-07.md)与[计划](docs/engineering/execplans/BUILD-CLEANUP-02-2026-11-07.md)。本次删除例外不自动沿用至未来任务；本维护轮未提交/推送。
 
 VERIFY-CLEAN-SYNC（2026-11-06）：用户授权当前代码完整测试、清理审查并直接提交同步main，覆盖SECTION-AWARE历史不推送限制。按[计划](docs/engineering/execplans/VERIFY-CLEAN-SYNC-2026-11-06.md)执行：Python395/Rust10/浏览器46通过，TS/Ruff/Clippy/新冻结102项哈希通过，npm审计0漏洞；OSV网络阻塞、科研无金标、Windows未实机验收。按用户禁止批量删除要求，11个历史构建目录约8.318GiB仅列手动清理清单，实际删除0。见[报告](docs/engineering/reports/VERIFY-CLEAN-SYNC-2026-11-06.md)。源码正常提交同步main，不强推、不创建PR、不上传构建/模型/数据。
 

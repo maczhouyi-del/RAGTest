@@ -1,0 +1,493 @@
+{
+  "repository": "maczhouyi-del/RAGTest",
+  "commit": "00f8f6bc5b06889269454000f66e289b0c491f08",
+  "audit_date": "2026-11-07",
+  "scope": "Read-only repository-level review; not exhaustive line-by-line coverage",
+  "issues": [
+    {
+      "id": "RAG-AUD-01",
+      "priority": "P1",
+      "category": "后端 / 稳定性",
+      "title": "单个待恢复原件异常可以阻断整个引擎启动",
+      "status": "已确认的异常传播路径；完整侧车故障注入未执行",
+      "locations": [
+        [
+          "engine/ragsystem/ipc/server.py",
+          300,
+          312
+        ],
+        [
+          "engine/ragsystem/ingestion/import_pdf.py",
+          152,
+          177
+        ]
+      ],
+      "evidence": "lifespan 在 yield 前直接调用 importer.recover_published_imports()。恢复循环对每条记录只有 finally 释放 Grants，没有隔离该记录的授权、读取或恢复异常。",
+      "trigger": "上次导入在原件发布后、数据库提交前中断；保留的 PDF 随后损坏、变得不可读或不再通过文件头校验。",
+      "impact": "一个待恢复对象的错误能够让 FastAPI 启动失败，其他完好文献也无法通过界面使用；错误被放大为整个工作区不可用。",
+      "fix": "逐条恢复时捕获可隔离的对象级错误，记录带 job_id/预期 SHA 的失败状态并保留隔离对象，继续恢复其他任务。数据库本身损坏等全局错误仍应明确阻止启动，不能笼统吞掉所有异常。",
+      "complexity": "中",
+      "validation": "在临时工作区构造“已发布但未提交”的导入，破坏其中一份原件，保留另一份正常文献；重启应可读取正常文献，坏任务出现准确错误，且不得删除原件或自动把损坏内容当作成功。"
+    },
+    {
+      "id": "RAG-AUD-02",
+      "priority": "P1",
+      "category": "后端 / 数据完整性",
+      "title": "恢复导入没有把重新读取的文件哈希绑定到原任务预期哈希",
+      "status": "已确认的校验缺口；内容替换场景需补集成测试",
+      "locations": [
+        [
+          "engine/ragsystem/ingestion/import_pdf.py",
+          31,
+          112
+        ],
+        [
+          "engine/ragsystem/ingestion/import_pdf.py",
+          152,
+          196
+        ]
+      ],
+      "evidence": "recover_published_imports/resume 以 payload 中的 digest 找到 papers/<digest>.pdf，再用 Grants.issue 计算当前文件哈希；随后 run 使用 grant.sha256 发布和入库，没有先比较 grant.sha256 与原任务 payload.sha256。",
+      "trigger": "崩溃后保留的 A 哈希路径下文件被换成仍能通过 PDF 头检查的 B；或恢复前发生仍保留有效头部的内容破坏。",
+      "impact": "原本对应 A 的任务可能以 B 的身份完成，并创建另一份内容记录，而非报告原件身份损坏。正常导入路径已有校验，不能据此推定恢复路径也安全。",
+      "fix": "恢复授权后、领取任务前核对预期 SHA；在共同 run 边界再次断言任务预期 SHA 与 grant SHA 一致。可用时同时核对预期字节数，不一致应返回 OBJECT_CORRUPT/恢复专用错误并保留现场。",
+      "complexity": "低—中",
+      "validation": "在原件发布后注入崩溃，将 A 路径内容替换为有效 PDF B，分别调用启动恢复和手动 resume；不得产生 B 的文档版本，不得将 A 任务标记 completed。"
+    },
+    {
+      "id": "RAG-AUD-03",
+      "priority": "P1",
+      "category": "后端 / 并发与稳定性",
+      "title": "模型配置任务领取失败时泄漏唯一重型工作槽",
+      "status": "代码确认，并已通过独立源片段故障注入复现；不是仓库集成测试",
+      "locations": [
+        [
+          "engine/ragsystem/ipc/server.py",
+          888,
+          981
+        ]
+      ],
+      "evidence": "run_docling_configuration、run_ocr_configuration、run_generator 都在 try/finally 之前调用 jobs.claim(...)；slot.release() 位于之后的 finally。领取任务发生异常时不会进入该 finally。",
+      "trigger": "领取任务时 SQLite 锁超时、数据库 I/O 等异常。数据库 busy_timeout 为 3000 ms，不应把领取视为不会失败。",
+      "impact": "BoundedSemaphore(1) 保持占用；后续解析、索引、问答等重任务持续返回 WORKER_BUSY，直到重启。独立检查中注入 sqlite3.OperationalError 后再次 acquire(blocking=False) 返回 False。",
+      "fix": "把领取、业务执行和失败标记都放入覆盖完整生命周期的资源管理边界；初始化 job=None，并确保失败状态写入再抛错时仍无条件释放工作槽。统一此类 worker 包装器。",
+      "complexity": "低—中",
+      "validation": "分别在 claim、业务执行、jobs.fail 中注入异常，验证槽位只释放一次，下一项重任务能受理，原任务保留可诊断终态。"
+    },
+    {
+      "id": "RAG-AUD-04",
+      "priority": "P1",
+      "category": "前后端集成 / 恢复",
+      "title": "重启后的 retry_wait 任务缺少可达终结路径，并阻止切换恢复副本",
+      "status": "跨模块代码确认；原生界面操作复现未执行",
+      "locations": [
+        [
+          "engine/ragsystem/jobs/repository.py",
+          203,
+          239
+        ],
+        [
+          "apps/desktop/src/components/MvpLibrary.tsx",
+          14,
+          33
+        ],
+        [
+          "engine/ragsystem/storage/backup_service.py",
+          102,
+          113
+        ]
+      ],
+      "evidence": "recover_owned_workspace 将部分 running/queued 任务改为 retry_wait。MVP 队列只允许取消 queued/running，重试仅覆盖 import/parse_page/metadata_extract。restored_path 则将任意 queued/running/retry_wait 视为阻止工作区切换的条件。",
+      "trigger": "索引、模型配置、问答等任务执行中退出或崩溃，重启后留下 retry_wait；用户尝试使用已经成功恢复的副本。",
+      "impact": "界面可能显示“当前无运行任务”，但切换恢复副本被 WORKER_BUSY 拒绝；重建新的任务也不会自动终结旧记录。不能将“重试/取消已实现”理解为所有任务类型均已闭环。",
+      "fix": "明确每个任务类型的恢复策略：可续跑、需重新授权、需重新提交或终止。允许用户取消所有可取消的非终态意图；切换检查区分实际持有工作资源的任务和已失去运行者的历史意图，并保证安全终结。",
+      "complexity": "中",
+      "validation": "对 import/parse/index/prepare/answer/config/backup 分别在 queued 和 running 时重启；每种任务都必须有可达的继续或终止操作，终结后恢复副本可激活。"
+    },
+    {
+      "id": "RAG-AUD-05",
+      "priority": "P1",
+      "category": "后端 / 容量契约",
+      "title": "准备接口声明支持 1000 个版本，内部任务在 419 个 UUID 时即超限",
+      "status": "代码确认，已执行精确序列化边界复算",
+      "locations": [
+        [
+          "engine/ragsystem/ipc/mvp.py",
+          12,
+          15
+        ],
+        [
+          "engine/ragsystem/ipc/mvp.py",
+          116,
+          143
+        ],
+        [
+          "engine/ragsystem/jobs/repository.py",
+          33,
+          41
+        ],
+        [
+          "engine/ragsystem/ipc/server.py",
+          36,
+          46
+        ],
+        [
+          "apps/desktop/src/components/MvpLibrary.tsx",
+          22,
+          22
+        ]
+      ],
+      "evidence": "PrepareRequest.version_ids 上限 1000；prepare_documents 将完整 versions 列表写入 job payload；Jobs.enqueue 的紧凑 UTF-8 JSON 上限 16384 字节。该 endpoint 的 HTTP 上限是 128 KiB，因此不是外层 16 KiB 请求限制先触发。",
+      "trigger": "一次“准备问答 / 更新索引”提交至少 419 个标准 36 字符 UUID（实际载荷结构不变）。",
+      "impact": "418 个为 16368 B，419 个为 16407 B，1000 个为 39066 B；419 起在入队时抛 PAYLOAD_TOO_LARGE。文献页未选择子集时会发送全库版本列表，影响目标规模下的正常入口。",
+      "fix": "将版本清单存为有界任务子表或冻结范围快照，任务只引用 snapshot_id；统一 HTTP、DTO、任务载荷与前端边界。不要只将所有通用载荷上限无限放大。",
+      "complexity": "中",
+      "validation": "在临时库测试 1/418/419/1000 个不同有效版本，覆盖取消、重启、部分失败和幂等重提；明确区分接口接收、任务入队与处理完成。"
+    },
+    {
+      "id": "RAG-AUD-06",
+      "priority": "P1",
+      "category": "安全 / 工程发布",
+      "title": "当前提交的依赖审计门禁失败，尚未完成发布风险处置",
+      "status": "当前提交 CI 状态已核验；各公告在目标产物中的可利用性未验证",
+      "locations": [
+        [
+          ".github/workflows/ci.yml",
+          76,
+          87
+        ]
+      ],
+      "evidence": "Actions run 42369976421：Windows 与 macOS 的 source job 成功，但 lock-audit job 128395893056 失败，整个工作流结论为 failure。读取到的日志报告 lock_integrity PASS、vulnerability_audit FAIL、license_review BLOCKED，存在 diskcache、glib 等公告命中。",
+      "trigger": "把该提交当作安全门禁全绿、可以发行的版本。公告命中是待分析材料，不等于已验证远程可利用漏洞。",
+      "impact": "目标平台、可选运行时、依赖到打包产物的映射和漏洞可达性尚未闭环；不能用两个源码验证 job 成功覆盖总体工作流失败。",
+      "fix": "按准确锁定版本和目标产物分层核查，合并同一漏洞的公告别名；评估实际调用路径和平台条件，升级可修复依赖并回归。确实不适用的项需要有依据、有期限的例外，不得整体关闭审计。",
+      "complexity": "中—高，取决于上游兼容性",
+      "validation": "同一提交的审计、源码测试和实际目标包 SBOM/许可清单一致；所有告警均有修复或审查结论。这里没有声称公告已具备可利用 PoC。"
+    },
+    {
+      "id": "RAG-AUD-07",
+      "priority": "P2",
+      "category": "后端 / 前端状态一致性",
+      "title": "领取前取消问答，只终止 job，可能留下永久 queued 的回答",
+      "status": "静态调用链确认；时序集成测试待补",
+      "locations": [
+        [
+          "engine/ragsystem/ipc/server.py",
+          577,
+          580
+        ],
+        [
+          "engine/ragsystem/jobs/repository.py",
+          168,
+          183
+        ],
+        [
+          "engine/ragsystem/workflows/workbench.py",
+          437,
+          443
+        ],
+        [
+          "apps/desktop/src/components/MvpAsk.tsx",
+          32,
+          38
+        ]
+      ],
+      "evidence": "取消路由仅调用 Jobs.cancel；该方法只更新 jobs/job_attempts/events。run_answer 在 claim 返回 None 后直接返回。前端根据 answer_runs 的 queued/running 字段设置 pending，而不是从已取消 job 反推终态。",
+      "trigger": "回答已入队，但 worker 尚未领取时被取消。运行中取消有后续异常处理，不能覆盖这个领取前窗口。",
+      "impact": "业务回答保持 queued，界面可持续显示处理中并禁用发送。取消任务与取消业务实体并不一致。",
+      "fix": "在事务内同步关联 answer_run 的终态，或提供统一业务任务状态协调器；worker 的无可领取任务分支也应确认对应业务记录是否已终止。",
+      "complexity": "中",
+      "validation": "用同步屏障暂停 worker 在 claim 前，取消再放行；断言 job 和 answer_run 均为 cancelled、无模型调用、前端能再次发送。"
+    },
+    {
+      "id": "RAG-AUD-08",
+      "priority": "P2",
+      "category": "性能 / 前后端集成",
+      "title": "对话轮询反复加载历史证据，并按证据重复读取整份 PDF 校验",
+      "status": "重复读取路径已确认；实际延迟、CPU 与内存峰值待测",
+      "locations": [
+        [
+          "apps/desktop/src/components/MvpAsk.tsx",
+          32,
+          38
+        ],
+        [
+          "engine/ragsystem/retrieval/source_search.py",
+          132,
+          153
+        ],
+        [
+          "engine/ragsystem/workflows/workbench.py",
+          866,
+          910
+        ]
+      ],
+      "evidence": "会话选定后每 1000 ms 拉取 conversationTurns；答案展示逐条 public_evidence→Sources.anchor，anchor 以 path.read_bytes() 读取整份 PDF 计算 SHA。Rust 侧共享引擎互斥锁还会使慢请求阻塞其他命令。",
+      "trigger": "含多条证据、多个历史回答的会话保持打开；多条证据来自同一份较大的 PDF 时重复尤其明显。",
+      "impact": "已确认应用层重复读取、分配和哈希工作，不能直接等同于每次都发生物理磁盘 I/O（操作系统可能缓存）。即使没有新答案，仍会重复工作；具体卡顿程度需实测。",
+      "fix": "将轻量任务状态与完整答案分开；仅活动任务轮询并暂停隐藏页面；相同原件在单次请求内去重验证。跨请求缓存须绑定文件身份/变化检测，并在实际打开原文等安全边界保留可靠校验，不能简单删除哈希保护。",
+      "complexity": "中",
+      "validation": "为文件读取和 SHA 计算加计数；同一响应中同一原件不应按证据条数重复验证。用 1/30 轮会话和不同 PDF 大小比较冷/热缓存 P50/P95，同时回归原件篡改检测。"
+    },
+    {
+      "id": "RAG-AUD-09",
+      "priority": "P2",
+      "category": "后端 / 数据库性能",
+      "title": "文献列表存在 N+1 查询，周期性全量快照放大成本",
+      "status": "查询数量随文献数线性增加已确认；目标规模时延待测",
+      "locations": [
+        [
+          "engine/ragsystem/library/repository.py",
+          127,
+          207
+        ],
+        [
+          "engine/ragsystem/library/repository.py",
+          227,
+          247
+        ],
+        [
+          "engine/ragsystem/library/repository.py",
+          300,
+          306
+        ]
+      ],
+      "evidence": "list_documents 在每个版本循环中分别查询 metadata_candidates、对应 metadata job；有 DOI 时再查 duplicate_candidates。update_metadata 还在更新前后调用全量 list_documents。App 的周期性全局快照使用该列表。",
+      "trigger": "文献数量增长、持续快照刷新、频繁编辑元数据；逐篇研究中反复读全库也会放大该路径。",
+      "impact": "仅两个固定逐版本查询就增加约 2N 次 SELECT，另有 DOI 分支。这里没有宣称“1000 篇必然超时”，但重复查询是代码可直接确定的。",
+      "fix": "批量读取候选、任务状态和 DOI 分组，构建内存映射；单条编辑使用定向读取；把列表摘要和详情分开，按 revision/分页增量刷新。",
+      "complexity": "中",
+      "validation": "使用 SQLite trace_callback 统计查询次数，证明不再随每条文献增加固定 SQL 次数；测试候选覆盖、自动/人工字段优先级、项目范围与 DOI 去重结果一致。"
+    },
+    {
+      "id": "RAG-AUD-10",
+      "priority": "P2",
+      "category": "后端 / 存储容量",
+      "title": "成功导入和重复导入仍永久保留新建 staging 文件",
+      "status": "导入成功路径未清理已确认；整库历史垃圾总量未测",
+      "locations": [
+        [
+          "engine/ragsystem/ingestion/import_pdf.py",
+          31,
+          120
+        ]
+      ],
+      "evidence": "每次 run 都新建 job_id+随机值的 .part；通过 os.link 发布，不论目标已存在还是本次任务成功，finally 只关闭授权文件句柄，没有对本任务 staging 对象做成功后的处理。",
+      "trigger": "同一个 PDF 多次导入，或大量导入/重试。",
+      "impact": "首次成功导入时 staging 与 papers 可共享硬链接 inode，不能说立刻占两倍磁盘；重复导入时新临时副本与已存在原件通常不是同一 inode，保留会真实增加占用。保留崩溃证据本身合理，但不应无限保留所有成功临时副本。",
+      "fix": "按任务归属、终态和租约建立清理/保留策略；成功且原件/事务均已确认后处理本任务临时对象，失败现场按期限保留并可审计。禁止遍历删除未知用户文件。",
+      "complexity": "中",
+      "validation": "连续导入同一文件 10 次，确认文档去重且实际分配块数有界；在复制、发布、提交各阶段崩溃后仍可恢复，活跃任务临时对象不得被删除。"
+    },
+    {
+      "id": "RAG-AUD-11",
+      "priority": "P2",
+      "category": "稳定性 / 备份",
+      "title": "备份完整复制后才检查可接受容量，超限任务产生无效大副本",
+      "status": "检查顺序已确认；真实库触发概率未知",
+      "locations": [
+        [
+          "engine/ragsystem/storage/backup.py",
+          50,
+          95
+        ],
+        [
+          "engine/ragsystem/storage/backup.py",
+          98,
+          158
+        ],
+        [
+          "engine/ragsystem/storage/backup_service.py",
+          35,
+          101
+        ]
+      ],
+      "evidence": "_create 先复制 SQLite 和所有原件；inspect 才限制总量 8 GiB、SQLite 文件 512 MiB。BackupService 创建后再 inspect，失败会保留/隔离副本。",
+      "trigger": "原件加数据库超出该上限，或 SQLite 原始向量缓存使数据库超过 512 MiB。",
+      "impact": "在已复制大量数据后才失败，浪费时间与磁盘，反复尝试可积累隔离副本。1000 篇是否触发必须按真实文件和向量数量测量，不能只由篇数断定。",
+      "fix": "复制前计算一致的容量预估并检查目标可用空间，给出明确限制；保留复制后的完整性校验。若产品需支持更大库，应调整备份协议和分卷/流式策略，而不只是移除防御上限。",
+      "complexity": "中",
+      "validation": "构造越过数据库/总量上限的测试元数据或稀疏测试文件，验证在大规模复制前拒绝；测试复制中磁盘满、取消、隔离保留和正常恢复。"
+    },
+    {
+      "id": "RAG-AUD-12",
+      "priority": "P2",
+      "category": "性能 / 索引构建",
+      "title": "Embedding 虽然批量推理，缓存和关联仍逐条事务写入",
+      "status": "读写模式已确认；耗时收益需目标机器基准",
+      "locations": [
+        [
+          "engine/ragsystem/indexing/incremental.py",
+          1,
+          40
+        ],
+        [
+          "engine/ragsystem/storage/database.py",
+          68,
+          90
+        ]
+      ],
+      "evidence": "增量索引逐项 get/persist/link；这些方法独立打开连接或提交事务。Database 使用 synchronous=FULL，因此“按批编码”不等于“按批持久化”。",
+      "trigger": "首次建立大量 Chunk 索引，或大量内容需要新向量/新关联。",
+      "impact": "产生大量连接、事务和同步提交，压缩批量 ONNX 推理带来的收益；实际瓶颈应同时分解模型耗时与 SQLite 耗时。",
+      "fix": "采用有界批次的缓存批量读取、executemany 写入与关联提交；批次边界检查取消/租约，并保留模型空间、内容哈希去重和原子发布。",
+      "complexity": "中",
+      "validation": "比较事务数、编码数、写入数和总耗时；缓存命中不得重新编码；在批次中取消/崩溃后不得发布半成品索引。"
+    },
+    {
+      "id": "RAG-AUD-13",
+      "priority": "P2",
+      "category": "RAG / 意图路由",
+      "title": "按子串拦截 systematic review，误拒单篇论文的正常问题",
+      "status": "确定性逻辑缺陷",
+      "locations": [
+        [
+          "engine/ragsystem/workflows/workbench.py",
+          276,
+          289
+        ]
+      ],
+      "evidence": "create_answer 在意图拆分前，只要 question.casefold() 包含“所有论文/全库/all papers/every paper/systematic review”等任一片段，就抛出 RESEARCH_REQUIRED。",
+      "trigger": "只选一篇文献，询问“这篇论文是否采用 systematic review 方法？”或询问原文中的这个术语。",
+      "impact": "普通文献问答被误认作逐篇全库研究，无论是否已有充分证据都会提前拒绝。",
+      "fix": "把“术语出现”与“要求穷尽全范围”分开，结合选定范围和明确任务语义；模糊情形说明范围或请求选择，而非仅凭词面拒答。继续保留不能用 Top-K 冒充全库覆盖的约束。",
+      "complexity": "低—中",
+      "validation": "新增单篇术语问答、引用中出现 all papers、真正要求逐篇穷尽的中英文对照用例；前两类可正常检索，后一类仍进入或提示逐篇研究。"
+    },
+    {
+      "id": "RAG-AUD-14",
+      "priority": "P2",
+      "category": "性能 / 可选向量后端",
+      "title": "LanceDB 路径将全部范围内向量物化为 Python 记录再截取 Top-K",
+      "status": "数据物化路径已确认；属于可选后端的容量风险，未测内存峰值",
+      "locations": [
+        [
+          "engine/ragsystem/vector_adapters/lancedb.py",
+          52,
+          78
+        ]
+      ],
+      "evidence": "search 使用 limit(len(eligible)).to_list() 后进行本地排序/截取；ids 路径先 to_arrow 再取 embedding_id 列。两者可能传回远超最终 K 的数据，包括不需要的向量列。",
+      "trigger": "选择 LanceDB 后端，授权范围内候选较多，而最终只需要很小的 K。",
+      "impact": "增加 Arrow/Python 对象转换和内存开销。精确检索本身不构成缺陷；问题是为 Top-K 结果搬运/物化过多中间数据。",
+      "fix": "优先做列投影，并在存储侧得到有界结果；明确稳定排序与同分处理契约。保持范围过滤在 Top-K 前执行，不得用“全库先取 K、再过滤”的错误优化。",
+      "complexity": "中",
+      "validation": "对同一授权范围比较旧实现与精确参考结果，覆盖同分、空范围、过滤后候选不足；记录返回中间数据量和峰值 RSS，验证无越范围召回。"
+    },
+    {
+      "id": "RAG-AUD-15",
+      "priority": "P2",
+      "category": "前端 / 异常恢复",
+      "title": "模型连接测试的刷新失败会跳过 busy 复位",
+      "status": "确定性异步控制流缺陷",
+      "locations": [
+        [
+          "apps/desktop/src/components/GenerationConnections.tsx",
+          15,
+          22
+        ]
+      ],
+      "evidence": "probe 的 finally 为 await refresh(); await onSaved?.(); setBusy(false)。任意一次 await 拒绝都会在清除 busy 前退出；调用点使用 void probe(item)，该新异常还可能成为未处理 rejection。",
+      "trigger": "连接测试完成后引擎退出、连接列表刷新失败，或 onSaved 的快照刷新失败。",
+      "impact": "连接表单和按钮持续禁用，需要重新挂载页面；原始连接错误也可能被刷新错误掩盖。",
+      "fix": "使用最外层 finally 无条件执行同步 setBusy(false)；将刷新错误单独处理，保留原始测试错误，增加组件卸载后的响应防护。",
+      "complexity": "低",
+      "validation": "分别模拟 probe 成功/失败后 refresh 拒绝、onSaved 拒绝和组件卸载；按钮必须恢复，错误类别明确，无未处理 Promise rejection。"
+    },
+    {
+      "id": "RAG-AUD-16",
+      "priority": "P2",
+      "category": "RAG / 输入契约与用户提示",
+      "title": "问题字符上限与向量 Token 上限未形成一致契约，错误提示误指向文档",
+      "status": "边界不一致与错误复用已确认；具体自然语言触发点需固定 tokenizer 运行验证",
+      "locations": [
+        [
+          "engine/ragsystem/ipc/server.py",
+          147,
+          155
+        ],
+        [
+          "engine/ragsystem/workflows/workbench.py",
+          222,
+          244
+        ],
+        [
+          "engine/ragsystem/models/local_onnx.py",
+          70,
+          100
+        ],
+        [
+          "apps/desktop/src/bridge.ts",
+          159,
+          159
+        ]
+      ],
+      "evidence": "搜索接受最多 20000 字符，问答界面最多 4000 字符；指代查询还拼接历史问题。E5 的输入上限为 512 Tokens，溢出拒绝。前端 EMBEDDING_CONTEXT_LIMIT 文案却建议“重新解析为较短片段”，未区分查询文本和文档 Chunk。",
+      "trigger": "较长问题或问题加历史达到 E5 Token 上限，使用 vector_exact/hybrid。",
+      "impact": "界面允许提交但检索失败，并诱导用户重解析本来无问题的文档。不能据字符数断言所有某长度中文问题必定失败，应使用锁定 tokenizer 验证。",
+      "fix": "建立查询侧 Token 预算，当前问题优先、历史其次；过长时使用独立 QUERY_CONTEXT_LIMIT 提示并显式说明缩减策略。文档超长 Chunk 保留独立错误，不能静默截断后宣称完整索引。",
+      "complexity": "中",
+      "validation": "用固定模型 tokenizer 生成 511/512/513 Token 和历史追加边界样例，分别覆盖查询与 passage；验证错误文案、历史裁剪记录以及失败不改变已有索引。"
+    },
+    {
+      "id": "RAG-AUD-17",
+      "priority": "P2",
+      "category": "RAG / 效果验收",
+      "title": "评估工具存在，但真实人工金标和已批准质量验收尚未闭环",
+      "status": "仓库交付证据缺口已确认；不等于实际准确率已知很低",
+      "locations": [
+        [
+          "docs/evaluation/goldset-protocol.md",
+          1,
+          12
+        ],
+        [
+          "engine/ragsystem/retrieval/evaluation.py",
+          1,
+          20
+        ]
+      ],
+      "evidence": "评估文档明确无真实金标，并在后续更新中记录 0 个人工裁定样本、阈值 pending；文档明确说明 gold/prediction 是待填写的空模板。已有 Recall@5/10、MRR、NDCG@10、时延计算和离线科学质量评分工具，不能误报为“没有评估机制”。",
+      "trigger": "用单元测试、两篇示例文献、模型自审 supported 或历史功能冒烟，来证明真实科研问答质量或千篇效果。",
+      "impact": "没有可复现的质量基线，切分、混合检索、重排、引用和拒答的真实收益无法比较；无法给出可信准确率结论。",
+      "fix": "复用现有协议与评分器建立小型真实授权金标，冻结问题、原件 SHA、页/引文和可接受答案；独立人工评价模型输出，补 Precision@K、引用语义正确率和全调用成本统计。",
+      "complexity": "中，主要成本是标注与复核",
+      "validation": "提供可重跑的冻结数据清单、独立评审记录、分组指标、失败样例和完整运行指纹；模型自评分不得当成人工真值；阈值须预先批准，不因本次失败而临时降低。"
+    },
+    {
+      "id": "RAG-AUD-18",
+      "priority": "P2",
+      "category": "工程质量 / 发布验收",
+      "title": "源码 CI 与完整冻结侧车、浏览器集成、原生安装验收之间仍有断层",
+      "status": "当前 CI 配置确认；历史本地验收证据不作本提交已验证结论",
+      "locations": [
+        [
+          ".github/workflows/ci.yml",
+          55,
+          75
+        ],
+        [
+          "packaging/build_sidecar.py",
+          14,
+          24
+        ],
+        [
+          "packaging/build_sidecar.py",
+          98,
+          183
+        ],
+        [
+          "tools/browser_mvp.cjs",
+          1,
+          30
+        ]
+      ],
+      "evidence": "CI 包括 Ruff/Pytest/TS build/Rust tests/clippy/npm audit；build_sidecar 不带 include-* 标志，默认排除向量、生成、OCR、Docling 可选运行时。tools 中有连接冻结引擎的浏览器脚本，但当前 CI 未运行这些脚本；desktop-e2e 目录本身是验收文档。",
+      "trigger": "将源码与模型无关侧车验证成功等同于完整功能安装包在干净 Windows/macOS 上可用。",
+      "impact": "打包资源缺失、动态库、原生对话框、工作区恢复切换、中文输入法和 GUI 竞态仍可能只在完整产物中暴露。没有“已发布产品承诺”时，这是发布准备缺口，不是伪称现有功能一定不可用。",
+      "fix": "分层建立核心浏览器集成门禁、完整候选运行时冻结测试和原生人工验收矩阵。显式保留许可允许的模型准备方式，不为跑 CI 自动上传用户论文或调用付费 API。",
+      "complexity": "中—高",
+      "validation": "同一提交、同一源指纹的完整侧车和应用在目标干净账户运行；覆盖导入→解析→索引→问答→引用→取消/重启→备份恢复，并单列模型缺失、平台跳过、签名/安装未验证项。"
+    }
+  ]
+}
