@@ -1,6 +1,6 @@
 # PLANS.md — 路线图、门禁与可执行工作机制
 
-GH-06（2026-11-11）：用户明确授权当前代码提交并同步GitHub，覆盖本轮纳入任务此前不提交/推送限制。目标origin/RAGTest的当前分支codex/audit-remediation-20261108，保留既有8个整改提交，连同UI-02/UI-03及必要工程记录同步；不自动合并main、不强推或发布。前端构建/故障5例/原生隔离保护1例/Ruff通过，生产源码与UI-03哈希一致；完整回归复用11月9日实测，不冒称本轮重跑。范围与执行状态见[计划](docs/engineering/execplans/GH-06-current-source-sync.md)、[报告](docs/engineering/reports/GH-06-2026-11-11.md)。
+GH-06（2026-11-11）：当前源码已提交并同步GitHub的codex/audit-remediation-20261108。保留8个既有整改提交，新增UI/验收主提交2fa9318及格式记录修复b8e6ffd，34文件已审阅；远端代码尖端完整SHA与本地一致。初次HTTPS因workflow scope被拒，随后使用已有GitHub连接按相同SHA创建分支，未扩大权限/删CI/改历史。当前TS构建/故障5例/隔离保护1例/Ruff通过，生产源码与UI-03哈希一致；完整回归复用11月9日证据。main未合并，模型/PDF/数据库/凭据/原始日志/安装包未上传。收尾文档及最终核对见[报告](docs/engineering/reports/GH-06-2026-11-11.md)。
 
 UI-03（2026-11-09）：本机回归、修复、App替换及原生主流程验收完成。Python461/Rust10/TS5、包内116+授权恢复89断言及Ruff/Clippy/构建通过。解锁后实际完成原生E5/混合摘录问答/引用PDF/核查/备份恢复与历史持久；用户明确批准真实库20→21升级，安装版~/Applications/RAGSystem.app已启动并重启核验，UI-03构建/索引就绪。65张原非迁移表及旧迁移记录、PDF/发布索引SHA保持，2篇/450Chunk/257向量/13对话/39回答保留。旧App和升级前一致备份保留，无待批本机动作。Windows/科研/正式发行门禁不变；无push/付费API/资料外发。见[计划](docs/engineering/execplans/UI-03-full-validation-install.md)、[报告](docs/engineering/reports/UI-03-2026-11-09.md)。
 
